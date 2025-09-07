@@ -1,0 +1,58 @@
+<?php
+include_once 'head2.php';
+?>
+
+
+<section class="breadcrumb-area bg-img bg-overlay jarallax" style="background-image: url(https://rush4cash.in/img/bg-img/13.jpg);margin-top:100px">
+        <div class="container h-100">
+            <div class="row h-100 align-items-center">
+                <div class="col-12">
+                    <div class="breadcrumb-content">
+                        <h2>ETHICAL LENDING</h2>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="index.php">Home /</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Ethical Lending
+</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div></section>
+        
+        
+        <!--container-->
+        <div class="container">
+    <br>
+        
+<h3 style="color:#00a77b;">ETHICAL LENDING</h3>
+<br>
+<p style="text-align: justify;">
+<b style="color:#003679">creditlab.in</b> is a platform dealing with the loan transactions between the borrowers and the NBFC. All loan applications are approved and sanctioned by NBFC registered with RBI and intimated upfront during Loan application process.
+
+<br><br>
+One of our primary partner NBFCs, is a Systemically Important Non-Deposit taking Company carrying on the lending process of Creditlab.
+<br><br>
+We always ensure that we are transparent in dealing with our customers and help the customer make an informed decision. To ascertain this:
+<br><br>
+We work only with RBI registered NBFC’s and the name of the lender is mentioned in the loan agreement.<br>
+We explicitly mention all applicable charges to the customer at the initial stage and don’t conceal any hidden charges.<br>
+We mention all the Terms &amp; Conditions before the loan is processed so that the customer is aware of the agreement details.<br>
+We never mislead or misguide the customer by way of deceptive advertisement.
+We provide a detailed FAQ section on the app and have a customer support team available in case the customer queries that aren’t addressed.<br>
+Lastly, we understand that unexpected circumstances arise in loan repayment by customer. However, the customers need to be treated fairly and need to be given reasonable time and opportunity to repay the loan. We assist the borrowers in case of a hardship without indulging or adopting any unlawful activities to recover the dues:
+<br><br>
+We never indulge in unfair practices or threaten the customer to make payment.<br>
+We never indulge ourselves in any malpractices in creating fake &amp; fabricated legal demand notices in issuing to customers as if issued by any government bodies nor use logos or seals of statutory bodies such as RBI, CBI, UIDAI, Tax department etc., for recovery. We ensure that all our legal notices are sent on authorized company letter heads.<br><br>
+We ensure that all our legal notices are sent on authorized company letter heads.
+If you find any suspicious activities, please report them to grievance@creditlab.in
+<br><br>
+We are there to help you in every way possible as a responsible lender.
+
+<br><br>
+    </p>
+</div>
+<?php
+include_once 'foot.php';
+?>

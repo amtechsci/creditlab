@@ -1,0 +1,24 @@
+<svg version="1.2" baseProfile="tiny-ps" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 73" width="255" height="73">
+	<title>download-btn-svg</title>
+	<defs>
+		<linearGradient id="grd1" gradientUnits="userSpaceOnUse"  x1="256.842" y1="5" x2="4" y2="69.11">
+			<stop offset="0" stop-color="#0021a5"  />
+			<stop offset="1" stop-color="#009095"  />
+		</linearGradient>
+	</defs>
+	<style>
+		tspan { white-space:pre }
+		.shp0 { fill: url(#grd1) } 
+		.txt1 { font-size: 20px;fill: #ffffff;font-weight: 400;font-family: "Roboto-Regular", "Roboto" } 
+	</style>
+	<g id="Layer">
+		<g id="Layer">
+			<path id="Layer" class="shp0" d="M36 5L217.72 5C235.41 5 249.72 19.3 249.72 37L249.72 37.11C249.72 54.81 235.41 69.11 217.72 69.11L36 69.11C18.3 69.11 4 54.81 4 37.11L4 37C4 19.3 18.3 5 36 5Z" />
+		</g>
+		<g id="Layer">
+			<text id="DOWNLOAD APP" style="transform: matrix(1,0,0,1,49,45.323)" >
+				<tspan x="0" y="0" class="txt1">DOWNLOAD APP</tspan>
+			</text>
+		</g>
+	</g>
+</svg>

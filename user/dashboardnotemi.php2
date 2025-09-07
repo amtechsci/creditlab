@@ -1,0 +1,444 @@
+<style>
+.icstu { font-size:12px; }
+.fa-lock { font-size: 48px;color:red }
+    @media screen and (max-width: 720px) {
+      .icstu { font-size:9px; }
+      .fa-lock { font-size: 25px;color:red }
+    }
+</style>
+<div class="breadcome-area">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                            <div class="breadcome-list">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                        <ul>
+                                            <li><h4><?=$user_name?></h4>
+                                            </li>
+                                            <li><span class="bread-blod"><?=$user_mobile;?></span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                        <div class="rc">
+                                        <ul class="breadcome-menua">
+                                            <li>Your creditlab.in ID: <span class="bread-blod"><?=$user_rcid;?></span>
+                                            </li>
+                                        
+                                        </ul>
+                                        <ul class="breadcome-menua">
+                                            <li><span class="bread-blod"><?=$user_email;?></span>
+                                            </li>
+                                        </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                     <div class="container chat" style="background:#fff;">
+        <h4 style="padding:10px;">Any issues? Feel free to mail us on support@creditlab.in</h4>
+        </div>
+        <br>
+                <?php $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='follow up') ORDER BY id DESC");
+                if(townum($a) != 0){?>
+                        <div id="alert" style="padding:15px;background:#fff; position:relative; background:#ccffff;">
+                        <h3>Your loan is applied in creditlab.in and we will get back to you soon through mail or call.<br> Thank you 😊.</h3><!--<span onclick="alertcut()" style="position:absolute; font-size:28px; right:17px; top:0px;">&times;</span>-->
+                    </div><br>
+            <?php }
+            ?>
+            <?php $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND status='disbursal' ORDER BY id DESC");
+        if(townum($a) != 0){
+            $loanfetch = towfetchassoc($a);
+        if(empty($user_signature)){ ?>
+        <style>
+            canvas {
+                background-color: #fff;
+                border: 1px solid #000;
+                cursor: crosshair;
+            }
+            button {
+                margin-top: 10px;
+                margin-right: 5px;
+                padding: 5px 10px;
+            }
+        </style>
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h1>Signature</h1>
+                        <h5>Please sign below similar to your signature on PAN Card.</h5>
+                        <canvas id="signature-pad" style="width:100%"></canvas>
+                        <br>
+                        <button id="clear">Clear & re-sign</button><br>
+                        I authorize Creditlab to use my electronic signature for signing loan agreements on my behalf for all future loans.<br>
+                        <button id="save">Save and submit</button>
+                    </div>
+                </div>
+            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let lastPos = { x: 0, y: 0 };
+
+    // Function to get the correct position on the canvas
+    function getPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (event.clientX || event.touches[0].clientX) - rect.left,
+            y: (event.clientY || event.touches[0].clientY) - rect.top
+        };
+    }
+
+    // Function to start drawing
+    function startDrawing(event) {
+        drawing = true;
+        lastPos = getPosition(event);
+        ctx.beginPath();
+        ctx.moveTo(lastPos.x, lastPos.y);
+        event.preventDefault(); // Prevent scrolling on touch devices
+    }
+
+    // Function to draw on the canvas
+    function draw(event) {
+        if (!drawing) return;
+
+        const pos = getPosition(event);
+
+        // Only draw if the position has changed (reduce number of draws)
+        if (pos.x !== lastPos.x || pos.y !== lastPos.y) {
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastPos = pos;
+        }
+
+        event.preventDefault(); // Prevent scrolling on touch devices
+    }
+
+    // Function to stop drawing
+    function stopDrawing() {
+        drawing = false;
+        ctx.beginPath();
+    }
+
+    // Mouse events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Touch events for mobile devices
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
+
+    document.getElementById('clear').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    document.getElementById('save').addEventListener('click', () => {
+        const dataURL = canvas.toDataURL('image/png');
+
+        fetch('save_signature.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: dataURL })
+        }).then(response => response.text()).then(result => {
+            location.reload();
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    });
+});
+
+            </script>
+        <?php }elseif(empty($user_selfie)){ ?>
+            <div class="container">
+            <div class="row">
+            <div class="col-md-1"></div>
+            <div class="col-md-6">
+        <h1>Video KYC</h1>
+        <h5>Kindly upload a short video by pronouncing the below sentence & submit.</h5>
+        “I AM APPLYING LOAN AT CREDITLAB WITH MY KNOWLEDGE“
+        <video style="width: 100%;height: 100%;"></video>
+        <div id="countdown"></div>
+        <button id="start-btn">Take Video / Retake Video</button>
+        <p style="color:red;">Note*<br>
+        LOOK at the camera in such a way that your complete face is covered in the video<br>
+
+          Don’t wear cap 🧢 <br>
+          Don’t wear spects</p>
+          <button id="upload-btn" disabled>Submit</button>
+        </div>
+        </div>
+        </div>
+        <script>
+            navigator.mediaDevices.enumerateDevices()
+  .then(devices => {
+    const cameras = devices.filter(device => device.kind === 'videoinput');
+    const microphones = devices.filter(device => device.kind === 'audioinput');
+    console.log('Cameras: ', cameras);
+    console.log('Microphones: ', microphones);
+
+    const constraints = {
+      audio: true,
+      video: true
+    };
+
+    if (cameras.length > 1 || microphones.length > 1) {
+      // Prompt the user to select a camera and microphone
+      constraints.video.deviceId = { exact: 'video-device-id' };
+      constraints.audio.deviceId = { exact: 'audio-device-id' };
+    }
+
+    return navigator.mediaDevices.getUserMedia(constraints);
+  })
+  .then(stream => {
+    // Do something with the stream
+  })
+  .catch(error => {
+    console.log('Error: ', error);
+    alert(error.name);
+  });
+
+        </script>
+        <script>
+    // Get the video element and buttons
+    const video = document.querySelector('video');
+    const startBtn = document.querySelector('#start-btn');
+    const uploadBtn = document.querySelector('#upload-btn');
+
+    // Constraints for capturing video
+    const constraints = {
+      audio: true,
+      video: {
+        width: 640,
+        height: 480
+      }
+    };
+
+    // Variables for storing the recorded media
+    let mediaRecorder;
+    let chunks = [];
+    let blob;
+
+    // Start recording the video
+    function startRecording() {
+        var timeleft = 10;
+var downloadTimer = setInterval(function(){
+  if(timeleft <= 0){
+    clearInterval(downloadTimer);
+    document.getElementById("countdown").innerHTML = "Finished";
+  } else {
+    document.getElementById("countdown").innerHTML = timeleft + " seconds remaining";
+  }
+  timeleft -= 1;
+}, 1000);
+      // Request access to the user's webcam
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          // Show the video stream in the video element
+          video.srcObject = stream;
+          video.play();
+
+          // Create a MediaRecorder instance and start recording
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+
+          // Set a timer to stop recording after 5 seconds
+          setTimeout(stopRecording, 10000);
+
+          // Listen for dataavailable events and add the chunks to the array
+          mediaRecorder.addEventListener('dataavailable', event => {
+            chunks.push(event.data);
+          });
+        })
+        .catch(error => console.log(error));
+    }
+
+    // Stop recording the video and upload it to the server
+    function stopRecording() {
+      uploadBtn.disabled = false;
+      startBtn.disabled = false;
+      mediaRecorder.stop();
+      video.pause();
+    }
+    function uploadRecording() {
+      blob = new Blob(chunks, { type: 'video/mp4' });
+      const formData = new FormData();
+      formData.append('video', blob, 'video.mp4');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/zzz.php');
+      xhr.onload = () => {
+            console.log(xhr.responseText);
+        if (xhr.status === 200) {
+          if(xhr.responseText == 1){
+              window.location.replace('index.php');
+          }
+        } else {
+          console.log('Error uploading video.');
+        }
+      };
+      xhr.send(formData);
+    }
+
+    // Attach event listeners to the buttons
+    startBtn.addEventListener('click', () => {
+      startBtn.disabled = true;
+      startRecording();
+    });
+    uploadBtn.addEventListener('click', () => {
+      uploadBtn.disabled = true;
+      startBtn.disabled = false;
+      uploadRecording();
+    });
+  </script>
+<?php }else{
+            if($loanfetch['agreement'] == 0){
+            if($loanfetch['keyid'] == 0){ ?>
+            <h4>Please read the complete Key fact statement & loan sanction letter</h4>
+            <br>
+            <?php if($user_approvenew == 1){ ?>
+            <iframe src="https://creditlab.in/key.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+            <?php }else{ ?>
+            <iframe src="https://creditlab.in/key2.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+            <?php } ?>
+            <form action="agreement.php">
+            <center><input type="checkbox" name="id" value="<?=$loanfetch['id']?>" required> I understand & I agree to the loan sanction letter & Key fact statement.<br>
+            <button type="submit" class="btn btn-primary">I agree</button></center>
+            </form>
+            <?php }else{
+             ?>
+            
+            <div id="alert" style="padding:15px;background:#fff; position:relative; background:#ccffff;">
+            <h4>Please read the complete loan agreement carefully which is attested with your <br>
+            -ID proof &<br>
+            -address proof.</h4></div><br>
+            <?php if($user_approvenew == 1){ ?>
+            <iframe src="https://creditlab.in/admin/loan_agreement.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+            <?php }else{ ?>
+            <iframe src="https://creditlab.in/admin/loan_agreement2.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+            <?php } ?>
+            <form action="agreement.php">
+            <center><input type="checkbox" name="id" value="<?=$loanfetch['id']?>" required> I understand & I accept that I have read the loan agreement with my knowledge.
+            <br>I confirm that I have read, understood and agreed to the Creditlab Product Terms and Conditions and Related Policies. I grant my irrevocable consent to lender and/or any authorized party nominated by lender for making public, in case I commit wilful default. I hereby promise to pay Creditlab /lender or order on demand principal amount together with interest and delayed interest, if any, as prescribed in KFS from due date until repayment thereof.
+            <br>
+            <button type="submit" class="btn btn-primary">I agree</button></center>
+            </form>
+                        
+                        
+            <?php }
+        }else{
+            echo '<h3>your loan is approved and you will get the loan shortly.<br> Thank you 😊.</h3>';
+        }
+        } ?> 
+ 
+       <?php }
+            ?>
+            <div class="container">
+                <?php
+                    $userloan = towquery("SELECT * FROM `loan` WHERE uid=$user_id AND (status_log ='account manager' OR status_log ='recovery officer') ORDER BY id DESC");
+                    while($userloanfetch = towfetch($userloan)){
+                        $dis_date = date('Y-m-d', strtotime(date_create($userloanfetch['processed_date'])->format("Y-m-d") . " -1 day"));
+                        $di = strtotime($dis_date);
+                        $sa = strtotime(date('Y-m-d'));
+                        $datediff = $sa - $di;
+                        $day_gap = round($datediff / (60 * 60 * 24));
+                    ?>
+                        <div class="row">
+                            <div class="col-md-2 card text-center shadow bg-white rounded" style="background:#fff;border:10px solid #F6F8FA; ">
+                                 <span style="line-height:100px;">CLL<?=$userloanfetch['lid'];?></span>
+                            </div>
+                            <div class="col-md-3 card text-center shadow bg-white rounded" style="background:#fff;border:10px solid #F6F8FA; ">
+                                 <span style="line-height:100px;">Loan availed -- Rs<span> <?=$userloanfetch['processed_amount']+$userloanfetch['p_fee']+($userloanfetch['p_fee']*0.18);?></span></span>
+                            </div>
+                            <div class="col-md-3 card text-center" style="background:#fff;border:10px solid #F6F8FA;">
+                                 <span style="line-height:50px;">Exhausted days -- <span> <?=$day_gap;?><br>Due Date - (<?=date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +30 day'))?>)</span></span>
+                            </div>
+                            <div class="col-md-4 card text-center" style="background:#fff;border:10px solid #F6F8FA;">
+                                 <span style="line-height:50px;">Total Outstanding Amount -- <b>Rs<?=ceil($userloanfetch['processed_amount']+$userloanfetch['p_fee']+$userloanfetch['service_charge']+($userloanfetch['p_fee']*0.18)+$userloanfetch['penality_charge']);?></b><br>This amount changes w.r.t number of exhausted days</span>
+                            </div>
+                        </div>
+                    <?php } ?>
+         </div>
+         <?php
+         if(!townum($userloan) == 0){
+         $a = towquery("SELECT `amount`,`processing_fees`,`origination_fee` FROM `loan_apply` WHERE `uid`=$user_id AND (status = 'pending' OR status = 'disbursal' OR status = 'follow up' OR status = 'account manager')");
+            $b = towfetch($a);
+            $b['totalamt'] = $b['amount']+$b['processing_fees']+$b['origination_fee'];
+         if($b['totalamt'] < $user_loan_limit){
+             $amt = $user_loan_limit - $b['totalamt'];
+         ?>
+         <div class="container" style="background:#fff;border:10px solid #F6F8FA; ">
+             <!--<form action="apply.php" method="post">-->
+             <!--    <center><h3>-->
+             <!--    <br>-->
+             <!--    You are eligible for more -- Rs <?=$amt;?><span>-->
+                     <!--<input type="hidden" name="amount" value="<?=$amt;?>"><input type="hidden" name="days" value="30"><input type="hidden" name="reason" value="Personal"> -->
+                     <!--<input type="submit" value="Apply Now"  class="btn btn-primary" />-->
+             <!--        Apply Now-->
+             <!--        </span> to get instantly-->
+             <!--</h3></center>-->
+             <!--</form>-->
+         </div>
+         <?php } ?>
+         <div class="container" style="background:#fff;border:10px solid #F6F8FA; ">
+             <h4>
+                 <br>
+                 <br>
+<span style="color:#24c524;">* You can close the loan on or before 30 days & No pre closing charges <br>
+* You pay only for what you use ( You would be charged only for the number of days you availed it )<br><br></span>
+
+<span style="color:#178117;">***your repayment impacts your </span><br><br>
+<span style="color:#24c524;">
+       - CIBIL SCORE<br>
+       - social credibility <br>
+       - Trust quotient <br>
+       - Credit limit in all other platforms
+</span>
+             </h4>
+<div class="w-100" style="margin-bottom: 15px;">
+    <div style="background:#f2dada;padding:15px;display: flex;align-items: center;justify-content: space-between;">
+        <div style="width: 70%;">
+            <?php
+            $sal = ceil($user_salary*0.40);
+            $loan_limit = towquery("SELECT MIN(amount) as amount FROM `limit_increment` WHERE amount > $user_loan_limit AND amount < $sal");
+            if(townum($loan_limit) > 0){
+                $nincamt = towfetch($loan_limit)['amount'];
+            }else{
+                $nincamt = $user_loan_limit;
+            }
+            ?>
+            <span style="color:#178117;"><?=$nincamt?></span>
+            <br>Tenure: 30 days<br>
+        </div>
+        <div style="width: 30%;display: flex;flex-direction: column;align-items: flex-start;"><i class="fa fa-lock"></i></span><br><b class="icstu">Unlock 🔓 your new limit by clearing your active loan on or before due date</b></div>
+    </div>
+</div>
+         </div>
+<?php } ?>
+        <br>
+        <br>
+        <br>
+<?php
+include_once 'foot.php';
+?>
+<script>
+    function alertcut(){
+        $("#alert").hide();
+    }
+</script>
+</body>
+
+</html>

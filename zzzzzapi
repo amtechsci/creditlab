@@ -1,0 +1,602 @@
+<?php
+header('Content-Type: application/json; charset=utf-8');
+include 'db.php';
+$f = file_get_contents("php://input");
+$get = json_decode($f, true);
+$call = towreal($_GET['call']);
+$id = towreal($_GET['id']);
+if($call == "Login"){
+    login($get);
+    exit;
+}
+if($call == "Profile_update"){
+    Profile_update($get);
+}
+if($call == "contact_list"){
+    contact_list($get,$id);
+}
+if($call == "apply"){
+    apply($get);
+}
+if($call == "document"){
+    document($get);
+}
+if($call == "selfie"){
+    selfie($get);
+}
+if($call == "ref"){
+    ref($get);
+}
+if($call == "dashboard"){
+    dashboard($get);
+}
+if($call == "dashboard2"){
+    dashboard2($get);
+}
+if($call == "bank_details"){
+    bank_details($get);
+}
+if($call == "google_login"){
+    google_login($get);
+}
+if($call == "agreement"){
+    agreement($get);
+}
+if($call == "fetchuser"){
+    fetchuser($get);
+}
+if($call == "hold"){
+    hold($get);
+}
+
+// LOGIN
+function login($get){
+    $ext = towrealarray2($get); extract($ext);
+    $result=towquery("SELECT * FROM user WHERE  mobile ='$mobile'");
+    if (townum($result)==1) {
+        $aa = towfetchassoc($result);
+        $id = $aa['id'];
+        if($aa['active'] == 1){
+            towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`, `mobile_handset_uid`, `latitude`, `longitude`) VALUES ($id,'$platform','$userip','".date('Y-m-d H:i:s')."','$unique_id','$lat','$long')");
+            // echo "INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`, `mobile_handset_uid`, `latitude`, `longitude`) VALUES ($id,'$platform','$userip','".date('Y-m-d H:i:s')."','$unique_id','$lat','$long')";
+            // exit;
+            if(isset($mobile) and isset($otp)){
+                $page = showpage($aa);
+        $aa['pageid'] = $page;
+        return print_r(json_encode(['status'=>200,'message'=>'User login successfully','data'=>$aa]));
+            }else{
+        return print_r(json_encode(["status"=>200,"Message"=>"OTP Sent Successfully"]));
+            }
+    }else{
+        return print_r(json_encode(["status"=>200,"Message"=>"Your Account is Hold"]));
+    }
+    }else{
+    $rcid = "CL".date('ymdHis');
+    $reg_date = date('Y-m-d H:i:s');
+    // $otp = rand(1000,9999);
+    $otp = 1111;
+    $aa = towquery("SELECT id FROM `account_manager`");
+while($b = towfetch($aa)){
+$a = towquery("SELECT assign_account_manager FROM `user` WHERE assign_account_manager=".$b['id']."");
+$min[$b['id']] = townum($a);
+}$assign_account = array_keys($min, min($min));$assign_account = $assign_account[0];$aaz = towquery("SELECT id FROM `recovery_officer`");
+while($bz = towfetch($aaz)){
+$az = towquery("SELECT assign_recovery_officer FROM `user` WHERE assign_recovery_officer=".$bz['id']."");
+$minz[$bz['id']] = townum($az);
+}$assign_recovery = array_keys($minz, min($minz));$assign_recovery = $assign_recovery[0];
+
+$a = towquery("INSERT INTO `user`(`rcid`, `mobile`, `active`, `verify`, `otp`, `validation`, `reg_date`, `status`, `document_password`, `loan_limit`, `assign_account_manager`, `assign_recovery_officer`) VALUES ('$rcid','$mobile',1,0,$otp,'','$reg_date','waiting','pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',10000,$assign_account,$assign_recovery)");
+    login($get);
+}
+}
+// LOGIN
+
+// PROFILE UPDATE
+function Profile_update($get){
+    $ext = towrealarray2($get); extract($ext);
+    if($page == 1){
+    if((($ext['salary'] >= 18000) and ($ext['get_salary'] == "bank transfer") and (($ext['salarystatus'] == "Salaried") or ($ext['salarystatus'] == "Self-Employed"))) or (($ext['salary'] >= 18000) and ($ext['get_salary'] == "Bank Transfer") and (($ext['salarystatus'] == "Salaried") or ($ext['salarystatus'] == "Self-Employed")))){
+        $loan_limit = $ext['salary'] / 100 *40;
+        $loan_limit = round($loan_limit,-3);
+        $ext['get_salary'] = strtolower($ext['get_salary']);
+        $q = "UPDATE `user` SET `salary`='".$ext['salary']."',`salarystatus`='".$ext['salarystatus']."',`verify`=1,`status`='Approved',`get_salary`='".$ext['get_salary']."',`designation`='".$ext['designation']."',`loan_limit`='$loan_limit' WHERE id=$user_id";
+    $result=towquery($q);
+    // print_r($result);exit;
+    if($result){
+        $go = 1;
+    }else{
+        $go = 0;
+    }
+    }elseif(($ext['salary'] < 18000) and ($ext['salarystatus'] == "Salaried")){
+        $t = 2;
+       $a = towquery("UPDATE `user` SET `verify`=3,`status`='Hold' WHERE id=$user_id");
+    }else{
+        $t = 3;
+       $a = towquery("UPDATE `user` SET `verify`=4,`status`='Hold' WHERE id=$user_id");
+    }
+    }elseif($page == 2){
+        if(strtotime('1965-01-01') <= strtotime($dob)){
+    $q = "UPDATE `user` SET `pan_name`='$name',`dob`='$dob',`pan`='$pan',`pincode`='$pincode',`latlong`='$latlong' WHERE id=$user_id";
+    }else{
+        $q = "UPDATE `user` SET `verify`=4,`status`='Hold' WHERE id=$user_id";
+    }
+    $a = towquery($q);
+        $go = 1;
+    }elseif($page = 3){
+        towquery("UPDATE `user` SET `credit_score`='1' WHERE id='$user_id'");
+        return print_r(json_encode(getuser($user_id)));
+    }
+    // if($go == 1){
+    return print_r(json_encode(getuser($user_id)));
+    // }elseif($go == 0){
+    return print_r(json_encode(getuser($user_id)));
+    // }
+}
+// PROFILE UPDATE
+
+
+function google_login($get){
+    $ext = towrealarray2($get); extract($ext);
+    towquery("UPDATE `user` SET `email`='$email',`name`='$name' WHERE id='$user_id'");
+    return print_r(json_encode(getuser($user_id)));
+}
+function agreement($get){
+    $ext = towrealarray2($get); extract($ext);
+    $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND status='disbursal' ORDER BY id DESC");
+    if(towfetch($a)['keyid'] == 0)
+    towquery("UPDATE `loan_apply` SET `keyid`=1 WHERE `id`=$loan_id");
+    else
+towquery("UPDATE `loan_apply` SET `agreement`=1 WHERE `id`=$loan_id");
+    return print_r(json_encode(getuser($user_id)));
+}
+
+
+// contact_list
+function contact_list($get,$id){
+    $extract = towrealarray($get['ref'][0]);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
+    $extract = towrealarray($get['ref'][1]);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
+    $extract = towrealarray($get['ref'][2]);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
+
+    $ref_1 = $ref_1_name.",#".$ref_1_mobile_number.",#".$ref_1_relation;
+    $ref_2 = $ref_2_name.",#".$ref_2_mobile_number.",#".$ref_2_relation;
+    $ref_3 = $ref_3_name.",#".$ref_3_mobile_number.",#".$ref_3_relation;
+    towquery("INSERT INTO `user_ref`(`uid`, `ref_1`, `ref_2`, `ref_3`) VALUES ($id,'$ref_1','$ref_2','$ref_3')");
+    $altemail = towreal($get['altemail']);
+    $company = towreal($get['company']);
+    $altmobile = towreal($get['altmobile']);
+    towquery("UPDATE `user` SET `altmobile`='$altmobile',`altemail`='$altemail',`company`='$company' WHERE id=$id");
+    $aa = json_encode($get['all_contact']);
+    $get['all_contact'] = towrealarray2($get['all_contact']);
+    $ax = '';
+    $axa = '';
+    $total = count($get['all_contact']);
+    foreach($get['all_contact'] as $geaa){
+    $ax .= $geaa['name'].' '.$geaa['mobile_number'].'\n';
+    $axa .= $geaa['mobile_number'].'\n';
+    }
+    // $ax = towreal($ax);
+    // $axa = towreal($axa);
+    $aa = towreal($aa);
+    // exit;
+    towquery("INSERT INTO `user_contact_details`(`uid`, `user_contact`, `contact`, `total`) VALUES ($id,'$axa','$ax', '$total')");
+    towquery("INSERT INTO `app_contact`(`contact`) VALUES ('$id$aa')");
+    return print_r(json_encode(getuser($id)));
+}
+// contact_list
+function apply($get){
+$a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='disbursal' OR status='follow_up')");
+if(townum($a) == 0){
+$ext = towrealarray2($get); extract($ext);
+$t = $amount;
+$day =  $days;
+if(($day) <= 5 ){
+        $fee = $t * $day / 100 * 0.5;
+        $interest = "0.5%";
+    }
+if(($day) > 5){
+        if(($day) <= 10){
+        $fee = $t * $day / 100 * 0.5;
+        $interest = "0.5%"; 
+        }else{
+        $fee = $t * $day / 100 * 0.5;
+        $interest = "0.5%";
+        }}
+if(isset($reason)){
+}else{
+    $reason = 'No Reason';
+}
+        $user = getuser($user_id)['data'];
+        $date = date('Y-m-d H:i:s');
+        $p_f = ($amount / 100)*5;
+        if($user['approvenew'] == 1){
+         $origination_fee = ($amount / 100)*7;
+         $pf_qr = ($p_f + $origination_fee);
+        }else{
+         $origination_fee = 0;
+         $pf_qr = ($p_f);
+        }
+        if($user['sloan'] > 0){
+            towquery("INSERT INTO loan_apply (`uid`, `amount`,`processing_fees`, `origination_fee`, `service_charge`, `days`, `apply_date`, `status`, `status_date`, `created_by`,`reason`) VALUES ($user_id,$amount-$pf_qr,$p_f,$origination_fee,'$fee',$days,'$date','disbursal','$date','user','$reason')");
+        towquery("UPDATE `user` SET `status`='disbursal' WHERE id=$user_id");
+        }else{
+        towquery("INSERT INTO loan_apply (`uid`, `amount`,`processing_fees`, `origination_fee`, `service_charge`, `days`, `apply_date`, `status`, `status_date`, `created_by`,`reason`) VALUES ($user_id,$amount-$pf_qr,$p_f,$origination_fee,'$fee',$days,'$date','pending','$date','user','$reason')");
+        towquery("UPDATE `user` SET `status`='applied' WHERE id=$user_id");
+        }
+//         $headers = "MIME-Version: 1.0" . "\r\n";
+// $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+// $headers .= 'From: <docs@creditlab.in>' . "\r\n";
+// $to=$user_email;
+// $subject="creditlab application submitted";
+// $message=" Dear $user_name , your application is under process. Please Send docs for fast disbursal <br>
+// <br>
+// - Your KYC (Aadhar, PAN Card)<br>
+// - Last 3 months (up to date bank statement)<br>
+// - Last 1 month salary slip/payslip<br>
+// on email docs@creditlab.in<br>
+// <br>
+// Thanks - Team creditlab.in";
+// mail($to,$subject,$message,$headers);
+// $message = str_replace("<br>","\n",$message);
+    return print_r(json_encode(getuser($user_id)));
+    }else{
+    return print_r(json_encode(getuser($user_id)));
+    }
+}
+// contact_list
+
+function bank_details($ext){
+    // print_r($ext);
+    $ext = towrealarray2($ext); extract($ext);
+    // return print_r(json_encode($ext));
+    towquery("INSERT INTO `user_bank`(`uid`, `ac_no`, `ifsc_code`, `bank_name`) VALUES ('$user_id','$ac_no','$ifsc_code','$bank_name')");
+    return print_r(json_encode(getuser($user_id)));
+}
+
+// document
+function document($get){
+    $ext = towrealarray2($_POST);
+    extract($ext);
+    if(!empty($_FILES['pan_img']['name'])){
+        $pan = generateImage($_FILES['pan_img'],'apppan');
+        // print_r($pan);exit;
+    }
+    $conpanydocument = $pan;
+    if(!empty($_FILES['aadhar_img1']['name'])){
+        $aadhar1 = generateImage($_FILES['aadhar_img1'],'appaadhar');
+    }
+    if(!empty($_FILES['aadhar_img2']['name'])){
+        $aadhar2 = generateImage($_FILES['aadhar_img2'],'appaadhar2');
+    }
+    $personaldocument = $aadhar1.'#'.$aadhar2;
+    $salarydocument = "no";
+        $bankdocument = "no";
+        $bankdocument2 = "no";
+        $bankdocument3 = "no";
+        $addressdocument = "no";
+    $document_password = array();
+    if(!empty($pan_pass)){$document_password[0] = "pan".$pan_pass."pan";
+    }else{$document_password[0] = "pan no password pan";}
+    if(!empty($aadhar_pass)){$document_password[1] = "aadhar".$aadhar_pass."aadhar";
+    }else{$document_password[1] = "aadhar no password aadhar";}
+    if(!empty($aadhar_pass2)){$document_password[2] = "aadha2".$aadhar_pass2."aadha2";
+    }else{$document_password[2] = "aadha2 no password aadha2";}
+    if(!empty($salary_pass)){$document_password[3] = "salary".$salary_pass."salary";
+    }else{$document_password[3] = "salary no password salary";}
+    if(!empty($bank_pass)){$document_password[4] = "bank".$bank_pass."bank";
+    }else{$document_password[4] = "bank no password bank";}
+    if(!empty($address_pass)){$document_password[5] = "address".$address_pass."address";
+    }else{$document_password[5] = "address no password address";}
+    if(!empty($bank_pass2)){$document_password[6] = "bank2".$bank_pass2."bank2";
+    }else{$document_password[6] = "bank2 no password bank2";}
+    if(!empty($bank_pass3)){$document_password[7] = "bank3".$bank_pass3."bank3";
+    }else{$document_password[7] = "bank3 no password bank3";}
+    $document_password = implode('#',$document_password);
+    $re = towquery("UPDATE `user` SET `conpanydocument`='$conpanydocument',`personaldocument`='$personaldocument',`salarydocument`='$salarydocument',`bankdocument`='$bankdocument',`bankdocument2`='$bankdocument2',`bankdocument3`='$bankdocument3',`addressdocument`='$addressdocument',`document_password`='$document_password' WHERE id='$user_id'");
+    return print_r(json_encode(getuser($user_id)));
+    // return print_r($get);
+}
+
+function selfie($get){
+    $ext = towrealarray2($_POST);
+    extract($ext);
+    if(!empty($_FILES['selfie']['name'])){
+        $selfie = generateImage($_FILES['selfie'],'selfie');
+    }
+    $selfie = $selfie;
+    $re = towquery("UPDATE `user` SET `selfie`='$selfie' WHERE id='$user_id'");
+    return print_r(json_encode(getuser($user_id)));
+}
+// document
+
+// ref
+function ref($get){}
+// ref
+
+// dashboard
+function dashboard($get){
+    $ext = towrealarray2($get); extract($ext);
+    $ud = getuser($user_id)['data'];
+    $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='follow up') ORDER BY id DESC");
+    $data['status'] = 200;
+        if(townum($a) != 0){
+            $loanfetch = towfetchassoc($a);
+            $data['message'] = 'Your loan is applied in creditlab.in and we will get back to you soon through mail or call.<br> Thank you.';
+        }else{
+        $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND status='disbursal' ORDER BY id DESC");
+        if(townum($a) != 0){
+        $loanfetch = towfetchassoc($a);
+        if(empty($ud['selfie'])){
+            $data['message'] = 'Please take a live selfie';
+        }else{
+        if($loanfetch['agreement'] == 0){
+if($loanfetch['keyid'] == 0){
+    $data['message'] = '<h4>Please read the complete key fact statement</h4>';
+    $data['loan_agreement'] = 'https://creditlab.in/key.php?id='.$loanfetch['id'];
+            $data['loan_agreement_id'] = $loanfetch['id'];
+}else{
+            $data['message'] = '<h4>Please read the complete loan agreement carefully which is attested with your <br>
+-e-signature<br>
+-ID proof &<br>
+-address proof.</h4>';
+            $data['loan_agreement'] = 'https://creditlab.in/admin/sloan_agreement.php?id='.$loanfetch['id'];
+            $data['loan_agreement_id'] = $loanfetch['id'];
+}
+        }else{
+            $data['message'] = 'your loan is approved and you will get the loan shortly.<br> Thank you.';
+        }
+        }
+        }}
+            $userloan = towquery("SELECT * FROM `loan` WHERE uid=$user_id AND (status_log ='account manager' OR status_log ='recovery officer') ORDER BY id DESC");
+            if(townum($userloan) > 0){
+            while($userloanfetch = towfetch($userloan)){
+            $lid = 'CLL'.$userloanfetch['lid'];
+            $loan_amount = $userloanfetch['processed_amount']+$userloanfetch['p_fee']+$userloanfetch['origination_fee'];
+            $exhausted_period = $userloanfetch['exhausted_period'];
+            $due_date = date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +30 day'));;
+            $total_amount = $userloanfetch['total_amount'];
+            $data['loan'][] = array('loan_id'=>$lid,'loan_amount'=>$loan_amount,'exhausted_period'=>$exhausted_period,'due_date'=>$due_date,'total_amount'=>$total_amount);
+            }
+            $a = towquery("SELECT `amount`,`processing_fees`,`origination_fee` FROM `loan_apply` WHERE `uid`=$user_id AND (status = 'pending' OR status = 'disbursal' OR status = 'follow up' OR status = 'account manager')");
+            $b = towfetch($a);
+            $b['totalamt'] = $b['amount']+$b['processing_fees']+$b['origination_fee'];
+            if($b['totalamt'] < $ud['loan_limit']){
+                $amt = $ud['loan_limit'] - $b['totalamt'];
+                $data['reapply'] = $amt;
+            }else{
+                $data['reapply'] = 0;
+            }
+            }
+            $data['data'] = $ud;
+            return print_r(json_encode($data));
+}
+// dashboard
+
+// dashboard
+function dashboard2($get){
+    $ext = towrealarray2($get); extract($ext);
+    $ud = getuser($user_id)['data'];
+    $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='follow up') ORDER BY id DESC");
+        if(townum($a) != 0){
+            $ddatta['message'] = 'Your loan is applied in creditlab.in and we will get back to you soon through mail or call.<br> Thank you.';
+        }else{
+        $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND status='disbursal' ORDER BY id DESC");
+        if(townum($a) != 0){
+        $loanfetch = towfetchassoc($a);
+        if(empty($ud['selfie'])){
+            $ddatta['message'] = 'Please take a live selfie';
+        }else{
+        if($loanfetch['agreement'] == 0){
+// echo $loanfetch['keyid'];
+// exit;
+if($loanfetch['keyid'] == 0){
+    $ddatta['message'] = '<h4>Please read the complete key fact statement</h4>';
+    $ddatta['loan_agreement'] = 'https://creditlab.in/key.php?id=1';
+            $ddatta['loan_agreement_id'] = $loanfetch['id'];
+}else{
+            $ddatta['message'] = '<h4>Please read the complete loan agreement carefully which is attested with your <br>
+-e-signature<br>
+-ID proof &<br>
+-address proof.</h4>';
+            $ddatta['loan_agreement'] = 'https://creditlab.in/admin/loan_agreement.php?id='.$loanfetch['id'];
+            $ddatta['loan_agreement_id'] = $loanfetch['id'];
+}
+// print_r($data);exit;
+        }else{
+            $ddatta['message'] = 'your loan is approved and you will get the loan shortly.<br> Thank you.';
+        }
+        }
+        }else{
+            $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='account manager' OR status='recovery officer') ORDER BY id DESC");
+            $p = 0;
+            $alllaxtotalamt = 0;
+            while($lax = towfetch($a)){
+            $userloan = towquery("SELECT * FROM `loan` WHERE uid=$user_id AND lid='{$lax['id']}' ORDER BY id DESC");
+            $userloanfetch = towfetch($userloan);
+            $loidat = $userloanfetch['lid'];
+            $reason = $lax['reason'];
+            $lid = 'CLL'.$userloanfetch['lid'];
+            $loan_amount = $userloanfetch['processed_amount']+$userloanfetch['p_fee']+$userloanfetch['origination_fee'];
+            $disbursed_date = $userloanfetch['processed_date'];
+            $exhausted_day = $userloanfetch['exhausted_period'];
+            $total_amount = $userloanfetch['total_amount'];
+             $loan_amountc = $lax['amount'] + $lax['processing_fees'] + $lax['origination_fee'];
+             $salary_date = $user_salary_date;
+             $processed_date = date_create($userloanfetch['processed_date']);
+             $dis_date = date_format($processed_date,"Y-m-d");
+             $dis_date = date('Y-m-d', strtotime( $dis_date . " -1 day"));
+             $sal_day = $dis_date;
+             $tax = $loan_amountc / 100 * 1.8;
+             $di = strtotime($dis_date);
+             $sa = strtotime($sal_day);
+             $datediff = $sa - $di;
+             $day_gap = round($datediff / (60 * 60 * 24));
+             $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
+             $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
+             $fe = strtotime($femi_date);
+             $se = strtotime($semi_date);
+             $fedatediff = $fe - $di;
+                 
+             $feday_gap = round($fedatediff / (60 * 60 * 24));
+             $femi_amount = ((($loan_amountc/100) * 70) + ($loan_amountc*0.001*$feday_gap)) + (($loan_amountc/100) * 2);
+             $sedatediff = $se - $fe;
+             $seday_gap = round($sedatediff / (60 * 60 * 24));
+             $semi_amount = ((($loan_amountc/100) * 30) + $loan_amountc * 0.001 * $seday_gap) + (($loan_amountc/100) * 2);
+             $femi_dateaa = $femi_date;
+             if($femi_dateaa > date('Y-m-d')){
+             $preclose = (($loan_amountc) + ($loan_amountc / 100) * 4) + (($loan_amountc/100) * 2);
+             }else{
+             $preclose = 0;
+             }
+             $emidata[0]['emi_amount'] = $femi_amount;
+             $emidata[0]['emi_date'] = $femi_date;
+             
+             if($userloanfetch['femi']){
+                 $emidata[0]['payment'] = 1;
+             }else{
+                 $emidata[0]['payment'] = 0;
+             }
+             $emidata[1]['emi_amount'] = $semi_amount;
+             $emidata[1]['emi_date'] = $semi_date;
+             if($userloanfetch['semi']){
+                 $emidata[1]['payment'] = 1;
+             }else{
+                 $emidata[1]['payment'] = 0;
+             }
+             $today = date('Y-m-d');
+                    $today = date_create($today);
+                    $femi_date = date_create($femi_date);
+                    $lessday = date_format($femi_date,"Y-m-d");
+                        $today = date_format($today,"Y-m-d");
+                        $lessday = strtotime($lessday);
+                        $today = strtotime($today);
+                    if($lessday < $today){
+                        $check = towquery("SELECT * FROM `transaction_details` WHERE `cllid`='".$b['id']."' AND `transaction_flow`='firstemi'");
+                        if(townum($check) == 1){
+                        }else{
+                        $extraday = $today - $lessday;
+                        $extradaya = round($extraday / (60 * 60 * 24));
+                        $penalty = $extradaya*50;
+                        towquery("UPDATE `loan` SET `penality_charge`='$penalty' WHERE `lid`='".$b['id']."'");
+                        }
+                    }else{
+                    $penalty=0;
+                    }
+            $alllaxtotalamt += $lax['amount']+$lax['processing_fees']+$lax['origination_fee'];
+             $ddatta[] = array('loan_id'=>$lid,'loan_amount'=>$loan_amountc,'exhausted_day'=>$exhausted_day,'disbursed_date'=>$disbursed_date,'total_amount'=>$total_amount,'reason'=>$reason,'penalty'=>$penalty,'loan'=>$emidata,'preclose'=>['lid' => $loidat,'amount'=>$preclose,'date'=>$femi_dateaa]);
+            }
+            if($alllaxtotalamt < $ud['loan_limit']){
+                $amt = $ud['loan_limit'] - $alllaxtotalamt;
+                $reapply =  $amt;
+            }else{
+                $reapply = 0;
+            }
+}}
+    return print_r(json_encode(['loan_data'=>$ddatta,'data' => $ud,'reapply'=>$reapply]));
+}
+// dashboard
+
+//  GET USER
+function getuser($user_id){
+$result=towquery("SELECT * FROM user WHERE id =$user_id");
+if(townum($result) > 0){
+$result = towfetchassoc($result);
+$page = showpage($result);
+$result['page'] = $page;
+if($page == 8){
+    $message = 'sorry you are not eligible for loan in creditlab.in';
+}elseif($page == 9){
+    $stop_date = date('Y-m-d H:i:s', strtotime($user_reg_date . ' +45 day'));
+                if($stop_date > date('Y-m-d H:i:s')){
+                $stop_date = date_create($stop_date);
+                $sa = date_create(date('Y-m-d H:i:s'));
+                $aa = date_diff($stop_date,$sa);
+                $message = 'Your membership is on hold. You can reapply after '.$aa->format("%a days");
+                }else{ 
+                towquery("UPDATE `user` SET verify=0,status='waiting',reg_date='".date('Y-m-d H:i:s')."' WHERE id=$user_id");
+                }}else{
+                    $message = '';
+                }
+return ['status'=>200,'message'=>$message,'data'=>$result];
+}else{
+    return ['status'=>500,'message'=>'User not found','q'=>"SELECT * FROM user WHERE id =$user_id"];
+}
+}
+//  GET USER
+function fetchuser($get){
+    $ext = towrealarray2($get); extract($ext);
+    return print_r(json_encode(getuser($user_id)));
+}
+function hold($get){
+    $ext = towrealarray2($get); extract($ext);
+    return print_r(json_encode(getuser($user_id)));
+}
+// SHOW PAGE
+function showpage($user){
+    extract($user,EXTR_PREFIX_ALL,"user");
+if(($user_verify == 0) or ($user_verify == 1)){
+ if(empty($user_salary) or empty($user_salarystatus) or empty($user_get_salary)){
+        $page = 1; //salary page
+        }elseif(empty($user_pan_name)){
+        $page = 2;
+        }elseif($user_credit_score == 0){
+        $page = 3;
+        }
+        else{
+            $a = towquery("SELECT SUM(`amount`) AS totalamt FROM `loan_apply` WHERE `uid`=$user_id AND status = 'account manager'");
+            $b = towfetch($a);
+            $c = towquery("SELECT * FROM `loan_apply` WHERE `uid`=$user_id AND (status = 'pending' OR status = 'disbursal' OR status = 'follow up' OR status = 'account manager')");
+            $refquery = towquery("SELECT * FROM user_ref WHERE uid=$user_id");
+            $ubank = towquery("SELECT * FROM `user_bank` WHERE `uid`=$user_id");
+        if(townum($c) == 0){
+            $page = 4; //applynow
+        }elseif(townum($ubank) == 0){
+            $page = 5; //bank
+        }elseif((townum($refquery) == 0) or empty($user_altmobile) or empty($user_altemail) or empty($user_company)){
+        $page = 6; //ref
+        }elseif(empty($user_email)){
+        $page = 13;
+        }elseif(empty($user_conpanydocument) and empty($user_personaldocument) and empty($user_salarydocument) and empty($user_bankdocument)){
+        $page = 7; //doc
+        }
+        elseif(!(townum($c) == 0) or !(townum($a) == 0)){
+        if($user_approvenew == 1){
+        $page = 10; //dashboar2
+        }else{
+        $page = 11; //dashboard
+        }
+        }else{
+            
+        }
+        }
+}elseif(($user_verify == 4)){
+    towquery("UPDATE `user` SET `state`='',`dob`='',`pan`='',`salary`='',`salarystatus`='',`present_address`='',`permanent_address`='',`graduation_year`='',`marital_status`='',`college_name`='',`freq_app`='',`experience`='',`residence_type`='',`credit_card`='',`company`='',`designation`='',`office_number`='',`department`='',`annual_income`='',`office_pincode`='',`office_address_line1`='',`office_address_line2`='',`conpanydocument`='',`personaldocument`='',`salarydocument`='',`bankdocument`='',`bankdocument2`='',`bankdocument3`='',`addressdocument`='',`bank_name`='',`branch_name`='',`ifsc`='',`account_no`='',`account_type`='',`account_name`='',`validation`='',`document_password`='pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',`get_salary`='',`loan`=0,`loan_limit`=10000,`sloan`=0,`verify`=4 WHERE id=$user_id");
+    towquery("DELETE FROM `user_ref` WHERE `uid`=$user_id");
+    $page = 8; //p Hold 
+}elseif(($user_verify == 3)){
+towquery("UPDATE `user` SET `state`='',`dob`='',`pan`='',`salary`='',`salarystatus`='',`present_address`='',`permanent_address`='',`graduation_year`='',`marital_status`='',`college_name`='',`freq_app`='',`experience`='',`residence_type`='',`credit_card`='',`company`='',`designation`='',`office_number`='',`department`='',`annual_income`='',`office_pincode`='',`office_address_line1`='',`office_address_line2`='',`conpanydocument`='',`personaldocument`='',`salarydocument`='',`bankdocument`='',`bankdocument2`='',`bankdocument3`='',`addressdocument`='',`bank_name`='',`branch_name`='',`ifsc`='',`account_no`='',`account_type`='',`account_name`='',reg_date='".date('Y-m-d H:i:s')."',`document_password`='pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',`get_salary`='',`loan`=0,`loan_limit`=10000,`sloan`=0,`verify`=3 WHERE id=$user_id");
+towquery("DELETE FROM `user_ref` WHERE `uid`=$user_id");
+$page = 9; //Hold
+}
+    return $page;
+}
+// SHOW PAGE
+
+function generateImage($img,$name){
+    $folderPath = "user/uploads/";
+    $a = $img['name'];
+    $file_type = strtolower(end(explode('.',$a)));
+    $allowed = array("jpg", "jpeg", "png", "pdf");
+        if(in_array($file_type, $allowed)) {
+            $ext = explode(".",$a);
+            $ext = end($ext);
+            $number = time();
+            $new = "$name$number";
+            $excel = "$new.$ext";
+            if (move_uploaded_file($img['tmp_name'], __DIR__.'/user/uploads/'.$excel)) {
+            }
+        }
+        $imgname = $excel;
+        $file = $folderPath . $imgname;
+        return $imgname;
+}
+?>
