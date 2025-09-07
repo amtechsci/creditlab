@@ -1,78 +1,80 @@
 <?php
 session_start();
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 function towquery($query)
- {
- 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
+{
+	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
   	mysqli_set_charset($db,'utf8');
  	$re = mysqli_query($db,$query);
  	return $re;
- }
+}
  function towquery2($query)
- {
- 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
+{
+	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
   	mysqli_set_charset($db,'utf8');
  	$re = mysqli_query($db,$query);
  	$re2 = mysqli_insert_id($db);
  	return $re2;
- }
+}
  function townum($query)
- {
- 	$re = mysqli_num_rows($query);
+{
+	$re = mysqli_num_rows($query);
  	return $re;
- }
+}
  function towfetch($query)
- {
- 	$re = mysqli_fetch_array($query);
+{
+	$re = mysqli_fetch_array($query);
  	return $re;
- }
+}
  function towfetchassoc($query)
- {
- 	$re = mysqli_fetch_assoc($query);
+{
+	$re = mysqli_fetch_assoc($query);
  	return $re;
- }
+}
  function towreal($query)
- {
- 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
- 	$re = str_replace("<","&lt;",$query);
- 	$re = str_replace(">","&gt;",$re);
- 	$re = mysqli_real_escape_string($db,$re);
+{
+	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	$re = str_replace("<","&lt;",$query);
+	$re = str_replace(">","&gt;",$re);
+	$re = mysqli_real_escape_string($db,$re);
  	return $re;
- }
+}
  function towrealarray($query)
- {
- 	$co = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
- 	$re = array();
- 	foreach ($query as $key => $value) {
- 	    if(!is_array($value)){
- 	$$key = str_replace("<","&lt;",$value);
- 	$$key = str_replace(">","&gt;",$$key);
- 	$$key = mysqli_real_escape_string($co,$$key);
+{
+	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	$re = array();
+	foreach ($query as $key => $value) {
+	    if(!is_array($value)){
+	$$key = str_replace("<","&lt;",$value);
+	$$key = str_replace(">","&gt;",
+$$key);
+	$$key = mysqli_real_escape_string($co,$$key);
 
- 	$re[$key] = $$key;
- 	    }else{
- 	        $re[$key] = towrealarray($value);
- 	    }
-    }
- 	return $re;
- }
+	$re[$key] = $$key;
+	    }else{
+	        $re[$key] = towrealarray($value);
+	    }
+   }
+	return $re;
+}
  function towrealarray2($query)
- {
- 	$co = mysqli_connect("localhost", "root", "Atul@1012#", "u969389823_credit");
- 	$re = array();
- 	foreach ($query as $key => $value) {
- 	    if(!is_array($value)){
- 	$$key = str_replace("<","&lt;",$value);
- 	$$key = str_replace(">","&gt;",$$key);
- 	$$key = mysqli_real_escape_string($co,$$key);
+{
+	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	$re = array();
+	foreach ($query as $key => $value) {
+	    if(!is_array($value)){
+	$$key = str_replace("<","&lt;",$value);
+	$$key = str_replace(">","&gt;",
+$$key);
+	$$key = mysqli_real_escape_string($co,$$key);
 
- 	$re[$key] = $$key;
- 	    }else{
- 	        $re[$key] = towrealarray2($value);
- 	    }
-    }
- 	return $re;
- }
+	$re[$key] = $$key;
+	    }else{
+	        $re[$key] = towrealarray2($value);
+	    }
+   }
+	return $re;
+}
  
 if (isset($_SESSION['user'])) {
     $user = towreal($_SESSION['user']);
