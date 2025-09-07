@@ -42,6 +42,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
  else
    $userbrowser = 'Unknown';
    $login_time = date('Y-m-d H:i:s');
+   $mobile_handset_uid = substr(hash('sha256', (isset($_SERVER['HTTP_USER_AGENT'])?$_SERVER['HTTP_USER_AGENT']:'').'|'.$userip.'|'.session_id()), 0, 32);
 
 if (isset($_POST['submit'])) {
     towreal(extract($_POST));
@@ -51,7 +52,7 @@ if (isset($_POST['submit'])) {
         towquery("UPDATE `user` SET `active`=1 WHERE `mobile`='$mobile'");
         $aa = towfetch($result);
         $id = $aa['id'];
-        towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`,`latitude`,`longitude`) VALUES ($id,'$userbrowser','$userip','$login_time','$lat','$long')");
+        towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`,`latitude`,`longitude`, `mobile_handset_uid`) VALUES ($id,'$userbrowser','$userip','$login_time','$lat','$long','$mobile_handset_uid')");
         $_SESSION['user'] = $mobile;
         setcookie('user', $mobile, time() + (86400 * 30), "/");
         header("location:../user/");
