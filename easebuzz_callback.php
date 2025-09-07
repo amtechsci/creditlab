@@ -1,15 +1,15 @@
 <?php
-$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 function towquery($query)
  {
- 	$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
   	mysqli_set_charset($db,'utf8');
  	$re = mysqli_query($db,$query);
  	return $re;
  }
  function towquery2($query)
  {
- 	$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
   	mysqli_set_charset($db,'utf8');
  	$re = mysqli_query($db,$query);
  	$re2 = mysqli_insert_id($db);
@@ -32,7 +32,7 @@ function towquery($query)
  }
  function towreal($query)
  {
- 	$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
  	$re = str_replace("<","&lt;",$query);
  	$re = str_replace(">","&gt;",$re);
  	$re = mysqli_real_escape_string($db,$re);
@@ -40,7 +40,7 @@ function towquery($query)
  }
  function towrealarray($query)
  {
- 	$co = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
  	$re = array();
  	foreach ($query as $key => $value) {
  	    if(!is_array($value)){
@@ -57,7 +57,7 @@ function towquery($query)
  }
  function towrealarray2($query)
  {
- 	$co = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
  	$re = array();
  	foreach ($query as $key => $value) {
  	    if(!is_array($value)){

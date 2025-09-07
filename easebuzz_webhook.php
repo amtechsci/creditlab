@@ -18,7 +18,7 @@ file_put_contents($filename, $logData, FILE_APPEND);
 
 // --- 1. ESTABLISH ONE DATABASE CONNECTION ---
 // This is more efficient and allows us to use the connection variable everywhere.
-$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 
 // Always check for connection errors
 if (mysqli_connect_errno()) {
@@ -132,7 +132,7 @@ if (isset($data['txnid'], $data['authorization_status']) && $data['furl'] == 'ht
             towquery($db, "UPDATE `loan` SET `action`='cleared', `status_log`='cleared', `cleard_date`='".date('Y-m-d')."' WHERE id=".$loan_details['id']);
             towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
             towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_details['lid']);
-            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.",'".$loan_details['lid']."','$bank_ref_num','".date('Y-m-d H:i:s')."','$amount','full')");
+            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_details['lid']."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
 
             // FIX: $user_details is now defined and can be used here
             file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);

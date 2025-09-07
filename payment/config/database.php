@@ -2,9 +2,9 @@
 // config/database.php
 
 $host = 'localhost';
-$dbname = 'u969389823_credit';
-$username = 'u969389823_credit';
-$password = 'Credit@123';
+$dbname = 'credit';
+$username = 'root';
+$password = 'Atul@1012#';
 
 // Database connection
 $conn = new mysqli($host, $username, $password, $dbname);

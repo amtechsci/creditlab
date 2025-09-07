@@ -1,9 +1,9 @@
 <?php
 session_start();
-$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 function towquery($query)
  {
- 	$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
   	mysqli_set_charset($db,'utf8');
  	$re = mysqli_query($db,$query);
  	return $re;
@@ -20,7 +20,7 @@ function towquery($query)
  }
  function towreal($query)
  {
- 	$db = mysqli_connect("localhost", "u969389823_credit", "Credit@123", "u969389823_credit");
+ 	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
  	$re = str_replace("<","&lt;",$query);
  	$re = str_replace(">","&gt;",$re);
  	$re = mysqli_real_escape_string($db,$re);
