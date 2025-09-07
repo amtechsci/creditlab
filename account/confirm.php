@@ -42,7 +42,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
  else
    $userbrowser = 'Unknown';
    $login_time = date('Y-m-d H:i:s');
-   $mobile_handset_uid = substr(hash('sha256', (isset($_SERVER['HTTP_USER_AGENT'])?$_SERVER['HTTP_USER_AGENT']:'').'|'.$userip.'|'.session_id()), 0, 32);
+   $mobile_handset_uid = substr(hash('sha256', (isset($_SERVER['HTTP_USER_AGENT'])?$_SERVER['HTTP_USER_AGENT']:'').'|'.$userip.'|'.session_id()), 0, 16);
 
 if (isset($_POST['submit'])) {
     towreal(extract($_POST));
