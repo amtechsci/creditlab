@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php'; // Assuming documents are already fetched here
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 
 if(isset($_POST['document'])) {
 
@@ -14,7 +15,8 @@ if(isset($_POST['document'])) {
         $file_type = strtolower($ft);
         if (in_array($file_type, $allowed)) {
             $conpanydocument = $user . 'conpany' . date('YmdHis') . '.' . $ft;
-            move_uploaded_file($_FILES["conpanydocument"]["tmp_name"], 'uploads/' . $conpanydocument);
+            list($success, $result) = s3_upload_file($_FILES["conpanydocument"]["tmp_name"], $conpanydocument, 'application/octet-stream');
+            if (!$success) $conpanydocument = "no";
             $updateFields[] = "`conpanydocument`='$conpanydocument'";
         }
     } else {
@@ -33,7 +35,8 @@ if(isset($_POST['document'])) {
                 $file_type = strtolower($ft);
                 if (in_array($file_type, $allowed)) {
                     $newFileName = $user . 'personal' . date('YmdHis') . $i . '.' . $ft;
-                    move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i], 'uploads/' . $newFileName);
+                    list($success, $result) = s3_upload_file($_FILES['personaldocument']['tmp_name'][$i], $newFileName, 'application/octet-stream');
+                    if (!$success) $newFileName = "no";
                     $personaldocument[$i] = $newFileName;
                 } else {
                     $personaldocument[$i] = "no";
@@ -55,7 +58,8 @@ if(isset($_POST['document'])) {
         $file_type = strtolower($ft);
         if (in_array($file_type, $allowed)) {
             $bankdocument = $user . 'bank' . date('YmdHis') . '.' . $ft;
-            move_uploaded_file($_FILES['bankdocument']['tmp_name'], 'uploads/' . $bankdocument);
+            list($success, $result) = s3_upload_file($_FILES['bankdocument']['tmp_name'], $bankdocument, 'application/octet-stream');
+            if (!$success) $bankdocument = "no";
             $updateFields[] = "`bankdocument`='$bankdocument'";
         }
     } else {
@@ -71,7 +75,8 @@ if(isset($_POST['document'])) {
         $file_type = strtolower($ft);
         if (in_array($file_type, $allowed)) {
             $addressdocument = $user . 'address' . date('YmdHis') . '.' . $ft;
-            move_uploaded_file($_FILES['addressdocument']['tmp_name'], 'uploads/' . $addressdocument);
+            list($success, $result) = s3_upload_file($_FILES['addressdocument']['tmp_name'], $addressdocument, 'application/octet-stream');
+            if (!$success) $addressdocument = "no";
             $updateFields[] = "`addressdocument`='$addressdocument'";
         }
     } else {
@@ -87,7 +92,8 @@ if(isset($_POST['document'])) {
         $file_type = strtolower($ft);
         if (in_array($file_type, $allowed)) {
             $companyidcard = $user . 'companyid' . date('YmdHis') . '.' . $ft;
-            move_uploaded_file($_FILES['companyidcard']['tmp_name'], 'uploads/' . $companyidcard);
+            list($success, $result) = s3_upload_file($_FILES['companyidcard']['tmp_name'], $companyidcard, 'application/octet-stream');
+            if (!$success) $companyidcard = "no";
             $updateFields[] = "`companyidcard`='$companyidcard'";
         }
     } else {
@@ -103,7 +109,8 @@ if(isset($_POST['document'])) {
         $file_type = strtolower($ft);
         if (in_array($file_type, $allowed)) {
             $salarydocument = $user . 'salary' . date('YmdHis') . '.' . $ft;
-            move_uploaded_file($_FILES['salarydocument']['tmp_name'], 'uploads/' . $salarydocument);
+            list($success, $result) = s3_upload_file($_FILES['salarydocument']['tmp_name'], $salarydocument, 'application/octet-stream');
+            if (!$success) $salarydocument = "no";
             $updateFields[] = "`salarydocument`='$salarydocument'";
         }
     } else {

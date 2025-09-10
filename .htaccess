@@ -1,19 +1,4 @@
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME}.php -f
-RewriteRule !.*\.php$ %{REQUEST_FILENAME}.php [QSA,L]
 
-RewriteRule ^API/Login?$ /API.php?call=Login [L]
-RewriteRule ^API/Profile_update?$ /API.php?call=Profile_update [L]
-RewriteRule ^API/contact_list/([^/.]*)/?$ /API.php?call=contact_list&id=$1 [L,QSA]
-RewriteRule ^API/apply?$ /API.php?call=apply [L]
-RewriteRule ^API/bank_details?$ /API.php?call=bank_details [L]
-RewriteRule ^API/document?$ /API.php?call=document [L]
-RewriteRule ^API/selfie?$ /API.php?call=selfie [L]
-RewriteRule ^API/ref?$ /API.php?call=ref [L]
-RewriteRule ^API/dashboard?$ /API.php?call=dashboard [L]
-RewriteRule ^API/dashboard2?$ /API.php?call=dashboard2 [L]
-RewriteRule ^API/google_login?$ /API.php?call=google_login [L]
-RewriteRule ^API/agreement?$ /API.php?call=agreement [L]
-RewriteRule ^API/fetchuser?$ /API.php?call=fetchuser [L]
-RewriteRule ^API/hold?$ /API.php?call=hold [L]
-# RewriteRule ^API/Login?$ /API.php?call=Login [L]
+# Proxy /zxc/uploads/<file> to user/file.php?f=<file>
+RewriteRule ^zxc/uploads/(.+)$ user/file.php?f=$1 [L,QSA]

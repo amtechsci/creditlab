@@ -2,11 +2,12 @@
 // $admin = "AMPROAPK@GMAIL.COM";
 include '../db.php';
 if(isset($admin)){
-    $userquery = towquery("SELECT * FROM user WHERE email='$admin'");
+    $userquery = towquery("SELECT * FROM user WHERE email='".$admin."' LIMIT 1");
     $userfetch = towfetch($userquery);
     extract($userfetch,EXTR_PREFIX_ALL,"user");
 }else{
     header('location:/account/login.php');
+    exit;
 }
 ?><?php $verifyquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=1");?>
 <?php $newquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=0");?>
@@ -22,9 +23,8 @@ while($a = towfetch($newloanquery)){
     
     $az = $aa->format("%a");
      if($az >= 720){
-         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE `uid`=".$a['uid']." AND id=".$a['id']."");
-         towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0
- WHERE id=".$a['uid']."");
+         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='".$date."' WHERE `uid`=".$a['uid']." AND id=".$a['id']." ");
+         towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0 WHERE id=".$a['uid']." ");
      }
 }
 #print_r($assign_account." ".$assign_recovery);

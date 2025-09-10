@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_POST['ac_no'])){
     $id = towreal($_GET['id']);
     if(!empty($_FILES["bank_statment"]["name"])){
@@ -10,7 +11,8 @@ if(isset($_POST['ac_no'])){
     if(in_array($file_type, $allowed)) {
     $bank_statment = $_FILES["bank_statment"]["name"];
     $bank_statment = $user_name.'conpany'.date('YmdHis').'.'.$file_type;
-    move_uploaded_file($_FILES["bank_statment"]["tmp_name"], 'uploads/'.$bank_statment);
+    list($success, $result) = s3_upload_file($_FILES["bank_statment"]["tmp_name"], $bank_statment, 'application/octet-stream');
+    if (!$success) $bank_statment = "no";
     }else{$bank_statment = "no";}
     }else{$bank_statment = "no";}
     $ext = towrealarray2($_POST);

@@ -1,15 +1,16 @@
 <?php
 include_once 'head.php';
 if (isset($_GET['pageno'])) {
-            $pageno = $_GET['pageno'];
+            $pageno = intval($_GET['pageno']);
         } else {
             $pageno = 1;
         }
+        if ($pageno < 1) { $pageno = 1; }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = mysqli_query($db,"SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC");
-        $usersquery =  mysqli_query($db,"SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC LIMIT $offset, $no_of_records_per_page");
-        $total_rows = mysqli_num_rows($ress);
+        $ress = towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC");
+        $usersquery =  towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC LIMIT ".$offset.", ".$no_of_records_per_page);
+        $total_rows = townum($ress);
         $total_pages = ceil($total_rows / $no_of_records_per_page);
 ?>
 <body>

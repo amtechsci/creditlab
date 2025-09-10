@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_POST['mobile'])){
     $extract = towrealarray($_POST);     extract($extract);
     towquery("UPDATE `user` SET `mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address' WHERE email='$user'") and print_r("<script>alert('Your data is successfully updated'); window.location.replace('profile.php');</script>");
@@ -27,7 +28,8 @@ if(isset($_POST['document'])){
     $conpanydocument = explode(".",$conpanydocument);
     $conpanydocument = end($conpanydocument);
     $conpanydocument = $user.'conpany'.date('YmdHis').'.'.$conpanydocument;
-    move_uploaded_file($_FILES["conpanydocument"]["tmp_name"], 'uploads/'.$conpanydocument);
+    list($success, $result) = s3_upload_file($_FILES["conpanydocument"]["tmp_name"], $conpanydocument, 'application/octet-stream');
+    if (!$success) $conpanydocument = "no";
     }$conpanydocument = "no";}else{$conpanydocument = "no";}
     print_r(2);
     if(!empty($_FILES['personaldocument']['name'])){
@@ -43,7 +45,8 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $personaldocument[$i] = $user.'personal'.$new.$i.'.'.$ext;
-move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'uploads/'.$personaldocument[$i]);
+list($success, $result) = s3_upload_file($_FILES['personaldocument']['tmp_name'][$i], $personaldocument[$i], 'application/octet-stream');
+if (!$success) $personaldocument[$i] = "no";
         $i++;
         }else{$personaldocument[$i] = "no"; $i++;}
     }
@@ -59,7 +62,8 @@ move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'uploads/'.$perso
     $salarydocument = explode(".",$salarydocument);
     $salarydocument = end($salarydocument);
     $salarydocument = $user.'salary'.date('YmdHis').'.'.$salarydocument;
-    move_uploaded_file($_FILES["salarydocument"]["tmp_name"], 'uploads/'.$salarydocument);
+    list($success, $result) = s3_upload_file($_FILES["salarydocument"]["tmp_name"], $salarydocument, 'application/octet-stream');
+    if (!$success) $salarydocument = "no";
     }else{$salarydocument = "no";}
     }else{$salarydocument = "no";}
     print_r(4);
@@ -76,7 +80,8 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument[$i] = $user.'bank'.$new.$i.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument']['tmp_name'][$i],'uploads/'.$bankdocument[$i]);
+list($success, $result) = s3_upload_file($_FILES['bankdocument']['tmp_name'][$i], $bankdocument[$i], 'application/octet-stream');
+if (!$success) $bankdocument[$i] = "no";
         $i++;
     }else{$bankdocument[$i] = "no"; $i++;}}
     $bankdocument = implode('#',$bankdocument);
@@ -91,7 +96,8 @@ move_uploaded_file($_FILES['bankdocument']['tmp_name'][$i],'uploads/'.$bankdocum
     $addressdocument = explode(".",$addressdocument);
     $addressdocument = end($addressdocument);
     $addressdocument = $user.'bank'.date('YmdHis').'.'.$addressdocument;
-    move_uploaded_file($_FILES["addressdocument"]["tmp_name"], 'uploads/'.$addressdocument);
+    list($success, $result) = s3_upload_file($_FILES["addressdocument"]["tmp_name"], $addressdocument, 'application/octet-stream');
+    if (!$success) $addressdocument = "no";
     }else{
         $addressdocument = "no";
     }}else{

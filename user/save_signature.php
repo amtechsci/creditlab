@@ -3,6 +3,7 @@
 // ini_set('display_errors', 1);
 // error_reporting(-1);
 include '../db.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($user)){
     $userquery = towquery("SELECT * FROM user WHERE mobile='$user'");
     $userfetch = towfetch($userquery);
@@ -13,7 +14,11 @@ if(isset($user)){
     list(, $imageData)      = explode(',', $imageData);
     $imageData = base64_decode($imageData);
     $fileName = 'signature_' . time() . '.png';
-    file_put_contents('uploads/'.$fileName, $imageData);
+    list($success, $result) = s3_upload_string($imageData, $fileName, 'image/png');
+    if (!$success) {
+        echo 0;
+        exit;
+    }
     $re = towquery("UPDATE `user` SET `signature`='$fileName' WHERE id='$user_id'");
     echo 1;
 }else{

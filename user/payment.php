@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_POST['submit'])){
     $ext = towrealarray2($_POST); extract($ext);
     if(!empty($_FILES["payment_screenshot"]["name"])){
@@ -10,7 +11,8 @@ if(isset($_POST['submit'])){
     if(in_array($file_type, $allowed)) {
     $payment_screenshot = $_FILES["payment_screenshot"]["name"];
     $payment_screenshot = $user_name.'conpany'.date('YmdHis').'.'.$file_type;
-    move_uploaded_file($_FILES["payment_screenshot"]["tmp_name"], 'uploads/'.$payment_screenshot);
+    list($success, $result) = s3_upload_file($_FILES["payment_screenshot"]["tmp_name"], $payment_screenshot, 'application/octet-stream');
+    if (!$success) $payment_screenshot = "no";
     }else{$payment_screenshot = "no";}
     }else{$payment_screenshot = "no";}
     $ext = towrealarray2($_POST);

@@ -1,9 +1,15 @@
 <?php
 session_start();
- if(session_destroy()){
-$set= setcookie('admin', 'username', time() + (0), "/");
-if($set){
-header("location:/");}else{
+$_SESSION = array();
+if (ini_get("session.use_cookies")) {
+	$params = session_get_cookie_params();
+	setcookie(session_name(), '', time() - 42000,
+		$params["path"], $params["domain"],
+		$params["secure"], $params["httponly"]
+	);
 }
-} 
+session_destroy();
+setcookie('admin', '', time() - 3600, '/');
+header("location:/");
+exit;
 ?>

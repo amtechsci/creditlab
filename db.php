@@ -5,56 +5,54 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+mysqli_set_charset($db,'utf8');
 function towquery($query)
 {
-	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-  	mysqli_set_charset($db,'utf8');
- 	$re = mysqli_query($db,$query);
- 	return $re;
+	global $db;
+	$re = mysqli_query($db,$query);
+	return $re;
 }
  function towquery2($query)
 {
-	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-  	mysqli_set_charset($db,'utf8');
- 	$re = mysqli_query($db,$query);
- 	$re2 = mysqli_insert_id($db);
- 	return $re2;
+	global $db;
+	$re = mysqli_query($db,$query);
+	$re2 = mysqli_insert_id($db);
+	return $re2;
 }
  function townum($query)
 {
 	$re = mysqli_num_rows($query);
- 	return $re;
+	return $re;
 }
  function towfetch($query)
 {
 	$re = mysqli_fetch_array($query);
- 	return $re;
+	return $re;
 }
  function towfetchassoc($query)
 {
 	$re = mysqli_fetch_assoc($query);
- 	return $re;
+	return $re;
 }
  function towreal($query)
 {
-	$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	global $db;
 	$re = str_replace("<","&lt;",$query);
 	$re = str_replace(">","&gt;",$re);
 	$re = mysqli_real_escape_string($db,$re);
- 	return $re;
+	return $re;
 }
  function towrealarray($query)
 {
-	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	global $db;
 	$re = array();
 	foreach ($query as $key => $value) {
 	    if(!is_array($value)){
-	$$key = str_replace("<","&lt;",$value);
-	$$key = str_replace(">","&gt;",
-$$key);
-	$$key = mysqli_real_escape_string($co,$$key);
+		$$key = str_replace("<","&lt;",$value);
+		$$key = str_replace(">","&gt;",$$key);
+		$$key = mysqli_real_escape_string($db,$$key);
 
-	$re[$key] = $$key;
+		$re[$key] = $$key;
 	    }else{
 	        $re[$key] = towrealarray($value);
 	    }
@@ -63,16 +61,15 @@ $$key);
 }
  function towrealarray2($query)
 {
-	$co = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	global $db;
 	$re = array();
 	foreach ($query as $key => $value) {
 	    if(!is_array($value)){
-	$$key = str_replace("<","&lt;",$value);
-	$$key = str_replace(">","&gt;",
-$$key);
-	$$key = mysqli_real_escape_string($co,$$key);
+		$$key = str_replace("<","&lt;",$value);
+		$$key = str_replace(">","&gt;",$$key);
+		$$key = mysqli_real_escape_string($db,$$key);
 
-	$re[$key] = $$key;
+		$re[$key] = $$key;
 	    }else{
 	        $re[$key] = towrealarray2($value);
 	    }
@@ -89,7 +86,14 @@ if (isset($_SESSION['user'])) {
 if (isset($_SESSION['admin'])) {
     $admin = towreal($_SESSION['admin']);
 }elseif(isset($_COOKIE['admin'])){
-    $admin = towreal($_COOKIE['admin']);
+    $cookie_admin = towreal($_COOKIE['admin']);
+    $chk = towquery("SELECT id, active FROM user WHERE email='".$cookie_admin."' LIMIT 1");
+    if ($chk && ($row = towfetchassoc($chk)) && isset($row['active']) && (string)$row['active'] === '2') {
+        $_SESSION['admin'] = $cookie_admin;
+        $admin = $cookie_admin;
+    } else {
+        setcookie('admin', '', time() - 3600, '/');
+    }
 }
 
 if (isset($_SESSION['account_manager'])) {
@@ -211,4 +215,21 @@ function getDateTimeDiff($date){
 // }
 // exit;
 $app_url = "https://creditlab.in";
+?>
+<?php
+// CSRF helpers
+function csrf_token() {
+    if (empty($_SESSION['csrf_token'])) {
+        if (function_exists('random_bytes')) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        } else {
+            $_SESSION['csrf_token'] = bin2hex(openssl_random_pseudo_bytes(32));
+        }
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_verify($token) {
+    return isset($_SESSION['csrf_token']) && is_string($token) && hash_equals($_SESSION['csrf_token'], $token);
+}
 ?>

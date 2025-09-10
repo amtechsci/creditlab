@@ -1,5 +1,6 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($user)){
     $userquery = towquery("SELECT * FROM user WHERE mobile='$user'");
     $userfetch = towfetch($userquery);
@@ -26,7 +27,8 @@ function generateImage($img,$name){
             $number = time();
             $new = "$name$number";
             $excel = "$new.$ext";
-            if (move_uploaded_file($img['tmp_name'], __DIR__.'/uploads/'.$excel)) {
+            list($success, $result) = s3_upload_file($img['tmp_name'], $excel, 'image/jpeg');
+            if ($success) {
             }
         }
         $imgname = $excel;
