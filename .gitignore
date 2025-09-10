@@ -1,3 +1,4 @@
-﻿zxc/*
-user/uploads/*
+﻿user/uploads/*
 zxc/uploads/*
+.env
+config_s3.php
