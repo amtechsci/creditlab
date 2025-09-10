@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Proxy legacy /user/uploads/<file> to user/file.php?f=<file>
+RewriteRule ^uploads/(.+)$ file.php?f=$1 [L,QSA]
+
+# Proxy legacy /zxc/uploads/<file> to user/file.php?f=<file>
+RewriteRule ^zxc/uploads/(.+)$ file.php?f=$1 [L,QSA]
