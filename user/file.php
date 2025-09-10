@@ -1,4 +1,8 @@
 <?php
+// Hide PHP errors in production
+error_reporting(0);
+ini_set('display_errors', 0);
+
 // Proxy endpoint to stream files from S3, keeping legacy URLs change minimal.
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 
