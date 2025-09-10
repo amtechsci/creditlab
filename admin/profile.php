@@ -270,7 +270,8 @@ if (!$success) $bankdocument = $userpro_bankdocument;
     }
     
     if(!empty($_FILES['bankdocument2']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument2']['name'])));
+    $file_parts = explode('.',$_FILES['bankdocument2']['name']);
+    $file_type = strtolower(end($file_parts));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument2']['name'];

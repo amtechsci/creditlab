@@ -17,8 +17,28 @@ if (!$ok) {
 	exit;
 }
 
+// Determine content type from file extension if not set in metadata
+$contentType = $metadata['ContentType'] ?? 'application/octet-stream';
+if ($contentType === 'application/octet-stream') {
+	$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+	$mimeTypes = [
+		'jpg' => 'image/jpeg',
+		'jpeg' => 'image/jpeg',
+		'png' => 'image/png',
+		'gif' => 'image/gif',
+		'pdf' => 'application/pdf',
+		'doc' => 'application/msword',
+		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'txt' => 'text/plain',
+		'mp4' => 'video/mp4',
+		'avi' => 'video/x-msvideo',
+		'mov' => 'video/quicktime'
+	];
+	$contentType = $mimeTypes[$extension] ?? 'application/octet-stream';
+}
+
 // Set appropriate headers
-header('Content-Type: ' . ($metadata['ContentType'] ?? 'application/octet-stream'));
+header('Content-Type: ' . $contentType);
 header('Content-Length: ' . strlen($content));
 if (isset($metadata['LastModified'])) {
 	header('Last-Modified: ' . $metadata['LastModified']);
