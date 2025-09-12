@@ -71,20 +71,26 @@ $us_bankq = towquery("SELECT * FROM user_bank WHERE uid=".$loanf['uid']);
 $us_bank = towfetch($us_bankq);
 // print_r($us_bank);exit;
 function convertImageToBase64($imageUrl, $altText = 'Image') {
+    // Check if it's a local file path and convert to S3 proxy URL
+    if (strpos($imageUrl, 'user/uploads/') !== false) {
+        $filename = basename($imageUrl);
+        $imageUrl = "https://creditlab.in/user/file.php?f=" . $filename;
+    }
+    
     // Get the image content
-    $imageData = file_get_contents($imageUrl);
+    $imageData = @file_get_contents($imageUrl);
     
     // Check if the image was successfully fetched
     if ($imageData === false) {
-        return 'Error: Unable to fetch the image.';
+        return '<div style="width:200px;height:50px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#666;">Signature Not Available</div>';
     }
 
     // Encode the image content to Base64
     $base64 = base64_encode($imageData);
 
     // Get the MIME type of the image
-    $imageInfo = getimagesize($imageUrl);
-    $mimeType = $imageInfo['mime'];
+    $imageInfo = @getimagesize($imageUrl);
+    $mimeType = $imageInfo ? $imageInfo['mime'] : 'image/png';
 
     // Create the Base64 image string for HTML
     $base64Image = 'data:' . $mimeType . ';base64,' . $base64;
@@ -419,7 +425,7 @@ $imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
             <br><br>
             <p><strong>I HAVE ACCEPTED THE LOAN AGREEMENT WITH THE TERMS AND CONDITIONS THEREIN</strong></p>
             <div class="digital-signature" style="width:200px;">
-                 <?=convertImageToBase64("https://creditlab.in/user/uploads/".$loanf['signature'])?>
+                 <?=convertImageToBase64("user/uploads/".$loanf['signature'])?>
             </div>
         </div>
     </div>

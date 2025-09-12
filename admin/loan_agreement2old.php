@@ -588,6 +588,6 @@ $af = towfetch($a);
             <li>Approximate location at the time of signing: <?php echo $af['latitude'] ? $af['latitude'] : 'NA';?>, <?php echo $af['longitude'] ? $af['longitude'] : 'NA';?></li>
         </ul>
     </div>
-    <div><?=convertImageToBase64('https://creditlab.in/user/uploads/'.$loanf['signature'], 'Header Image')?><br><b>Digitally signed</b></div>
+    <div><?=convertImageToBase64('user/uploads/'.$loanf['signature'], 'Header Image')?><br><b>Digitally signed</b></div>
 </body>
 </html>
