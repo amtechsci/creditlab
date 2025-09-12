@@ -250,7 +250,8 @@ $number = array_filter($usernumber);
    <td data-title="CID">Number of contact</td>
    <?php
     $total = towquery("SELECT total FROM `user_contact_details` WHERE uid=$id ORDER BY id DESC");
-    $total = towfetch($total)['total'];
+    $total_fetch = towfetch($total);
+    $total = $total_fetch ? $total_fetch['total'] : 0;
     ?>
    <td data-title="CID"><?=$total?></td>
    </tr>

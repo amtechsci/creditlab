@@ -15,7 +15,12 @@ if(isset($_POST['validation'])){
     $extract = towrealarray($_POST);     extract($extract);
     $loan_data = towquery("SELECT * FROM loan_apply WHERE uid='$userpro_id' ORDER BY id DESC");
     $loan_fetch = towfetch($loan_data);
-    extract($loan_fetch,EXTR_PREFIX_ALL,"update");
+    if($loan_fetch) {
+        extract($loan_fetch,EXTR_PREFIX_ALL,"update");
+    } else {
+        $update_id = 0;
+        $update_status = 'pending';
+    }
     $processcheck = towrealarray($_POST['processcheck']);
     if($valid_status == "Process"){
     if($update_status == "pending"){$update_status = "follow up";}elseif(in_array("Ready for Disbursal",$processcheck)){

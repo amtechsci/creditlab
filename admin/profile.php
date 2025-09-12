@@ -17,7 +17,12 @@ if(isset($_POST['validation'])){
     extract($extract);
     $loan_data = towquery("SELECT * FROM loan_apply WHERE uid='$userpro_id' ORDER BY id DESC");
     $loan_fetch = towfetch($loan_data);
-    extract($loan_fetch,EXTR_PREFIX_ALL,"update");
+    if($loan_fetch) {
+        extract($loan_fetch,EXTR_PREFIX_ALL,"update");
+    } else {
+        $update_id = 0;
+        $update_status = 'pending';
+    }
     $processcheck = towrealarray($_POST['processcheck']);
     if($valid_status == "Process"){
     if($update_status == "pending"){$update_status = "follow up";}elseif(in_array("Ready for Disbursal",$processcheck)){$update_status = "disbursal";}
@@ -26,9 +31,15 @@ if(isset($_POST['validation'])){
     if($valid_status == "Not Process"){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=4,`status`='Hold',reg_date='".date('Y-m-d H:i:s')."' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
+        // Redirect to prevent white screen
+        header("Location: profile.php?id=".$id."&tab=Validation&success=1");
+        exit;
     }elseif($valid_status == "Re Process"){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=3,`status`='Hold',reg_date='".date('Y-m-d H:i:s')."' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
+        // Redirect to prevent white screen
+        header("Location: profile.php?id=".$id."&tab=Validation&success=1");
+        exit;
     }elseif($valid_status == "cancel"){
         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
         // towquery("UPDATE `user` SET `loan`=2,`sloan`=0 WHERE id=".$userpro_id."");   
@@ -39,6 +50,9 @@ if(isset($_POST['validation'])){
     }elseif($valid_status == "unhold"){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=1,`status`='waiting' WHERE id=".$id."");
         towquery("UPDATE `user` SET `loan`=0,`sloan`=0 WHERE id=".$userpro_id."");
+        // Redirect to prevent white screen
+        header("Location: profile.php?id=".$id."&tab=Validation&success=1");
+        exit;
     }else{
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation') WHERE id=".$id."");
         $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$id." ORDER BY id DESC");
@@ -98,7 +112,7 @@ if(isset($_POST['mobile'])){
             $loan_limit = $userpro_loan_limit;
         }
         $fb_url = '';
-        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
+        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,state='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
 ,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code' WHERE id='$userpro_id'";
 $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$userpro_id." AND (status='pending' OR status='follow up' OR status='disbursal' ) ORDER BY id DESC");
 
@@ -1332,7 +1346,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                 <td><input type="text" placeholder="Password..." name="address_pass" class="form-control"></td>
                                                             </tr>
                                                             <!-- ID Card Document -->
-                                                            <?php $comidcard = explode("comidcard", $userpro_document_password[8]); ?>
+                                                            <?php $comidcard = explode("comidcard", isset($userpro_document_password[8]) ? $userpro_document_password[8] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="companyidcard"></td> <!-- Checkbox for Company ID Card -->
                                                                 <td>Company ID Card 

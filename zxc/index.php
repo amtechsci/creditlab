@@ -67,7 +67,11 @@ Please find the LOAN AGREEMENT attached below which was accepted by you digitall
 
 Best regards<br>
 Creditlab.in';				//An HTML or plain text message body
-$mail->Send();
+if(!$mail->Send()) {
+    echo "Mail Error: " . $mail->ErrorInfo;
+} else {
+    echo "Mail sent successfully";
+}
 }
 }
 
@@ -135,7 +139,11 @@ Please find the SANCTION LETTER / KEY FACT STATEMENT attached below which was ac
 
 Best regards<br>
 Creditlab.in';				//An HTML or plain text message body
-$mail2->Send();
+if(!$mail2->Send()) {
+    echo "Mail Error: " . $mail2->ErrorInfo;
+} else {
+    echo "Mail sent successfully";
+}
 }
 }
 
@@ -205,7 +213,11 @@ Please find attached the NO DUES CERTIFICATE for the recently cleared loan.<br>
 
 Best regards<br>
 Creditlab.in';				//An HTML or plain text message body
-$mail2->Send();
+if(!$mail2->Send()) {
+    echo "Mail Error: " . $mail2->ErrorInfo;
+} else {
+    echo "Mail sent successfully";
+}
 }
 }
 ?>
