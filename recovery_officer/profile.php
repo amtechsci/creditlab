@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once '../lib/s3_upload_helper.php';
 if(isset($_GET['id'])){
@@ -21,7 +22,7 @@ if(isset($_POST['validation'])){
         $update_id = 0;
         $update_status = 'pending';
     }
-    $processcheck = towrealarray($_POST['processcheck']);
+    $processcheck = isset($_POST['processcheck']) ? towrealarray($_POST['processcheck']) : array();
     if($valid_status == "Process"){
     if($update_status == "pending"){$update_status = "follow up";}elseif(in_array("Ready for Disbursal",$processcheck)){
         $update_status = "disbursal";
@@ -77,17 +78,22 @@ if(isset($_POST['mobile'])){
         print_r("<script>alert('please enter mobile number of any family person if you don’t have alternate number');  window.location.replace('profile.php?id=".$id."');</script>");
     }else{
     if(isset($_POST['pus'])){
-        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
-,`department`='$department',`verify`=1,`status`='Approve',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`star_member`='$star_member',`approvenew`='$approvenew',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer' WHERE id='$userpro_id'";
+        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`='$mobile',`altmobile`='$altmobile',`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
+,`department`='$department',`verify`=1,`status`='Approve',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`='$loan_limit',`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`star_member`='$star_member',`approvenew`='$approvenew',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer' WHERE id='$userpro_id'";
 // print_r($pqu);exit;
-    (towquery($pqu) and
-    print_r("<script> window.location.replace('profile.php?id=".$id."');</script>")) or print_r("<script>alert('Phone No. already register');  window.location.replace('profile.php?id=".$id."');</script>");
+    if(towquery($pqu)) {
+        print_r("<script> window.location.replace('profile.php?id=".$id."');</script>");
+    } else {
+        print_r("<script>alert('Phone No. already register');  window.location.replace('profile.php?id=".$id."');</script>");
+    }
     }elseif(($salary < 20000) and ($salarystatus == "Salaried")){
-        towquery("UPDATE `user` SET `verify`=3 WHERE id='$userpro_id'") and
-    print_r("<script>window.location.replace('profile.php?id=".$id."');</script>");
+        if(towquery("UPDATE `user` SET `verify`=3 WHERE id='$userpro_id'")) {
+            print_r("<script>window.location.replace('profile.php?id=".$id."');</script>");
+        }
     }else{
-        towquery("UPDATE `user` SET `verify`=4 WHERE id='$userpro_id'") and
-    print_r("<script>window.location.replace('profile.php?id=".$id."');</script>");
+        if(towquery("UPDATE `user` SET `verify`=4 WHERE id='$userpro_id'")) {
+            print_r("<script>window.location.replace('profile.php?id=".$id."');</script>");
+        }
     }
 }}
 
@@ -100,11 +106,11 @@ if(isset($_POST['bank_name']) and !isset($_POST['bank_detail_update'])){
     ?>
 <?php
 if($_POST['reff']){
-    $extract = towrealarray($_POST['ref'][1]);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
-    $extract = towrealarray($_POST['ref'][2]);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
-    $extract = towrealarray($_POST['ref'][3]);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
-    $extract = towrealarray($_POST['ref'][4]);     extract($extract,EXTR_PREFIX_ALL,"ref_4");
-    $extract = towrealarray($_POST['ref'][5]);     extract($extract,EXTR_PREFIX_ALL,"ref_5");
+    $extract = towrealarray($_POST['ref'][1] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
+    $extract = towrealarray($_POST['ref'][2] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
+    $extract = towrealarray($_POST['ref'][3] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
+    $extract = towrealarray($_POST['ref'][4] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_4");
+    $extract = towrealarray($_POST['ref'][5] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_5");
     $extract = towrealarray($_POST['vaild']);     $vaild = implode("#",$extract);
 
     $ref_1 = $ref_1_0.",#".$ref_1_1.",#".$ref_1_2;
@@ -388,7 +394,7 @@ if(isset($_POST['transaction'])){
         $validfetch = towfetch($valid);
      towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
      if((float)$validfetch['amount'] - 500 > $transaction_amount){
-            towquery("UPDATE `user` SET `loan_limit`=$transaction_amount WHERE id=$id");
+            towquery("UPDATE `user` SET `loan_limit`='$transaction_amount' WHERE id='$id'");
         }
         towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$date' WHERE uid=".$id." AND id=".$cllid."");
         if($userpro_approvenew == 0){$is_emi = 0;}else{$is_emi = 1;}
@@ -1341,7 +1347,7 @@ if(isset($_POST['loan_acc_man'])){
                                         <td><?=$usersd_p_fee?></td>
                                         <?php if($users_is_emi==0){?><td><?=$usersd_service_charge;?></td>
                                         <td><?=$usersd_penality_charge?></td>
-                                        <td><?=date('Y-m-d', strtotime($usersd_processed_date . ' +30 day'))?></td>
+                                        <td><?=date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +30 day'))?></td>
                                         <td><?=$usersd_total_amount?></td><?php }?>  
                                         <?php if($users_is_emi==1){
                                         $a = towquery("SELECT * FROM `loan_apply` WHERE id=$usersd_lid");

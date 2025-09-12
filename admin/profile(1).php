@@ -147,11 +147,11 @@ if(isset($_POST['bank_name']) and !isset($_POST['bank_detail_update'])){
     print_r("<script>alert('Your data is successfully updated');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }
 if(isset($_POST['reff'])){
-    $extract = towrealarray($_POST['ref'][1]);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
-    $extract = towrealarray($_POST['ref'][2]);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
-    $extract = towrealarray($_POST['ref'][3]);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
-    $extract = towrealarray($_POST['ref'][4]);     extract($extract,EXTR_PREFIX_ALL,"ref_4");
-    $extract = towrealarray($_POST['ref'][5]);     extract($extract,EXTR_PREFIX_ALL,"ref_5");
+    $extract = towrealarray($_POST['ref'][1] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
+    $extract = towrealarray($_POST['ref'][2] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
+    $extract = towrealarray($_POST['ref'][3] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
+    $extract = towrealarray($_POST['ref'][4] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_4");
+    $extract = towrealarray($_POST['ref'][5] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_5");
     $extract = towrealarray($_POST['vaild']);     $vaild = implode("#",$extract);
 
     $ref_1 = $ref_1_0.",#".$ref_1_1.",#".$ref_1_2;
@@ -1662,7 +1662,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                    <?php
                                    function calcPenality($loan_amountc, $percentage, $due_date, $usersd_lid,$pen_day_gap,$t,$fpen = 0){
                                         $today = strtotime(date('Y-m-d'));
-                                        $due_date = strtotime($due_date);
+                                        $due_date = strtotime($due_date ?: date('Y-m-d'));
                                     
                                         if($due_date < $today){
                                             $check = towquery("SELECT * FROM `transaction_details` WHERE `cllid`='".$usersd_lid."' AND `transaction_flow`='firstemi'");
@@ -1700,12 +1700,13 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                    }
     $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
     $loan_amountc = $lof['processed_amount'] + $lof['p_fee'] + $lof['origination_fee'];
-    $dis_date = date('Y-m-d', strtotime(date_create($lof['processed_date'])->format("Y-m-d") . " -1 day"));
+    $processed_date = $lof['processed_date'] ?: date('Y-m-d');
+    $dis_date = date('Y-m-d', strtotime(date_create($processed_date)->format("Y-m-d") . " -1 day"));
     $di = strtotime($dis_date);
     if($lof['status_log'] == 'cleared'){
         $sa = strtotime(date('Y-m-d'));
     }else{
-        $sa = strtotime($lof['cleard_date']);
+        $sa = strtotime($lof['cleard_date'] ?: date('Y-m-d'));
     }
         $datediff = $sa - $di;
         $day_gap = round($datediff / (60 * 60 * 24));
@@ -1737,7 +1738,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <?php if($usersd_is_emi==0){ ?>
                                         <td><?=$usersd_service_charge;?></td>
                                             <td><?=$usersd_penality_charge?></td>
-                                            <td><?=date('Y-m-d', strtotime($usersd_processed_date . ' +30 day'))?></td>
+                                            <td><?=date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +30 day'))?></td>
                                             <td><?=ceil($papay+$usersd_service_charge+$usersd_penality_charge)?></td>
                                         <?php } if($usersd_is_emi==1){
                                         ?>

@@ -2,9 +2,9 @@
 include_once 'head.php';
 if(isset($_POST['submit'])){
     if((townum($refquery) == 0)){ 
-    $extract = towrealarray($_POST['ref'][1]);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
-    $extract = towrealarray($_POST['ref'][2]);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
-    $extract = towrealarray($_POST['ref'][3]);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
+    $extract = towrealarray($_POST['ref'][1] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
+    $extract = towrealarray($_POST['ref'][2] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
+    $extract = towrealarray($_POST['ref'][3] ?? []);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
     // $extract = towrealarray($_POST['ref'][4]);     extract($extract,EXTR_PREFIX_ALL,"ref_4");
     // $extract = towrealarray($_POST['ref'][5]);     extract($extract,EXTR_PREFIX_ALL,"ref_5");
 

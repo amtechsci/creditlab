@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once '../lib/s3_upload_helper.php';
 if(isset($_GET['id'])){
@@ -18,12 +19,12 @@ if(isset($_POST['validation'])){
     $loan_data = towquery("SELECT * FROM loan_apply WHERE uid='$userpro_id' ORDER BY id DESC");
     $loan_fetch = towfetch($loan_data);
     if($loan_fetch) {
-        extract($loan_fetch,EXTR_PREFIX_ALL,"update");
+    extract($loan_fetch,EXTR_PREFIX_ALL,"update");
     } else {
         $update_id = 0;
         $update_status = 'pending';
     }
-    $processcheck = towrealarray($_POST['processcheck']);
+    $processcheck = isset($_POST['processcheck']) ? towrealarray($_POST['processcheck']) : array();
     if($valid_status == "Process"){
     if($update_status == "pending"){$update_status = "follow up";}elseif(in_array("Ready for Disbursal",$processcheck)){$update_status = "disbursal";}
     }elseif($valid_status == "Not Process"){$update_status = "Hold";}elseif($valid_status == "Re Process"){$update_status = "Hold";}elseif($valid_status == "cancel"){$update_status = "cancel";if(in_array("cancel & hold",$processcheck)){$update_status = "Hold";}}
@@ -1548,7 +1549,7 @@ document.querySelectorAll('.remove-row').forEach(button => {
                                    <?php
                                    function calcPenality($loan_amountc, $percentage, $due_date, $usersd_lid,$pen_day_gap,$t,$fpen = 0){
                                         $today = strtotime(date('Y-m-d'));
-                                        $due_date = strtotime($due_date);
+                                        $due_date = strtotime($due_date ?: date('Y-m-d'));
                                     
                                         if($due_date < $today){
                                             $check = towquery("SELECT * FROM `transaction_details` WHERE `cllid`='".$usersd_lid."' AND `transaction_flow`='firstemi'");
@@ -1586,12 +1587,13 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                    }
     $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
     $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
-    $dis_date = date('Y-m-d', strtotime(date_create($lof['processed_date'])->format("Y-m-d") . " -1 day"));
+    $processed_date = $lof['processed_date'] ?: date('Y-m-d');
+    $dis_date = date('Y-m-d', strtotime(date_create($processed_date)->format("Y-m-d") . " -1 day"));
     $di = strtotime($dis_date);
     if($lof['status_log'] == 'cleared'){
         $sa = strtotime(date('Y-m-d'));
     }else{
-        $sa = strtotime($lof['cleard_date']);
+        $sa = strtotime($lof['cleard_date'] ?: date('Y-m-d'));
     }
         $datediff = $sa - $di;
         $day_gap = round($datediff / (60 * 60 * 24));
@@ -1623,7 +1625,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <?php if($usersd_is_emi==0){ ?>
                                         <td><?=$usersd_service_charge;?></td>
                                             <td><?=$usersd_penality_charge?></td>
-                                            <td><?=date('Y-m-d', strtotime($usersd_processed_date . ' +29 day'))?></td>
+                                            <td><?=date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +29 day'))?></td>
                                             <td><?=ceil($papay+$usersd_service_charge+$usersd_penality_charge)?></td>
                                         <?php } if($usersd_is_emi==1){
                                         ?>

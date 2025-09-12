@@ -54,6 +54,9 @@ function towquery($query)
 {
 	global $db;
 	$re = array();
+	if (!is_array($query) || $query === null) {
+		return $re;
+	}
 	foreach ($query as $key => $value) {
 	    if(!is_array($value)){
 		$$key = str_replace("<","&lt;",$value);
