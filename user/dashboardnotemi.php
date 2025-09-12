@@ -488,12 +488,12 @@ switch ($page_state) {
             <div class="col-12 loan-info-card">
                 <div class="loan-info-content">
                     <span class="loan-id">Loan ID: CLL<?=$userloanfetch['lid'];?></span>
-                    <span class="loan-availed">Loan availed -- Rs<span> <?=$userloanfetch['processed_amount']+$userloanfetch['p_fee']+($userloanfetch['p_fee']*0.18);?></span></span>
+                    <span class="loan-availed">Loan availed -- Rs<span> <?=(float)$userloanfetch['processed_amount']+(float)$userloanfetch['p_fee']+((float)$userloanfetch['p_fee']*0.18);?></span></span>
                     <span class="exhausted-days">Exhausted days -- <span> <?=$day_gap;?></span><br>Due Date - (<?=date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +29 day'))?>)</span>
                 </div>
             </div>
             <div class="col-12 outstanding-amount-card">
-                <span>Total Outstanding Amount -- <b>Rs<?=ceil($userloanfetch['processed_amount']+$userloanfetch['p_fee']+$userloanfetch['service_charge']+($userloanfetch['p_fee']*0.18)+$userloanfetch['penality_charge']);?></b><br>This amount changes w.r.t number of exhausted days</span>
+                <span>Total Outstanding Amount -- <b>Rs<?=ceil((float)$userloanfetch['processed_amount']+(float)$userloanfetch['p_fee']+(float)$userloanfetch['service_charge']+((float)$userloanfetch['p_fee']*0.18)+(float)$userloanfetch['penality_charge']);?></b><br>This amount changes w.r.t number of exhausted days</span>
                 <a class="pay-now-btn" href="/user/autopay.php">Pay Now</a>
             </div>
             <?php
