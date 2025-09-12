@@ -51,7 +51,7 @@ if(isset($_POST['validation'])){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation') WHERE id=".$id."");
         $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$id." ORDER BY id DESC");
         $validfetch = towfetch($valid);
-        $totalamount = $validfetch['amount'] + $validfetch['processing_fees'] + $validfetch['service_charge'];
+        $totalamount = (float)$validfetch['amount'] + (float)$validfetch['processing_fees'] + (float)$validfetch['service_charge'];
         if($validfetch['status'] == "pending"){
             towquery("UPDATE `user` SET `status`='follow up' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='follow up', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
@@ -299,7 +299,7 @@ if(isset($_POST['loandata'])){
     towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processing_fees',`days`=$days WHERE id='$cllid'");
     $lidloan = towquery("SELECT * FROM `loan_apply` where id=$cllid");
         $lap = towfetch($lidloan);
-        $t = $lap['amount'] + $lap['processing_fees'];
+        $t = (float)$lap['amount'] + (float)$lap['processing_fees'];
         $day =  $lap['days'];
         // print_r($userpro_star_member);exit;
     if($userpro_star_member == 2){
@@ -381,7 +381,7 @@ if(isset($_POST['transaction'])){
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
-     if($validfetch['amount'] - 500 > $transaction_amount){
+     if((float)$validfetch['amount'] - 500 > $transaction_amount){
             towquery("UPDATE `user` SET `loan_limit`=$transaction_amount WHERE id=$id");
         }
         towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$date' WHERE uid=".$id." AND id=".$cllid."");
@@ -1342,7 +1342,7 @@ if(isset($_POST['loan_acc_man'])){
              $b = towfetch($a);
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
-             $loan_amountc = $b['amount'] + $b['processing_fees'];
+             $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'];
              $salary_date = $userpro_salary_date;
              $processed_date = date_create($lof['processed_date']);
              $dis_date = date_format($processed_date,"Y-m-d");

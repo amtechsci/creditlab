@@ -80,7 +80,7 @@
                          <span style="line-height:100px;">CLL<?=$userloanfetch['lid'];?></span>
                     </div>
                     <div class="col-12 col-md-3 seshowa card text-center shadow bg-white rounded" style="background:#fff;border:10px solid #F6F8FA; ">
-                         <span style="line-height:100px;">Approved amount -- Rs<span> <?=$userloanfetch['processed_amount']+$userloanfetch['p_fee']+$userloanfetch['origination_fee'];?></span></span>
+                         <span style="line-height:100px;">Approved amount -- Rs<span> <?=(float)$userloanfetch['processed_amount']+(float)$userloanfetch['p_fee']+(float)$userloanfetch['origination_fee'];?></span></span>
                     </div>
                     <div class="col-12 col-md-3 seshowa card text-center" style="background:#fff;border:10px solid #F6F8FA;">
                          <span style="line-height:100px;">Disbursed date -- <span> <?php echo date("Y-m-d", strtotime($userloanfetch['processed_date']));?></span></span>
@@ -101,7 +101,7 @@
                 $loidat = $b['id'];
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
-             $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'];
+             $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'] + (float)$b['origination_fee'];
              $salary_date = $userpro_salary_date;
              $processed_date = date_create($lof['processed_date']);
              $dis_date = date_format($processed_date,"Y-m-d");
@@ -258,7 +258,7 @@
          if(townum($userloan) == 1){
              $a = towquery("SELECT `amount`,`processing_fees`,`origination_fee` FROM `loan_apply` WHERE `uid`=$user_id AND (status = 'pending' OR status = 'disbursal' OR status = 'follow up' OR status = 'account manager')");
             $b = towfetch($a);
-            $b['totalamt'] = $b['amount']+$b['processing_fees']+$b['origination_fee'];
+            $b['totalamt'] = (float)$b['amount']+(float)$b['processing_fees']+(float)$b['origination_fee'];
          if(($lof['femi']) or ($b['totalamt'] < $user_loan_limit)){
          ?>
          <div class="container" style="background:#fff;border:10px solid #F6F8FA; display: flex;flex-direction: column;justify-content: center;align-items: center;">

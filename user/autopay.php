@@ -21,7 +21,7 @@ $di = strtotime($dis_date);
 $sa = strtotime(date('Y-m-d'));
 $datediff = $sa - $di;
 $day_gap = round($datediff / (60 * 60 * 24));
-(int)$amount = ceil($userloanfetch['processed_amount'] + $userloanfetch['p_fee'] + $userloanfetch['service_charge'] + ($userloanfetch['p_fee'] * 0.18) + $userloanfetch['penality_charge']);
+(int)$amount = ceil((float)$userloanfetch['processed_amount'] + (float)$userloanfetch['p_fee'] + (float)$userloanfetch['service_charge'] + ((float)$userloanfetch['p_fee'] * 0.18) + (float)$userloanfetch['penality_charge']);
 
 // Prepare POST data
 $data = [

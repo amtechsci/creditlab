@@ -10,7 +10,7 @@ $b = $loanf;
 if($b['days'] > 30){
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
-             $loan_amountc = $b['amount'] + $b['processing_fees'];
+             $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'];
              $salary_date = $userpro_salary_date;
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");
@@ -409,9 +409,9 @@ body{margin-top: 0px;margin-left: 0px;}
 <P class="p7 ft11">Transaction details Schedule</P>
 <P class="p8 ft6">This transaction details schedule (“<SPAN class="ft7">TD Schedule</SPAN>”) is an integral part of the Agreement. The terms defined in this TD Schedule shall have the meaning ascribed to them herein when used in this TD Schedule, unless the context otherwise so requires.</P>
 <P class="p9 ft13"><SPAN class="ft1">1.</SPAN><SPAN class="ft12">Amount</SPAN></P>
-<P class="p10 ft15">This Agreement between the Lender and the Borrower is for a disbursal amount of Rs.<?=$b['amount'] + $b['processing_fees']?> (“<SPAN class="ft14">Disbursal Amount</SPAN>”).</P>
+<P class="p10 ft15">This Agreement between the Lender and the Borrower is for a disbursal amount of Rs.<?=(float)$b['amount'] + (float)$b['processing_fees']?> ("<SPAN class="ft14">Disbursal Amount</SPAN>").</P>
 <P class="p11 ft13"><SPAN class="ft1">2.</SPAN><SPAN class="ft12">Principal Amount, Interest Amount Before Repayment Date, Processing Fee & Convenience Fee</SPAN></P>
-<P class="p12 ft6">This Agreement between the Lender and the Borrower is for a principal amount of Rs. <?=$b['amount'] + $b['processing_fees']?> (“<SPAN class="ft7">Principal Amount</SPAN>”). An amount of Rs.<?=$femi_amount-($loan_amountc/2)?> & <?=$semi_amount-($loan_amountc/2)?> (“<SPAN class="ft7">Interest Amount on EMI Dates respectively</SPAN>”). and an amount of Rs. <?=$loan_amountc*0.018?> (“<SPAN class="ft7">GST</SPAN>”) is payable by the Borrower, along with the Principal Amount, on or before the corresponding Repayment Date(s) mentioned below. An amount of Rs.<?=$loanf['processing_fees']?> shall be deducted by the Lender from the Principal Amount at the time of disbursal of the Principal Amount by the Lender to the Borrower by way of a processing fee (“<SPAN class="ft7">Processing Fee</SPAN>”). The Borrower shall be liable to pay an amount of Rs.50 per day as penalty charges on the corresponding Repayment Instalment following the expiry of the relevant Repayment Date (“Interest Amount After Repayment Date”) up to the date of actual payment.</P>
+<P class="p12 ft6">This Agreement between the Lender and the Borrower is for a principal amount of Rs. <?=(float)$b['amount'] + (float)$b['processing_fees']?> ("<SPAN class="ft7">Principal Amount</SPAN>"). An amount of Rs.<?=$femi_amount-($loan_amountc/2)?> & <?=$semi_amount-($loan_amountc/2)?> ("<SPAN class="ft7">Interest Amount on EMI Dates respectively</SPAN>"). and an amount of Rs. <?=$loan_amountc*0.018?> ("<SPAN class="ft7">GST</SPAN>") is payable by the Borrower, along with the Principal Amount, on or before the corresponding Repayment Date(s) mentioned below. An amount of Rs.<?=$loanf['processing_fees']?> shall be deducted by the Lender from the Principal Amount at the time of disbursal of the Principal Amount by the Lender to the Borrower by way of a processing fee ("<SPAN class="ft7">Processing Fee</SPAN>"). The Borrower shall be liable to pay an amount of Rs.50 per day as penalty charges on the corresponding Repayment Instalment following the expiry of the relevant Repayment Date ("Interest Amount After Repayment Date") up to the date of actual payment.</P>
 <P class="p13 ft13"><SPAN class="ft1">3.</SPAN><SPAN class="ft12">Borrower’s phone number and notice details:</SPAN></P>
 <P class="p14 ft2"><SPAN class="ft3">1.</SPAN><SPAN class="ft16">Primary mobile number: <?=$loanf['mobile']?></SPAN></P>
 <P class="p15 ft2"><SPAN class="ft3">2.</SPAN><SPAN class="ft16">Alternate mobile number: <?=$loanf['altmobile']?></SPAN></P>

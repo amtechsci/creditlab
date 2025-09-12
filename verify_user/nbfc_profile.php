@@ -768,7 +768,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                        $usersd_penality_charge = 0;
                                    }
     $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
-    $loan_amountc = $lof['processed_amount'] + $lof['p_fee'] + $lof['origination_fee'];
+    $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
     $dis_date = date('Y-m-d', strtotime(date_create($lof['processed_date'])->format("Y-m-d") . " -1 day"));
     $di = strtotime($dis_date);
     if($lof['status_log'] == 'cleared'){

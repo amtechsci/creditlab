@@ -132,7 +132,7 @@ while ($loan = towfetch($eligible_loans)) {
     if (townum($easebuzz_adtd) > 0) {
         $easebuzz_adtdff = towfetch($easebuzz_adtd);
 
-        $totalamount = $loan['processed_amount'] + $loan['p_fee'] + $loan['service_charge'] + $gst + $loan['penality_charge'];
+        $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$loan['service_charge'] + $gst + (float)$loan['penality_charge'];
         $totalamount = number_format($totalamount, 2, '.', '');
 
         // 5. Prepare the payment details for the API call.

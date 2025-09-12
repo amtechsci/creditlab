@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
                 // IMPORTANT: Fixed a potential undefined variable error for $gst. Set it to 0 or your actual GST value.
                 $gst = 0; 
                 
-                $totalamount = $loan['processed_amount'] + $loan['p_fee'] + $loan['service_charge'] + $gst + $loan['penality_charge'];
+                $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$loan['service_charge'] + $gst + (float)$loan['penality_charge'];
                 $totalamount = number_format($totalamount, 2, '.', '');
 
                 $paymentDetails = [

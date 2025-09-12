@@ -43,7 +43,7 @@ if(isset($_POST['validation'])){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation') WHERE id=".$id."");
         $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$id." ORDER BY id DESC");
         $validfetch = towfetch($valid);
-        $totalamount = $validfetch['amount'] + $validfetch['processing_fees'] + $validfetch['service_charge'];
+        $totalamount = (float)$validfetch['amount'] + (float)$validfetch['processing_fees'] + (float)$validfetch['service_charge'];
         if($validfetch['status'] == "pending"){
             towquery("UPDATE `user` SET `status`='follow up' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='follow up', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
@@ -104,14 +104,14 @@ $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$userpro_id." AND (statu
 
 if($approvenew == 1){
 while($validfetch = towfetch($valid)){
-$atbaba = $validfetch['amount'] + $validfetch['processing_fees'] + $validfetch['origination_fee'];
+$atbaba = (float)$validfetch['amount'] + (float)$validfetch['processing_fees'] + (float)$validfetch['origination_fee'];
 $amount = ($atbaba / 100) * 88;
 $processing_fees = ($atbaba / 100) * 5;
 $origination_fee = ($atbaba / 100) * 7;
 towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processing_fees',`origination_fee`='$origination_fee',`days`=$days WHERE id='".$validfetch['id']."'");
     $lidloan = towquery("SELECT * FROM `loan_apply` where id=".$validfetch['id']);
         $lap = towfetch($lidloan);
-        $t = $lap['amount'] + $lap['processing_fees'] + $lap['origination_fee'];
+        $t = (float)$lap['amount'] + (float)$lap['processing_fees'] + (float)$lap['origination_fee'];
         $day =  $lap['days'];
         if(($day) <= 5 ){
         $fee = $t * $day / 100 * 0.3;
@@ -555,7 +555,7 @@ if(isset($_POST['transaction'])){
         towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$date' WHERE uid=".$id." AND id=".$cllid."");
         if($userpro_approvenew == 0){$is_emi = 0;}else{$is_emi = 1;}
         // $totalamount = $transaction_amount + $validfetch['processing_fees'] + $validfetch['service_charge'] + ($validfetch['processing_fees']*0.18);
-        $totalamount = $transaction_amount + $validfetch['processing_fees'] + ($validfetch['processing_fees']*0.18);
+        $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
         towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
                         VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
     towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
@@ -1801,7 +1801,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                        $usersd_penality_charge = 0;
                                    }
     $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
-    $loan_amountc = $lof['processed_amount'] + $lof['p_fee'] + $lof['origination_fee'];
+    $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
     $dis_date = date('Y-m-d', strtotime(date_create($lof['processed_date'])->format("Y-m-d") . " -1 day"));
     $di = strtotime($dis_date);
     if($lof['status_log'] == 'cleared'){

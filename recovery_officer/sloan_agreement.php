@@ -10,7 +10,7 @@ $a = towquery("SELECT * FROM user_login_details WHERE uid='".$loanf['uid']."' OR
 $b = $loanf;
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
-             $loan_amountc = $b['amount'] + $b['processing_fees'];
+             $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'];
              $salary_date = $userpro_salary_date;
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");
@@ -371,7 +371,7 @@ body{margin-top: 0px;margin-left: 0px;}
 <P class="p10 ft15">This Agreement between the Lender and the Borrower is for a disbursal amount of Rs.<?=$b['amount']?> (“<SPAN class="ft14">Disbursal Amount</SPAN>”).</P>
 <P class="p11 ft13"><SPAN class="ft1">2.</SPAN><SPAN class="ft12">Principal Amount, Interest Amount Before Repayment Date, Processing Fee & Convenience Fee</SPAN></P>
 <P class="p12 ft6">
-    This Agreement between the Lender and the Borrower is for a principal amount of Rs. <?php echo $b['amount'] + $b['processing_fees']?> (“Principal
+    This Agreement between the Lender and the Borrower is for a principal amount of Rs. <?php echo (float)$b['amount'] + (float)$b['processing_fees']?> ("Principal
 
 Amount”). An amountof Rs.<?=$loanf['service_charge']?> (“InterestAmount”)
 
@@ -414,7 +414,7 @@ corresponding Repayment Date(s) mentioned below. An amount of Rs.<?=$loanf['proc
         <td>1</td>
         <td><?=$femi_date?>
 </td>
-        <td>RS. <?=$b['amount'] + $b['processing_fees'] + $b['service_charge']?></td>
+        <td>RS. <?=(float)$b['amount'] + (float)$b['processing_fees'] + (float)$b['service_charge']?></td>
       </tr>
     </tbody>
   </table>

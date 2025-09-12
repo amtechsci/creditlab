@@ -87,10 +87,10 @@ while ($row = towfetch($result)) {
     // --- UPDATED CALCULATIONS based on your provided code ---
 
     // Calculate Loan Principle as per your logic
-    $loan_principle = $row['processed_amount'] + $row['p_fee'] + ($row['p_fee'] * 0.18);
+    $loan_principle = (float)$row['processed_amount'] + (float)$row['p_fee'] + ((float)$row['p_fee'] * 0.18);
 
     // Calculate Outstanding Amount as per your logic
-    $outstanding_amount = $row['processed_amount'] + $row['p_fee'] + ($row['p_fee'] * 0.18) + $row['total_interest'] + $row['penality_charge'];
+    $outstanding_amount = (float)$row['processed_amount'] + (float)$row['p_fee'] + ((float)$row['p_fee'] * 0.18) + (float)$row['total_interest'] + (float)$row['penality_charge'];
 
     // Calculate Exhausted Days and DPD
     if (!empty($row['loan_start_date'])) {

@@ -56,11 +56,11 @@ while ($row = towfetch($result)) {
 
     // Calculate financial details
     $high_credit = $row['amount']; // Loan amount is the high credit
-    $current_balance = $row['amount'] + $row['service_charge'];
+    $current_balance = (float)$row['amount'] + (float)$row['service_charge'];
     
-    $gst = ($row['processing_fees']*0.18);
-    $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
-    $dpd = ($row['exhausted_period'] > 30) ? $row['exhausted_period']-30 : 0;
+    $gst = ((float)$row['processing_fees']*0.18);
+    $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
+    $dpd = ((float)$row['exhausted_period'] > 30) ? (float)$row['exhausted_period']-30 : 0;
     
     if($dpd > 61){$dpdt = '05';}elseif($dpd > 31){$dpdt = '03';}elseif($dpd > 1){$dpdt = '02';}else{$dpdt = '01';}
     
