@@ -6,10 +6,18 @@ error_reporting(E_ALL);
 // mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 mysqli_set_charset($db,'utf8');
+
+// Disable SQL strict mode to prevent syntax errors
+mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
 function towquery($query)
 {
 	global $db;
 	$re = mysqli_query($db,$query);
+	if (!$re) {
+		error_log("SQL Error: " . mysqli_error($db) . " - Query: " . $query);
+		// Return false instead of throwing fatal error
+		return false;
+	}
 	return $re;
 }
  function towquery2($query)
