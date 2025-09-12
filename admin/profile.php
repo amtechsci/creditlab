@@ -112,7 +112,7 @@ if(isset($_POST['mobile'])){
             $loan_limit = $userpro_loan_limit;
         }
         $fb_url = '';
-        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,state='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
+        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
 ,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code' WHERE id='$userpro_id'";
 $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$userpro_id." AND (status='pending' OR status='follow up' OR status='disbursal' ) ORDER BY id DESC");
 
