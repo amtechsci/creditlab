@@ -6,14 +6,14 @@
  * This script calculates and updates loan service charges and penalties.
  * It is designed to be run as a frequent cron job.
  *
- * @version 2.0
- * @author Optimized by Gemini
+ * @version 2.1
+ * @author Fixed for cron execution
  *
  * CHANGES:
- * - Implemented a single, persistent database connection to prevent resource exhaustion.
- * - Optimized the main database query to use a JOIN, reducing N+1 query issues.
- * - Removed redundant and unused functions.
- * - Added basic error handling for the database connection.
+ * - Use existing db.php configuration
+ * - Fixed function conflicts
+ * - Added proper error logging
+ * - Added cron-specific error handling
  */
 
 // --- Configuration and Setup ---
@@ -26,34 +26,33 @@ error_reporting(-1);
 // Set the correct timezone for date calculations.
 date_default_timezone_set('Asia/Kolkata');
 
+// Include the existing database configuration
+require_once 'db.php';
+
 // --- Database Connection ---
 
-// OPTIMIZATION: Create only ONE database connection and reuse it for all queries.
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-
-// Check if the connection was successful.
-if (!$db) {
-    // Log the error or use die() to stop the script if the database is down.
-    // In a cron job, you might want to log this to a file instead of dying silently.
-    error_log("Database connection failed: " . mysqli_connect_error());
-    die("Connection failed: " . mysqli_connect_error());
+// Use the existing database connection from db.php
+if (!isset($db) || !$db) {
+    error_log("Cron Job Error: Database connection failed at " . date('Y-m-d H:i:s'));
+    exit(1);
 }
-
-// Set the character set for the connection.
-mysqli_set_charset($db, 'utf8');
 
 
 // --- Helper Functions (Refactored) ---
 
 /**
  * Executes a database query using the existing connection.
- * @param mysqli $db The active database connection object.
  * @param string $query The SQL query string.
  * @return mysqli_result|bool The result object or false on failure.
  */
-function towquery($db, $query)
+function cron_query($query)
 {
-    return mysqli_query($db, $query);
+    global $db;
+    $result = mysqli_query($db, $query);
+    if (!$result) {
+        error_log("Cron Job Query Error: " . mysqli_error($db) . " - Query: " . $query);
+    }
+    return $result;
 }
 
 /**
@@ -61,7 +60,7 @@ function towquery($db, $query)
  * @param mysqli_result $query_result The result object from mysqli_query.
  * @return array|null The fetched row or null.
  */
-function towfetch($query_result)
+function cron_fetch($query_result)
 {
     return mysqli_fetch_array($query_result);
 }
@@ -93,17 +92,20 @@ $loan_data_query = "
     LIMIT 5";
 
 // Execute the main query using the single database connection.
-$loan_data = towquery($db, $loan_data_query);
+$loan_data = cron_query($loan_data_query);
 
 if (!$loan_data) {
-    error_log("Main loan query failed: " . mysqli_error($db));
-    mysqli_close($db);
-    exit; // Exit if the main query fails
+    error_log("Cron Job Error: Main loan query failed at " . date('Y-m-d H:i:s'));
+    exit(1);
 }
 
+// Log start of processing
+error_log("Cron Job: Starting loan calculation at " . date('Y-m-d H:i:s'));
+
+$processed_count = 0;
 
 // Loop through each loan to perform calculations.
-while ($loan_fetch = towfetch($loan_data)) {
+while ($loan_fetch = cron_fetch($loan_data)) {
     // Extract variables with a 'users_' prefix (e.g., $users_id, $users_uid, etc.)
     // This now includes $users_approvenew and $users_star_member directly from the JOIN.
     extract($loan_fetch, EXTR_PREFIX_ALL, "users");
@@ -183,11 +185,23 @@ while ($loan_fetch = towfetch($loan_data)) {
                         `last_cal_date` = '$date'
                     WHERE `id` = '$users_id'";
 
-    // Execute the update query.
-    towquery($db, $update_query);
+    // Execute the update query and check for success.
+    $update_result = cron_query($update_query);
+    if ($update_result) {
+        $processed_count++;
+        error_log("Cron Job: Updated loan ID $users_id - Service Charge: $service_charge, Penalty: $penality");
+    } else {
+        error_log("Cron Job Error: Failed to update loan ID $users_id");
+    }
 }
 
 // --- Cleanup ---
+
+// Log completion
+error_log("Cron Job: Completed processing $processed_count loans at " . date('Y-m-d H:i:s'));
+
+// Print result for cron output
+echo "$processed_count rows updated\n";
 
 // Close the single database connection at the end of the script.
 mysqli_close($db);
