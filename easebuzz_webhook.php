@@ -48,7 +48,7 @@ $data = $_POST;
 // Make sure the required fields are available in the callback
 if (isset($data['txnid'], $data['authorization_status']) && $data['furl'] == 'https://creditlab.in/payment/cb.php') {
     // Using prepared statements to prevent SQL Injection
-    $stmt1 = mysqli_prepare($db, "UPDATE easebuzz_adtd SET authorization_status = ?, net_amount_debit = ?, bank_ref_num = ?, easepayid = ?, addedon = ?, cash_back_percentage = ?, status = ?, error_message = ?, auto_debit_access_key = ? WHERE txnid = ?");
+    $stmt1 = mysqli_prepare($db, "UPDATE easebuzz_adtd SET authorization_status = ?, net_amount_debit = ?, bank_ref_num = ?, easepayid = ?, addedon = ?, cash_back_percentage = ?, status = ?, auto_debit_access_key = ? WHERE txnid = ?");
 
     $txnid = $data['txnid'];
     $authorization_status = strtolower($data['authorization_status']);
@@ -70,7 +70,7 @@ if (isset($data['txnid'], $data['authorization_status']) && $data['furl'] == 'ht
         $user_easebuzz_status = 0;
     }
 
-    mysqli_stmt_bind_param($stmt1, "ssssssssss", $update_status, $net_amount_debit, $bank_ref_num, $easepayid, $addedon, $cash_back_percentage, $status, $error_message, $auto_debit_access_key, $txnid);
+    mysqli_stmt_bind_param($stmt1, "sssssssss", $update_status, $net_amount_debit, $bank_ref_num, $easepayid, $addedon, $cash_back_percentage, $status, $auto_debit_access_key, $txnid);
 
     if (mysqli_stmt_execute($stmt1)) {
         echo "Authorization status updated in easebuzz_adtd.\n";
@@ -148,7 +148,7 @@ if (isset($data['txnid'], $data['authorization_status']) && $data['furl'] == 'ht
     } else {
         $error_msg = isset($result['error_Message']) ? $result['error_Message'] : "Unknown error.";
         echo "Payment Failed: " . $error_msg;
-        towquery($db, "UPDATE `pg_transaction` SET `status`='failure', `error_message`='".$error_msg."' WHERE txnid='$txnid'");
+        towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid'");
     }
 } else {
     echo "Request could not be processed.";

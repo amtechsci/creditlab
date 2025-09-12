@@ -130,15 +130,15 @@ $concatenated_updates = implode("<br><br>", $updated_ats);
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
+                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
                                         <?php if($user_member == 0){echo 'silver';} if($user_member == 1){echo 'gold';} if($user_member == 2){echo 'diamond';} if($user_member == 3){echo 'Platinum';}
                                                      if($user_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
                                         </td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"><?=$user_altmobile?></td>
-                                        <td data-title="Mobile"><?=$user_processed_amount+$user_p_fee+($user_p_fee*0.18)?></td>
+                                        <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)?></td>
                                         <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
-                                        <td data-title="Mobile"><?=$user_processed_amount+$user_p_fee+($user_p_fee*0.18)+$user_service_charge+$user_penality_charge?></td>
+                                        <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge?></td>
                                         <td data-title="Mobile">CLL<?=$user_lid?></td>
                                         <td data-title="Mobile"><?=$user_salary_date?></td>
                                         <td data-title="Customer Response"><?php echo $concatenated_responses; ?></td>
@@ -248,7 +248,7 @@ $concatenated_updates = implode("<br><br>", $updated_ats);
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
+                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"></td>
                                         <td data-title="Mobile"><?=$user_processed_amount?></td>

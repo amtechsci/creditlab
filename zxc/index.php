@@ -2,6 +2,7 @@
 
 require 'class/class.phpmailer.php';
 include('pdf.php');
+require_once '../lib/s3_aws_sdk.php';
 if(isset($_GET['url'])){
 $curl = curl_init();
 curl_setopt_array($curl, array(
@@ -29,7 +30,19 @@ if(isset($_GET['email']))
 	$pdf->render();
 	$pdf->setPaper('A4','landscape');
 	$file = $pdf->output();
-	file_put_contents('uploads/'.$file_name, $file);
+	
+	// Upload to S3 only - no local storage
+	list($success, $result) = s3_upload_string($file, $file_name, 'application/pdf');
+	
+	if (!$success) {
+		// If S3 upload fails, show error
+		echo "Error uploading to S3: " . $result;
+		exit;
+	}
+	
+	// For email attachment, we need to create a temporary local file
+	$temp_file = sys_get_temp_dir() . '/' . $file_name;
+	file_put_contents($temp_file, $file);
 // 	echo $file;
 	$mail = new PHPMailer;
 // 	$mail->SMTPDebug = true;
@@ -45,7 +58,7 @@ if(isset($_GET['email']))
 	$mail->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
 	$mail->IsHTML(true);							//Sets message type to HTML				
-	$mail->AddAttachment('uploads/'.$file_name);     				//Adds an attachment from a path on the filesystem
+	$mail->AddAttachment($temp_file);     				//Adds an attachment from a path on the filesystem
 	$mail->Subject = 'LOAN AGREEMENT';			//Sets the Subject of the message
 	$mail->Body = 'Dear customer,<br><br>
 
@@ -86,7 +99,19 @@ if(isset($_GET['email']))
 	$pdf->render();
 	$pdf->setPaper('A4','landscape');
 	$file = $pdf->output();
-	file_put_contents('uploads/'.$file_name, $file);
+	
+	// Upload to S3 only - no local storage
+	list($success, $result) = s3_upload_string($file, $file_name, 'application/pdf');
+	
+	if (!$success) {
+		// If S3 upload fails, show error
+		echo "Error uploading to S3: " . $result;
+		exit;
+	}
+	
+	// For email attachment, we need to create a temporary local file
+	$temp_file = sys_get_temp_dir() . '/' . $file_name;
+	file_put_contents($temp_file, $file);
 	$mail2 = new PHPMailer;
 // 	$mail2->SMTPDebug = true;
 	$mail2->IsSMTP();								//Sets Mailer to send message using SMTP
@@ -101,7 +126,7 @@ if(isset($_GET['email']))
 	$mail2->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail2->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
 	$mail2->IsHTML(true);							//Sets message type to HTML				
-	$mail2->AddAttachment('uploads/'.$file_name);     				//Adds an attachment from a path on the filesystem
+	$mail2->AddAttachment($temp_file);     				//Adds an attachment from a path on the filesystem
 	$mail2->Subject = 'SANCTION LETTER / KEY FACT STATEMENT';			//Sets the Subject of the message
 	$mail2->Body = 'Dear customer,<br><br>
 
@@ -143,7 +168,19 @@ if(isset($_GET['email']))
 	$pdf->render();
 	$pdf->setPaper('A4','landscape');
 	$file = $pdf->output();
-	file_put_contents('uploads/'.$file_name, $file);
+	
+	// Upload to S3 only - no local storage
+	list($success, $result) = s3_upload_string($file, $file_name, 'application/pdf');
+	
+	if (!$success) {
+		// If S3 upload fails, show error
+		echo "Error uploading to S3: " . $result;
+		exit;
+	}
+	
+	// For email attachment, we need to create a temporary local file
+	$temp_file = sys_get_temp_dir() . '/' . $file_name;
+	file_put_contents($temp_file, $file);
 // 	echo $file;
 	$mail2 = new PHPMailer;
 // 	$mail2->SMTPDebug = true;
@@ -159,7 +196,7 @@ if(isset($_GET['email']))
 	$mail2->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail2->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
 	$mail2->IsHTML(true);							//Sets message type to HTML				
-	$mail2->AddAttachment('uploads/'.$file_name);     				//Adds an attachment from a path on the filesystem
+	$mail2->AddAttachment($temp_file);     				//Adds an attachment from a path on the filesystem
 	$mail2->Subject = 'NO  DUE';			//Sets the Subject of the message
 	$mail2->Body = 'Dear customer,<br><br>
 

@@ -31,7 +31,7 @@ $usernumber[0] = $userfetchmain['mobile'];$number = array_filter($usernumber);
    if(count($seauserid) > 0){
        $aa = '';
    foreach($seauserid as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -65,7 +65,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    if(count($seauserid) > 0){
        $aa = '';
    foreach($seauserid as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -77,6 +77,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    <tr>
    <td data-title="CID">Primary / Alt mail in any ID</td>
    <?php
+    $seaemail = array(); // Initialize the array
     $useremail1 = $userfetchmain['email'];
     $user = towquery("SELECT * FROM `user` WHERE (email='$useremail1' OR altemail='$useremail1') AND NOT id=$id AND NOT active=2");
    while($userfetch = towfetch($user)){
@@ -91,11 +92,11 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    $seaemail[$i] = $email_id;
    $i++;
    }
-   $seaemail = array_unique($seaemail);
+   $seaemail = array_unique($seaemail ?: []);
    if(count($seaemail) > 0){
        $aa = '';
    foreach($seaemail as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -116,8 +117,10 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    while($ubana = towfetch($ubanaa)){
   $user = towquery("SELECT id FROM `user` WHERE id='{$ubana['uid']}' AND NOT active=2");
   $userfetch = towfetch($user);
-  $seauseridbank[$i] = $userfetch['id'];
-  $i++;
+  if($userfetch && isset($userfetch['id'])){
+      $seauseridbank[$i] = $userfetch['id'];
+      $i++;
+  }
    }
    }else{
     $seauseridbank = [];   
@@ -126,7 +129,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    if(count($seauseridbank) > 0){
        $aa = '';
    foreach($seauseridbank as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -149,7 +152,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    if(count($seauserid) > 0){
        $aa = '';
    foreach($seauserid as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -173,7 +176,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    if(count($seauserid) > 0){
        $aa = '';
    foreach($seauserid as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -204,7 +207,7 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
    if(count($seauseridbank) > 0){
        $aa = '';
    foreach($seauseridbank as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";
@@ -234,7 +237,7 @@ $number = array_filter($usernumber);
    if(count($seauserid) > 0){
        $aa = '';
    foreach($seauserid as $value){
-   $user = towquery("SELECT id FROM `user` WHERE id=$value AND NOT id=$id");
+   $user = towquery("SELECT id FROM `user` WHERE id=$value AND id != $id");
    if(townum($user) > 0){
    while($userfetch = towfetch($user)){
    $aa .= "<a href='/admin/profile.php?id={$userfetch['id']}'>{$userfetch['id']}</a>,";

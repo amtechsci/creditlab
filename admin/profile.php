@@ -1439,7 +1439,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Account Name</lable>
-                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=$userpro_ac_name?>">
+                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=isset($ub_ac_name) ? $ub_ac_name : ''?>">
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1827,8 +1827,8 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td>CLL<?=$usersd_lid?></td>
                                         <td><?=$usersd_processed_date?></td>
                                         <td>
-                                        <?php $azxs = (0.12*$papay)/1.18;
-                                        $papay = ($usersd_processed_amount + $usersd_p_fee + ($usersd_p_fee*0.18));
+                                        <?php $papay = ((float)$usersd_processed_amount + (float)$usersd_p_fee + ((float)$usersd_p_fee*0.18));
+                                        $azxs = (0.12*$papay)/1.18;
                                         echo $papay;
                                         ?></td>
                                         <td><?=$usersd_processed_amount?></td>

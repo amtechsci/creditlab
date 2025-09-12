@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once '../lib/s3_upload_helper.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
@@ -162,7 +163,7 @@ if(isset($_POST['document'])){
     $conpanydocument = explode(".",$conpanydocument);
     $conpanydocument = end($conpanydocument);
     $conpanydocument = $userpro_email.'conpany'.date('YmdHis').'.'.$conpanydocument;
-    move_uploaded_file($_FILES["conpanydocument"]["tmp_name"], '../user/uploads/'.$conpanydocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["conpanydocument"]["tmp_name"], $conpanydocument, $_FILES["conpanydocument"]["type"]);
     }else{$conpanydocument = $userpro_conpanydocument;}}else{$conpanydocument = $userpro_conpanydocument;}
     
     if(!empty($_FILES['personaldocument']['name'])){
@@ -179,7 +180,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $personaldocument[$i] = $userpro_email.'personal'.$new.$i.'.'.$ext;
-move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'../user/uploads/'.$personaldocument[$i]);
+list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument']['tmp_name'][$i], $personaldocument[$i], $_FILES['personaldocument']['type'][$i]);
         $i++;
         }else{$personaldocument[$i] = $userpro_personaldocument[$i]; $i++;}
     }
@@ -195,7 +196,7 @@ move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'../user/uploads/
     $salarydocument = explode(".",$salarydocument);
     $salarydocument = end($salarydocument);
     $salarydocument = $userpro_email.'salary'.date('YmdHis').'.'.$salarydocument;
-    move_uploaded_file($_FILES["salarydocument"]["tmp_name"], '../user/uploads/'.$salarydocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["salarydocument"]["tmp_name"], $salarydocument, $_FILES["salarydocument"]["type"]);
     }else{$salarydocument = $userpro_salarydocument;}
     }else{$salarydocument = $userpro_salarydocument;}
     
@@ -208,7 +209,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument']['tmp_name'],'../user/uploads/'.$bankdocument);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument']['tmp_name'], $bankdocument, $_FILES['bankdocument']['type']);
         $i++;
     }else{$bankdocument = $userpro_bankdocument;}
     }else{
@@ -224,7 +225,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument2 = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument2']['tmp_name'],'../user/uploads/'.$bankdocument2);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument2']['tmp_name'], $bankdocument2, $_FILES['bankdocument2']['type']);
         $i++;
     }else{$bankdocument2 = $userpro_bankdocument2;}
     }else{
@@ -240,7 +241,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument3 = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bankdocument3);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['tmp_name'], $bankdocument3, $_FILES['bankdocument3']['type']);
         $i++;
     }else{$bankdocument3 = $userpro_bankdocument3;}
     }else{
@@ -255,7 +256,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $addressdocument = explode(".",$addressdocument);
     $addressdocument = end($addressdocument);
     $addressdocument = $userpro_email.'address'.date('YmdHis').'.'.$addressdocument;
-    move_uploaded_file($_FILES["addressdocument"]["tmp_name"], '../user/uploads/'.$addressdocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["addressdocument"]["tmp_name"], $addressdocument, $_FILES["addressdocument"]["type"]);
     }else{
         $addressdocument = "$userpro_addressdocument";
     }}else{
@@ -269,7 +270,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $signature = explode(".",$signature);
     $signature = end($signature);
     $signature = $userpro_email.'signature'.date('YmdHis').'.'.$signature;
-    move_uploaded_file($_FILES["signature"]["tmp_name"], '../user/uploads/'.$signature);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["signature"]["tmp_name"], $signature, $_FILES["signature"]["type"]);
     }else{
         $signature = "$userpro_signature";
     }}else{
@@ -827,7 +828,7 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Pan</td>
         <td><?=$pan[1];?></td>
-        <td><?php if(($userpro_conpanydocument !="no") and ($userpro_conpanydocument !="")){?><a href="../user/uploads/<?=$userpro_conpanydocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_conpanydocument !="no") and ($userpro_conpanydocument !="")){?><a href="../user/file.php?f=<?=$userpro_conpanydocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="conpanydocument" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="pan_pass" class="form-control"></td>
       </tr>
@@ -837,14 +838,14 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Aadhar front side</td>
         <td><?=$aadhar[1];?></td>
-        <td><?php if(($aadharfile[0] !="no") and ($aadharfile[0] !="")){?><a href="../user/uploads/<?=$aadharfile[0]?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($aadharfile[0] !="no") and ($aadharfile[0] !="")){?><a href="../user/file.php?f=<?=$aadharfile[0]?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="personaldocument[]" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="aadhar_pass" class="form-control"></td>
       </tr>
       <tr>
         <td>Aadhar Back side</td>
         <td><?=$aadhar2[1];?></td>
-        <td><?php if(($aadharfile[1] !="no") and ($aadharfile[1] !="")){?><a href="../user/uploads/<?=$aadharfile[1]?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($aadharfile[1] !="no") and ($aadharfile[1] !="")){?><a href="../user/file.php?f=<?=$aadharfile[1]?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="personaldocument[]" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="aadhar_pass2" class="form-control"></td>
       </tr>
@@ -852,7 +853,7 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Salary Document</td>
         <td><?=$salary[1];?></td>
-        <td><?php if(($userpro_salarydocument !="no") and ($userpro_salarydocument !="")){?><a href="../user/uploads/<?=$userpro_salarydocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_salarydocument !="no") and ($userpro_salarydocument !="")){?><a href="../user/file.php?f=<?=$userpro_salarydocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="salarydocument" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="salary_pass" class="form-control"></td>
       </tr>
@@ -860,7 +861,7 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Bank Document</td>
         <td><?=$bank[1];?></td>
-        <td><?php if(($userpro_bankdocument !="no") and ($userpro_bankdocument !="")){?><a href="../user/uploads/<?=$userpro_bankdocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_bankdocument !="no") and ($userpro_bankdocument !="")){?><a href="../user/file.php?f=<?=$userpro_bankdocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="bankdocument" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="bank_pass" class="form-control"></td>
       </tr>
@@ -868,7 +869,7 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Bank Document2</td>
         <td><?=$bank2[1];?></td>
-        <td><?php if(($userpro_bankdocument2 !="no") and ($userpro_bankdocument2 !="")){?><a href="../user/uploads/<?=$userpro_bankdocument2;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_bankdocument2 !="no") and ($userpro_bankdocument2 !="")){?><a href="../user/file.php?f=<?=$userpro_bankdocument2;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="bankdocument2" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="bank_pass2" class="form-control"></td>
       </tr>
@@ -876,7 +877,7 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Bank Document3</td>
         <td><?=$bank3[1];?></td>
-        <td><?php if(($userpro_bankdocument3 !="no") and ($userpro_bankdocument3 !="")){?><a href="../user/uploads/<?=$userpro_bankdocument3;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_bankdocument3 !="no") and ($userpro_bankdocument3 !="")){?><a href="../user/file.php?f=<?=$userpro_bankdocument3;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="bankdocument3" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="bank_pass3" class="form-control"></td>
       </tr>
@@ -884,14 +885,14 @@ if(isset($_POST['loan_acc_man'])){
       <tr>
         <td>Address Document</td>
         <td><?=$address[1];?></td>
-        <td><?php if(($userpro_addressdocument !="no") and ($userpro_addressdocument !="")){?><a href="../user/uploads/<?=$userpro_addressdocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_addressdocument !="no") and ($userpro_addressdocument !="")){?><a href="../user/file.php?f=<?=$userpro_addressdocument;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="addressdocument" class="form-control"></td>
         <td><input type="text" placeholder="Password..." name="address_pass" class="form-control"></td>
       </tr>
       <tr>
         <td>signature </td>
         <td>no password</td>
-        <td><?php if(($userpro_signature !="no") and ($userpro_signature !="")){?><a href="../user/uploads/<?=$userpro_signature;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
+        <td><?php if(($userpro_signature !="no") and ($userpro_signature !="")){?><a href="../user/file.php?f=<?=$userpro_signature;?>" download><i class="fa fa-download" style="text-align: center;font-size: 30px;"></i></a><?php } ?></td>
         <td><input type="file" name="signature" class="form-control"></td>
       </tr>
     </tbody>

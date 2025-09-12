@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once '../lib/s3_upload_helper.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
@@ -198,7 +199,11 @@ if(isset($_POST['document'])){
     $conpanydocument = explode(".",$conpanydocument);
     $conpanydocument = end($conpanydocument);
     $conpanydocument = $userpro_email.'conpany'.date('YmdHis').'.'.$conpanydocument;
-    move_uploaded_file($_FILES["conpanydocument"]["tmp_name"], '../user/uploads/'.$conpanydocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["conpanydocument"]["tmp_name"], $conpanydocument);
+    if (!$success) {
+        echo "Error uploading company document: " . $message;
+        exit;
+    }
     }else{$conpanydocument = $userpro_conpanydocument;}}else{$conpanydocument = $userpro_conpanydocument;}
     
     if(!empty($_FILES['personaldocument']['name'])){
@@ -1327,7 +1332,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Account Name</lable>
-                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=$userpro_ac_name?>">
+                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=isset($ub_ac_name) ? $ub_ac_name : ''?>">
                                                             </div>
                                                         </div>
                                                     </div>

@@ -19,13 +19,14 @@ if ($_POST) {
     $result = $easebuzzObj->easebuzzResponse($_POST);
     $result = json_decode($result, true);
 
+    // Extract transaction details from the response (available for both success and failure)
+    $txnid = isset($result['data']['txnid']) ? $result['data']['txnid'] : '';
+    $amount = isset($result['data']['amount']) ? $result['data']['amount'] : '';
+    $payment_method = isset($result['data']['mode']) ? $result['data']['mode'] : '';
+    $bank_reference_number = isset($result['data']['bank_ref_num']) ? $result['data']['bank_ref_num'] : '';
+    
     // Check if payment was successful
     if (isset($result['status']) && $result['status'] == 1 && isset($result['data']['status']) && $result['data']['status'] === "success") {
-        // Extract transaction details from the response
-        $txnid = $result['data']['txnid'];
-        $amount = $result['data']['amount'];
-        $payment_method = $result['data']['mode'];
-        $bank_reference_number = $result['data']['bank_ref_num'];
 
         // Fetch loan_id from pg_transaction table
         $pg_transaction = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnid' AND `status`!='success'");
@@ -92,7 +93,7 @@ if ($_POST) {
         echo isset($result['data']['error_Message']) ? $result['data']['error_Message'] : "Unknown error.";
         
         // Update pg_transaction with failure status
-        towquery("UPDATE `pg_transaction` SET `status`='failure', `error_message`='".$result['data']['error_Message']."' WHERE txnid='$txnid'");
+        towquery("UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid'");
     }
 } else {
     echo "No response received!";

@@ -82,6 +82,30 @@ if($b['days'] > 30){
 	<style type="text/css">
 body{margin-top: 0px;margin-left: 0px;}
 
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    #page_1, #page_2, #page_3, #page_4, #page_5, #page_6, #page_7, #page_8, #page_9, #page_10, #page_11, #page_12 {
+        width: 100% !important;
+        margin: 20px 10px !important;
+        padding: 10px !important;
+    }
+    
+    .ft0, .ft1, .ft2, .ft3, .ft4, .ft5, .ft6, .ft7, .ft8, .ft9, .ft10, .ft11, .ft12, .ft13, .ft14, .ft15, .ft16, .ft17, .ft18, .ft19, .ft20, .ft21, .ft22, .ft23, .ft24, .ft25, .ft26, .ft27, .ft28, .ft29, .ft30, .ft31, .ft32, .ft33, .ft34, .ft35, .ft36, .ft37, .ft38, .ft39, .ft40, .ft41, .ft42, .ft43, .ft44, .ft45, .ft46, .ft47, .ft48, .ft49, .ft50, .ft51, .ft52, .ft53, .ft54, .ft55, .ft56, .ft57, .ft58, .ft59, .ft60, .ft61, .ft62, .ft63, .ft64, .ft65, .ft66, .ft67, .ft68, .ft69, .ft70, .ft71, .ft72, .ft73, .ft74, .ft75, .ft76, .ft77, .ft78, .ft79, .ft80, .ft81, .ft82, .ft83, .ft84, .ft85, .ft86, .ft87, .ft88, .ft89, .ft90, .ft91, .ft92, .ft93, .ft94, .ft95, .ft96, .ft97, .ft98, .ft99 {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+    }
+    
+    table {
+        width: 100% !important;
+        font-size: 10px !important;
+    }
+    
+    td, th {
+        padding: 5px !important;
+        word-wrap: break-word !important;
+    }
+}
+
 #page_1 {position:relative; overflow: hidden;margin: 62px 0px 36px 57px;padding: 0px;border: none;width: 737px;}
 #page_1 #id1_1 {border:none;margin: 0px 0px 0px 0px;padding: 0px;border:none;width: 737px;overflow: hidden;}
 #page_1 #id1_2 {border:none;margin: 55px 0px 0px 0px;padding: 0px;border:none;width: 737px;overflow: hidden;}

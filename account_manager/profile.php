@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once '../lib/s3_upload_helper.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
@@ -209,7 +210,7 @@ if(isset($_POST['document'])){
     $conpanydocument = explode(".",$conpanydocument);
     $conpanydocument = end($conpanydocument);
     $conpanydocument = $userpro_email.'conpany'.date('YmdHis').'.'.$conpanydocument;
-    move_uploaded_file($_FILES["conpanydocument"]["tmp_name"], '../user/uploads/'.$conpanydocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["conpanydocument"]["tmp_name"], $conpanydocument, $_FILES["conpanydocument"]["type"]);
     }else{$conpanydocument = $userpro_conpanydocument;}}else{$conpanydocument = $userpro_conpanydocument;}
     
     if(!empty($_FILES['personaldocument']['name'])){
@@ -228,7 +229,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $personaldocument[$i] = $userpro_email.'personal'.$new.$i.'.'.$ext;
-move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'../user/uploads/'.$personaldocument[$i]);
+list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument']['tmp_name'][$i], $personaldocument[$i], $_FILES['personaldocument']['type'][$i]);
         $i++;
         }else{$personaldocument[$i] = $userpro_personaldocument[$i]; $i++;}
     }
@@ -244,7 +245,7 @@ move_uploaded_file($_FILES['personaldocument']['tmp_name'][$i],'../user/uploads/
     $salarydocument = explode(".",$salarydocument);
     $salarydocument = end($salarydocument);
     $salarydocument = $userpro_email.'salary'.date('YmdHis').'.'.$salarydocument;
-    move_uploaded_file($_FILES["salarydocument"]["tmp_name"], '../user/uploads/'.$salarydocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["salarydocument"]["tmp_name"], $salarydocument, $_FILES["salarydocument"]["type"]);
     }else{$salarydocument = $userpro_salarydocument;}
     }else{$salarydocument = $userpro_salarydocument;}
     
@@ -257,7 +258,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument']['tmp_name'],'../user/uploads/'.$bankdocument);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument']['tmp_name'], $bankdocument, $_FILES['bankdocument']['type']);
         $i++;
     }else{$bankdocument = $userpro_bankdocument;}
     }else{
@@ -273,7 +274,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument2 = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument2']['tmp_name'],'../user/uploads/'.$bankdocument2);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument2']['tmp_name'], $bankdocument2, $_FILES['bankdocument2']['type']);
         $i++;
     }else{$bankdocument2 = $userpro_bankdocument2;}
     }else{
@@ -289,7 +290,7 @@ $ext = explode(".",$a);
 $ext = end($ext);
 $new = date('ymdhis');
 $bankdocument3 = $userpro_email.'bank'.$new.'.'.$ext;
-move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bankdocument3);
+list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['tmp_name'], $bankdocument3, $_FILES['bankdocument3']['type']);
         $i++;
     }else{$bankdocument3 = $userpro_bankdocument3;}
     }else{
@@ -304,7 +305,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $addressdocument = explode(".",$addressdocument);
     $addressdocument = end($addressdocument);
     $addressdocument = $userpro_email.'address'.date('YmdHis').'.'.$addressdocument;
-    move_uploaded_file($_FILES["addressdocument"]["tmp_name"], '../user/uploads/'.$addressdocument);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["addressdocument"]["tmp_name"], $addressdocument, $_FILES["addressdocument"]["type"]);
     }else{
         $addressdocument = "$userpro_addressdocument";
     }}else{
@@ -319,7 +320,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $companyidcard = explode(".",$companyidcard);
     $companyidcard = end($companyidcard);
     $companyidcard = $userpro_email.'address'.date('YmdHis').'.'.$companyidcard;
-    move_uploaded_file($_FILES["companyidcard"]["tmp_name"], '../user/uploads/'.$companyidcard);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["companyidcard"]["tmp_name"], $companyidcard, $_FILES["companyidcard"]["type"]);
     }else{
         $companyidcard = "$userpro_companyidcard";
     }}else{
@@ -334,7 +335,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $signature = explode(".",$signature);
     $signature = end($signature);
     $signature = $userpro_email.'signature'.date('YmdHis').'.'.$signature;
-    move_uploaded_file($_FILES["signature"]["tmp_name"], '../user/uploads/'.$signature);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["signature"]["tmp_name"], $signature, $_FILES["signature"]["type"]);
     }else{
         $signature = "$userpro_signature";
     }}else{
@@ -348,7 +349,7 @@ move_uploaded_file($_FILES['bankdocument3']['tmp_name'],'../user/uploads/'.$bank
     $selfie = explode(".",$selfie);
     $selfie = end($selfie);
     $selfie = $userpro_email.'selfie'.date('YmdHis').'.'.$selfie;
-    move_uploaded_file($_FILES["selfie"]["tmp_name"], '../user/uploads/'.$selfie);
+    list($success, $message) = s3_upload_file_from_upload($_FILES["selfie"]["tmp_name"], $selfie, $_FILES["selfie"]["type"]);
     }else{
         $selfie = "$userpro_$selfie";
     }}else{
@@ -1010,7 +1011,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_conpanydocument == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_conpanydocument;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_conpanydocument;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1033,7 +1034,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                         } elseif ($aadharfile[0] == "") {
                                                                             echo "(Requested to reupload)";
                                                                         } else { ?>
-                                                                            <a href="../user/uploads/<?=$aadharfile[0];?>" target="_blank">
+                                                                            <a href="../user/file.php?f=<?=$aadharfile[0];?>" target="_blank">
                                                                                 <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                             </a>
                                                                     <?php } } ?>
@@ -1055,7 +1056,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                         } elseif ($aadharfile[1] == "") {
                                                                             echo "(Requested to reupload)";
                                                                         } else { ?>
-                                                                            <a href="../user/uploads/<?=$aadharfile[1];?>" target="_blank">
+                                                                            <a href="../user/file.php?f=<?=$aadharfile[1];?>" target="_blank">
                                                                                 <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                             </a>
                                                                     <?php } } ?>
@@ -1076,7 +1077,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_salarydocument == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_salarydocument;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_salarydocument;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1097,7 +1098,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_bankdocument == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_bankdocument;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_bankdocument;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1118,7 +1119,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_bankdocument2 == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_bankdocument2;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_bankdocument2;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1139,7 +1140,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_bankdocument3 == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_bankdocument3;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_bankdocument3;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1160,7 +1161,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_addressdocument == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_addressdocument;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_addressdocument;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1180,7 +1181,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_companyidcard == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_companyidcard;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_companyidcard;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1199,7 +1200,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_signature == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_signature;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_signature;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1219,7 +1220,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                     } elseif ($userpro_selfie == "") {
                                                                         echo "(Requested to reupload)";
                                                                     } else { ?>
-                                                                        <a href="../user/uploads/<?=$userpro_selfie;?>" target="_blank">
+                                                                        <a href="../user/file.php?f=<?=$userpro_selfie;?>" target="_blank">
                                                                             <i class="fa fa-download" style="margin-right:10px; text-align: center; font-size: 30px;"></i>
                                                                         </a>
                                                                     <?php } ?>
@@ -1327,7 +1328,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                         <td><input type="text" name="ac_type" value="<?=$ub_ac_type?>" class="form-control"></td>
                                         <td><input type="text" name="ifsc_code" value="<?=$ub_ifsc_code?>" class="form-control"></td>
                                         <td><input type="text" name="ac_name" value="<?=$ub_ac_name?>" class="form-control"></td>
-                                        <td><a href="../user/uploads/<?=$ub_bank_statment?>" target="_blank">View</a></td>
+                                        <td><a href="../user/file.php?f=<?=$ub_bank_statment?>" target="_blank">View</a></td>
                                         <td><button type="submit" class="btn btn-success" name="bank_detail_update">Save</button></td>
                                         </form>
                                         <td><?php if($ub_verify == 0){ ?>

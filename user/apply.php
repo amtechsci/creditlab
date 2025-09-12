@@ -21,7 +21,7 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
     $service_charge = 0;
     
         $p_f_per = 14;
-    if($user_interest_percentage == 1){
+    if(isset($user_interest_percentage) && $user_interest_percentage == 1){
         $p_f = ($amount / 100)*14;
                     if($cday >= 3 ){
                         $fee = $t * 3 / 100 * 0;

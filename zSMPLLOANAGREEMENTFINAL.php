@@ -42,6 +42,7 @@ function calculateEMI($loan_amount,$pro_fee_per = 13,$interest_percentage = 1) {
     $interest_rate_per_month = 0.03; // 3%
     $days = 30;
     $processing_fee = $loan_amount * $processing_fee_rate;
+    $upfront_charges = $processing_fee; // Define upfront_charges
     $total_interest = $service_charge;
     $disbursed = $loan_amount - $processing_fee;
     $total_amount_payable = $disbursed + $processing_fee + $total_interest;

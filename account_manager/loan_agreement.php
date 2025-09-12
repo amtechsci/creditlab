@@ -412,7 +412,7 @@ body{margin-top: 0px;margin-left: 0px;}
 <P class="p14 ft2"><SPAN class="ft3">1.</SPAN><SPAN class="ft16">Primary mobile number: <?=$loanf['mobile']?></SPAN></P>
 <P class="p15 ft2"><SPAN class="ft3">2.</SPAN><SPAN class="ft16">Alternate mobile number: <?=$loanf['altmobile']?></SPAN></P>
 <P class="p15 ft2"><SPAN class="ft3">3.</SPAN><SPAN class="ft16">Borrower’s present address: </SPAN><?=$loanf['permanent_address']?></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id1_2">
 <P class="p16 ft17">Page 1 of 12</P>
@@ -467,7 +467,7 @@ $bankf = towfetch($bank);
 <P class="p33 ft2"><SPAN class="ft3">1.</SPAN><SPAN class="ft20">Unique Loan ID No.: CLL<?=$id?></SPAN></P>
 <P class="p36 ft11">WHEREAS</P>
 <P class="p37 ft27"><SPAN class="ft2">(A)</SPAN><SPAN class="ft26">The Borrower has requested the Lender to advance the Principal Amount (as defined in the TD Schedule) and the Lender, relying upon the representations and warranties made by the Borrower, has agreed to advance the Principal Amount to the Borrower, subject to the terms and conditions mentioned in this Agreement.</SPAN></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id2_4">
 <P class="p16 ft17">Page 2 of 12</P>
@@ -494,7 +494,7 @@ $bankf = towfetch($bank);
 <P class="p52 ft2">Unless the context of this Agreement otherwise requires:</P>
 <P class="p53 ft2"><SPAN class="ft2">(a)</SPAN><SPAN class="ft39">words using the singular or plural number also include the plural or singular number,respectively;</SPAN></P>
 <P class="p54 ft2"><SPAN class="ft2">(b)</SPAN><SPAN class="ft40">words of any gender are deemed to include all genders;</SPAN></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id3_2">
 <P class="p16 ft17">Page 3 of 12</P>
@@ -525,7 +525,7 @@ $bankf = towfetch($bank);
 <P class="p69 ft46">In case of termination of this Agreement prior to the repayment of all outstanding amounts in this Agreement, the Borrower shall repay the entire outstanding Principal Amount along with all Interest Amount on or before EMI Date, GST and penalty charges after EMI Date, as applicable, any and all expenses for the enforcement and collection of any amounts due under the Agreement, and any other charges, dues and monies payable, costs and expenses reimbursable, as outstanding from time to time</P>
 <P class="p70 ft2">and whether any of them are due or not as per the TD Schedule (“Amounts Payable”) to the Lender within</P>
 <P class="p71 ft2">2 Working Days from such date of termination.</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id4_2">
 <P class="p16 ft17">Page 4 of 12</P>
@@ -550,7 +550,7 @@ $bankf = towfetch($bank);
 <P class="p82 ft18">https://creditlab.in/privacy.php).</P>
 <P class="p83 ft17"><SPAN class="ft1">3.2</SPAN><SPAN class="ft30">The occurrence of such Events of Default shall be considered to be a default under this Agreement ("</SPAN><SPAN class="ft21">Default</SPAN>"). The Lender shall communicate the Default status to the Borrower either by itself or through any third parties engaged by the Lender for this purpose (“<SPAN class="ft21">Default Notice</SPAN>”).</P>
 <P class="p84 ft17"><SPAN class="ft1">3.3</SPAN><SPAN class="ft30">Consequence of an Event of Default Upon the occurrence of a Default, the Lender shall have the following rights:</SPAN></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id5_2">
 <P class="p16 ft17">Page 5 of 12</P>
@@ -573,7 +573,7 @@ $bankf = towfetch($bank);
 <P class="p95 ft6">The Borrower agrees that and creates a lien over all the assets of the Borrower till such time as the Amounts Payable are fully discharged in accordance with the terms herein, and specifically over (i) any credit balances in the bank account (as disclosed in the TD Schedule) and any other bank accounts maintained by the Borrower with a banking or financial institution or any other payment banks; and/or</P>
 <P class="p96 ft6"><SPAN class="ft2">(ii)</SPAN><SPAN class="ft52">monies owed to the Borrower, at present or in the future, and/or (iii) any income, earnings of any nature, or gifts received by the Borrower. The Borrower hereby agrees that it shall not in any way, dispose off its assets without the prior written consent of the Lender.</SPAN></P>
 <P class="p97 ft15">The rights, powers and remedies given to the Lender by this agreement shall be in addition to all rights, powers and remedies given to the Lender by virtue of any other security, statute or rule of law.</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id6_2">
 <P class="p16 ft17">Page 6 of 12</P>
@@ -595,7 +595,7 @@ $bankf = towfetch($bank);
 <P class="p103 ft46">In the event of payment of any Repayment EMI (or any other Amounts Payable, if applicable) beyond the relevant Repayment Date by the Borrower, the Borrower shall be liable to pay a lump sum additional interest amount equivalent to 0% of the unpaid principal amount. In addition, in the event of late payment of any Repayment EMI (or any other Amounts Payable, if applicable) by the Borrower, the Borrower shall be liable to pay an amount of Rs.50 per day as an additional interest on the corresponding Repayment EMI following the expiry of the relevant Repayment Date (“<SPAN class="ft53">Interest Amount After Repayment Date</SPAN>”) up to the date of actual payment; and the same shall be transferred to the Lender’s account along with the relevant Repayment EMI. It is hereby clarified that the Interest Amount After Repayment Date shall be due and payable for each delay in the payment of the Repayment EMI from its corresponding Repayment Date.</P>
 <P class="p104 ft6">It is further clarified that the Borrower shall be deemed to have committed a ‘Default’ in terms of this Agreement upon delay in payment of any or all Repayment Instalment(s) on the corresponding Repayment Date(s). The payment of Late Payment Interest Amount shall not absolve the Borrower of the other obligations including to ensure timely payment of the next Repayment EMI and/or in respect of such default or affect any of the other rights of the Lender under this Agreement.</P>
 <P class="p105 ft2">The Borrower explicitly agrees and acknowledges that the Interest Amount after repayment date is</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id7_2">
 <P class="p16 ft17">Page 7 of 12</P>
@@ -623,7 +623,7 @@ $bankf = towfetch($bank);
 <P class="p119 ft27"><SPAN class="ft2">(c)</SPAN><SPAN class="ft26">The Borrower confirms that it has taken appropriate advice and waives any defenses available to him / her under money lending, usury or other laws relating to the charging of interest.</SPAN></P>
 <P class="p120 ft27"><SPAN class="ft2">(d)</SPAN><SPAN class="ft26">The Borrower has read all the terms and conditions, privacy policy, and other material available at the website of the Lender.</SPAN></P>
 <P class="p121 ft1">6. INDEMNITY</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id8_2">
 <P class="p16 ft17">Page 8 of 12</P>
@@ -650,7 +650,7 @@ $bankf = towfetch($bank);
 <P class="p52 ft2">The Borrower represents, warrants and covenants that:</P>
 <P class="p130 ft27"><SPAN class="ft2">(a)</SPAN><SPAN class="ft28">He/she has read all the terms and conditions (https://creditlab.in/terms.php), privacy policy (https://creditlab.in/privacy.php), and other material available at the website of creditlab (https://creditlab.in/).</SPAN></P>
 <P class="p131 ft3"><SPAN class="ft61">(b)</SPAN><SPAN class="ft62">The Borrower hereby unconditionally agrees to abide by the terms and conditions, privacy policy and other material contained on the website of the Lender and/or the creditlab.in and such terms and conditions, privacy policy and other material contained on the website of the Lender and/or the creditlab.in shall be incorporated herein by reference.</SPAN></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id9_2">
 <P class="p16 ft17">Page 9 of 12</P>
@@ -674,7 +674,7 @@ $bankf = towfetch($bank);
 <P class="p140 ft27"><SPAN class="ft1">9.2</SPAN><SPAN class="ft69">Governing Law and Jurisdiction: </SPAN>This Agreement is governed by and shall be construed in accordance with the laws of India and subject to the dispute resolution provisions of this Agreement, the courts and tribunals at Narmada shall have exclusive jurisdiction with regard to any disputes arising in relation to this Agreement.</P>
 <P class="p44 ft72"><SPAN class="ft70">9.3</SPAN><SPAN class="ft71">Waivers: </SPAN>No forbearance, delay, or inaction by any Party at any time, in exercising a right, power or remedy shall impair any</P>
 <P class="p141 ft72">such right, power or remedy or operate as a waiver or acquiescence to a breach under this Agreement by the other Party. No waiver of right or acquiescence to <NOBR>non-compliance</NOBR> shall be effective or deemed made unless made in writing and duly executed by the Lender. Any such waiver or acquiescence shall be effective only in the specific instance and for the specific purpose for which it is given and may be subject to such conditions as the waiving or acquiescing Party may impose at its sole discretion. No such waiver or acquiescence in respect of a breach shall be construed as a waiver, acquiescence or consent to, any continuing or succeeding breach.</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id10_2">
 <P class="p16 ft17">Page 10 of 12</P>
@@ -698,7 +698,7 @@ $bankf = towfetch($bank);
 <P class="p152 ft27">all or any such: (i) information and data in relation to it; (ii) the information or data relating to any credit facility availed of / to be availed by it; (iii) default if any committed by it in discharge of our such obligation, as the Lender may deem appropriate and necessary to disclose and furnish to third party agencies and any other agency authorized in this behalf by RBI; and (iv) the Borrower declares that the information and data furnished by it to the Lender are true and correct in all respects.</P>
 <P class="p153 ft27"><SPAN class="ft1">9.12</SPAN><SPAN class="ft73">Execution in counterparts: </SPAN>This Agreement may be executed in any number of counterparts and all of which taken together shall constitute one and the same instrument. The Parties may enter into this Agreement by signing any such counterpart.</P>
 <P class="p154 ft3"><SPAN class="ft74">9.13</SPAN><SPAN class="ft75">Further assurance: </SPAN>Each of the Parties hereto shall cooperate with the other and execute and deliver to the other such instruments and document and take such other actions as may be reasonably requested from time to time in order to carry out evidence and confirm their rights and the intended propose of this Agreement.</P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id11_2">
 <P class="p16 ft17">Page 11 of 12</P>
@@ -712,16 +712,16 @@ $bankf = towfetch($bank);
 <P class="p156 ft27"><SPAN class="ft2">(i)</SPAN><SPAN class="ft26">notwithstanding the absence of physical signatures of the parties on this Agreement or any of the notice / intimation / offer / acceptance in connection with this Agreement, the Agreement or any of the other documents executed by me/us in electronic or digital form shall be legally valid, binding and enforceable against me/us;</SPAN></P>
 <P class="p157 ft27"><SPAN class="ft2">(ii)</SPAN><SPAN class="ft26">it shall not raise any objection or claims in relation to validity or enforceability of this Agreement or any of the other documents solely on account of this Agreement or any of the other documents having been executed in an electronic form or digital form (signature)by way of a click wrap agreement; and</SPAN></P>
 <P class="p158 ft27"><SPAN class="ft2">(iii)</SPAN><SPAN class="ft26">it shall not raise any objection or claim in relation to process, method, storage, or means of authentication of execution of this Agreement or any of the documents in connection with this Agreement.</SPAN></P>
-<div style="height:100px; overflow:hidden;"><img src="../user/uploads/<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
+<div style="height:100px; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" style="height:100px; float:right;"></div>
 </DIV>
 <DIV id="id12_2">
 <P class="p16 ft17">Page 12 of 12</P>
 </DIV>
 </DIV>
 <?php $aadharfile = explode("#",$loanf['personaldocument']);?>
-<div style="height:100%; overflow:hidden;"><img src="../user/uploads/<?=$aadharfile[0]?>" style="width:100%;height:100%;"></div>
-<div style="height:100%; overflow:hidden;"><img src="../user/uploads/<?=$aadharfile[1]?>" style="width:100%;height:100%;"></div>
-<div style="height:100%; overflow:hidden;"><img src="../user/uploads/<?=$loanf['conpanydocument']?>" style="width:100%;height:100%;"></div>
+<div style="height:100%; overflow:hidden;"><img src="../user/file.php?f=<?=$aadharfile[0]?>" style="width:100%;height:100%;"></div>
+<div style="height:100%; overflow:hidden;"><img src="../user/file.php?f=<?=$aadharfile[1]?>" style="width:100%;height:100%;"></div>
+<div style="height:100%; overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['conpanydocument']?>" style="width:100%;height:100%;"></div>
 
 </body>
 </html>
