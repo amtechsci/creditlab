@@ -1713,8 +1713,8 @@ document.querySelectorAll('.remove-row').forEach(button => {
                                         <?php if($userpro_approvenew == 0){?>
                                         <br><a target="_blank" href="https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>&url2=https://creditlab.in/key2.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
                                         <?php if($users_status == "account manager" or $users_status == "cleared"){?>
-                                        <br><a href="/zxc/uploads/<?=hash('md5',"https://creditlab.in/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
-                                        <br><a href="/zxc/uploads/<?=hash('md5',"https://creditlab.in/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
+                                        <br><a href="/user/file.php?f=<?=hash('md5',"https://creditlab.in/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
+                                        <br><a href="/user/file.php?f=<?=hash('md5',"https://creditlab.in/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
                                         <?php }else{?>
                                         <br><a href="https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>" class="btn btn-success">View</a>
                                         <br><a href="https://creditlab.in/key2.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
