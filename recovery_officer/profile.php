@@ -1365,8 +1365,8 @@ if(isset($_POST['loan_acc_man'])){
              $tax = $loan_amountc / 100 * 1.8;
              $di = strtotime($dis_date);
              $sa = strtotime($sal_day);
-             $datediff = $sa - $di;
-             $day_gap = round($datediff / (60 * 60 * 24));
+        $datediff = $sa - $di;
+        $day_gap = round($datediff / (60 * 60 * 24)) + 1;
                  $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
                  $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
                  $fe = strtotime($femi_date);

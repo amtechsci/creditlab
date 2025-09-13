@@ -36,10 +36,10 @@ extract($b,EXTR_PREFIX_ALL,"user");
         $user_altmobile,
         $user_email,
         $user_altemail,
-        $user_processed_amount+$user_p_fee+($user_p_fee*0.18),
+        (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18),
         $user_processed_amount,
         ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24)),
-        $user_processed_amount+$user_p_fee+($user_p_fee*0.18)+$user_service_charge+$user_penality_charge
+        (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge
     ];
 
     // Write the row to the output

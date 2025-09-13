@@ -13,7 +13,7 @@ include_once 'head.php';
              $di = strtotime($dis_date);
              $sa = strtotime($sal_day);
              $datediff = $sa - $di;
-             $day_gap = round($datediff / (60 * 60 * 24));
+             $day_gap = round($datediff / (60 * 60 * 24)) + 1;
              if($day_gap > 15){
                  $femi_date = $sal_day;
                  $semi_date = date('Y-m-d', strtotime( $femi_date . " +1 month"));

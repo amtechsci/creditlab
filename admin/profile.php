@@ -1834,7 +1834,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
         $sa = strtotime($lof['cleard_date'] ?: date('Y-m-d'));
     }
         $datediff = $sa - $di;
-        $day_gap = round($datediff / (60 * 60 * 24));
+        $day_gap = round($datediff / (60 * 60 * 24)) + 1;
             if($usersd_is_emi==1){
                 $femi_date = date('Y-m-d', strtotime($dis_date . " +30 day"));
                 $semi_date = date('Y-m-d', strtotime($femi_date . " +35 day"));

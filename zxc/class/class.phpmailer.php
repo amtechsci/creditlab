@@ -699,8 +699,8 @@ class PHPMailer {
       }
       return false;
     }
-    $address = trim($address);
-    $name = trim(preg_replace('/[\r\n]+/', '', $name)); //Strip breaks and trim
+    $address = trim($address ?: '');
+    $name = trim(preg_replace('/[\r\n]+/', '', $name ?: '')); //Strip breaks and trim
     if (!$this->ValidateAddress($address)) {
       $this->SetError($this->Lang('invalid_address').': '. $address);
       if ($this->exceptions) {
@@ -735,8 +735,8 @@ class PHPMailer {
    * @return boolean
    */
   public function SetFrom($address, $name = '', $auto = true) {
-    $address = trim($address);
-    $name = trim(preg_replace('/[\r\n]+/', '', $name)); //Strip breaks and trim
+    $address = trim($address ?: '');
+    $name = trim(preg_replace('/[\r\n]+/', '', $name ?: '')); //Strip breaks and trim
     if (!$this->ValidateAddress($address)) {
       $this->SetError($this->Lang('invalid_address').': '. $address);
       if ($this->exceptions) {

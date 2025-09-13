@@ -9,6 +9,7 @@ if(isset($_POST['salarystatus'])){
         $template_id='1107169453425832956';
         $mobile=$user_mobile;
         include '../send_sms.php';
+        $work_from = isset($work_from) ? $work_from : '';
     (towquery("UPDATE `user` SET `salary`='".$extract['salary']."',`salarystatus`='".$extract['salarystatus']."',`verify`=1,`status`='Approved',`get_salary`='".$extract['get_salary']."',`designation`='".$extract['designation']."',`work_from`='$work_from',`loan_limit`='$loan_limit' WHERE mobile='$user'") and
     print_r("<script>alert('congratulations! your membership has been approved by creditlab.in'); window.location.replace('index.php');</script>")) or print_r("<script>alert(''); window.location.replace('index.php');</script>");
     }elseif(($extract['salary'] < 18000) and ($extract['salarystatus'] == "Salaried")){

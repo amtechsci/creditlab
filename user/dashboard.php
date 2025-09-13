@@ -111,7 +111,7 @@
              $di = strtotime($dis_date);
              $sa = strtotime($sal_day);
              $datediff = $sa - $di;
-             $day_gap = round($datediff / (60 * 60 * 24));
+             $day_gap = round($datediff / (60 * 60 * 24)) + 1;
              $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
              $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
              $fe = strtotime($femi_date);
@@ -165,7 +165,7 @@
                         $di = strtotime($dis_date);
                         $sa = $today;
                         $datediff = $sa - $di;
-                        $day_gap = round($datediff / (60 * 60 * 24));
+                        $day_gap = round($datediff / (60 * 60 * 24)) + 1;
                         towquery("UPDATE `loan` SET `penality_charge`='$fpenality',`exhausted_period`='$day_gap' WHERE `lid`='".$b['id']."'");
                         }
                     }else{
