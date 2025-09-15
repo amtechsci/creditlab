@@ -949,8 +949,20 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <?php $userpro_document_password = explode("#", $userpro_document_password); ?>
-                                                            <?php $pan = explode("pan", $userpro_document_password[0]); ?>
+                                                            <?php $userpro_document_password = explode("#", $userpro_document_password ?: ''); ?>
+                                                            <?php $pan = explode("pan", isset($userpro_document_password[0]) ? $userpro_document_password[0] : ''); ?>
+                                                            
+                                                            <!-- Debug Information -->
+                                                            <tr style="background-color: #f0f0f0;">
+                                                                <td colspan="5">
+                                                                    <strong>Debug Info:</strong><br>
+                                                                    Document Password Raw: <?= htmlspecialchars($userpro_document_password ?: 'NULL') ?><br>
+                                                                    Document Password Array: <?= print_r($userpro_document_password, true) ?><br>
+                                                                    Company Document: <?= htmlspecialchars($userpro_conpanydocument ?: 'NULL') ?><br>
+                                                                    Personal Document: <?= htmlspecialchars($userpro_personaldocument ?: 'NULL') ?><br>
+                                                                    Salary Document: <?= htmlspecialchars($userpro_salarydocument ?: 'NULL') ?>
+                                                                </td>
+                                                            </tr>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="conpanydocument"></td> <!-- Checkbox for Pan -->
                                                                 <td>Pan 
@@ -971,12 +983,12 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Aadhar Document -->
-                                                            <?php $aadhar = explode("aadhar", $userpro_document_password[1]); ?>
+                                                            <?php $aadhar = explode("aadhar", isset($userpro_document_password[1]) ? $userpro_document_password[1] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="personaldocument"></td> <!-- Checkbox for Aadhar -->
                                                                 <td>Aadhar front side 
                                                                     <?php 
-                                                                    $aadharfile = explode("#", $userpro_personaldocument);
+                                                                    $aadharfile = explode("#", $userpro_personaldocument ?: '');
                                                                     if (isset($aadharfile[0])) {
                                                                         if ($aadharfile[0] == "no") {
                                                                             echo "(No doc uploaded)";
@@ -994,7 +1006,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Aadhar Back Side -->
-                                                            <?php $aadhar2 = explode("aadhar2", $userpro_document_password[2]); ?>
+                                                            <?php $aadhar2 = explode("aadhar2", isset($userpro_document_password[2]) ? $userpro_document_password[2] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="personaldocument"></td> <!-- Checkbox for Aadhar Back -->
                                                                 <td>Aadhar back side 
@@ -1016,7 +1028,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Salary Document -->
-                                                            <?php $salary = explode("salary", $userpro_document_password[3]); ?>
+                                                            <?php $salary = explode("salary", isset($userpro_document_password[3]) ? $userpro_document_password[3] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="salarydocument"></td> <!-- Checkbox for Salary -->
                                                                 <td>Salary Document 
@@ -1037,7 +1049,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Bank Document -->
-                                                            <?php $bank = explode("bank", $userpro_document_password[4]); ?>
+                                                            <?php $bank = explode("bank", isset($userpro_document_password[4]) ? $userpro_document_password[4] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="bankdocument"></td> <!-- Checkbox for Bank -->
                                                                 <td>Bank Document 
@@ -1058,7 +1070,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Bank Document 2 -->
-                                                            <?php $bank2 = explode("bank2", $userpro_document_password[6]); ?>
+                                                            <?php $bank2 = explode("bank2", isset($userpro_document_password[6]) ? $userpro_document_password[6] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="bankdocument2"></td> <!-- Checkbox for Bank Document 2 -->
                                                                 <td>Bank Document 2 
@@ -1079,7 +1091,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Bank Document 3 -->
-                                                            <?php $bank3 = explode("bank3", $userpro_document_password[7]); ?>
+                                                            <?php $bank3 = explode("bank3", isset($userpro_document_password[7]) ? $userpro_document_password[7] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="bankdocument3"></td> <!-- Checkbox for Bank Document 3 -->
                                                                 <td>Bank Document 3 
@@ -1100,7 +1112,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                 
                                                             <!-- Address Document -->
-                                                            <?php $address = explode("address", $userpro_document_password[5]); ?>
+                                                            <?php $address = explode("address", isset($userpro_document_password[5]) ? $userpro_document_password[5] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="addressdocument"></td> <!-- Checkbox for Address -->
                                                                 <td>Address Document 
@@ -1120,7 +1132,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                 <td><input type="text" placeholder="Password..." name="address_pass" class="form-control"></td>
                                                             </tr>
                                                             <!-- ID Card Document -->
-                                                            <?php $comidcard = explode("comidcard", $userpro_document_password[8]); ?>
+                                                            <?php $comidcard = explode("comidcard", isset($userpro_document_password[8]) ? $userpro_document_password[8] : ''); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="companyidcard"></td> <!-- Checkbox for Company ID Card -->
                                                                 <td>Company ID Card 
