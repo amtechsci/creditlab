@@ -541,7 +541,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
                             <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active" data-toggle="tab" style="margin-bottom:30px;"><a href="#Personal">Personal</a></li>
+                                <li class="active" data-toggle="tab" style="margin-bottom:30px;"><a href="#Personal" data-toggle="tab">Personal</a></li>
                                 <!--<li><a h data-toggle="tab"ref="#additional"> additional</a></li>-->
                                 <li><a href="#INFORMATION" data-toggle="tab">Documents</a></li>
                                 <li><a href="#Bank" data-toggle="tab">Bank Information</a></li>
@@ -952,17 +952,6 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             <?php $userpro_document_password = explode("#", $userpro_document_password ?: ''); ?>
                                                             <?php $pan = explode("pan", isset($userpro_document_password[0]) ? $userpro_document_password[0] : ''); ?>
                                                             
-                                                            <!-- Debug Information -->
-                                                            <tr style="background-color: #f0f0f0;">
-                                                                <td colspan="5">
-                                                                    <strong>Debug Info:</strong><br>
-                                                                    Document Password Raw: <?= htmlspecialchars($userpro_document_password ?: 'NULL') ?><br>
-                                                                    Document Password Array: <?= print_r($userpro_document_password, true) ?><br>
-                                                                    Company Document: <?= htmlspecialchars($userpro_conpanydocument ?: 'NULL') ?><br>
-                                                                    Personal Document: <?= htmlspecialchars($userpro_personaldocument ?: 'NULL') ?><br>
-                                                                    Salary Document: <?= htmlspecialchars($userpro_salarydocument ?: 'NULL') ?>
-                                                                </td>
-                                                            </tr>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="conpanydocument"></td> <!-- Checkbox for Pan -->
                                                                 <td>Pan 
@@ -2001,22 +1990,53 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
         ?>
         <script>
         $(document).ready(function () {
+            console.log('Tab initialization started');
+            
             // Get the tab from URL query parameter
             const urlParams = new URLSearchParams(window.location.search);
             const activeTab = urlParams.get('tab');
+            console.log('Active tab from URL:', activeTab);
+            
             if (activeTab) {
-                $(`#myTabedu1 a[href="#${activeTab}"]`).tab('show');
+                const tabElement = $(`#myTabedu1 a[href="#${activeTab}"]`);
+                console.log('Tab element found:', tabElement.length);
+                if (tabElement.length > 0) {
+                    tabElement.tab('show');
+                    console.log('Tab shown:', activeTab);
+                }
             }
 
             // Update the URL query parameter on tab click
-            $('#myTabedu1 a').on('click', function (e) {
+            $('#myTabedu1 a[data-toggle="tab"]').on('click', function (e) {
                 e.preventDefault();
                 const tabId = $(this).attr('href').substring(1); // Remove #
+                console.log('Tab clicked:', tabId);
+                
                 const url = new URL(window.location);
                 url.searchParams.set('tab', tabId); // Set the tab parameter
                 window.history.replaceState({}, '', url); // Update URL without reload
+                
+                // Show the tab
                 $(this).tab('show');
+                console.log('Tab shown:', tabId);
             });
+            
+            // Debug: Check if Bootstrap tabs are available
+            console.log('Bootstrap tabs available:', typeof $.fn.tab);
+            console.log('Tab elements found:', $('#myTabedu1 a[data-toggle="tab"]').length);
+            
+            // Test tab functionality
+            setTimeout(function() {
+                console.log('Testing tab functionality...');
+                $('#myTabedu1 a[data-toggle="tab"]').each(function() {
+                    console.log('Tab link:', $(this).attr('href'), 'Text:', $(this).text());
+                });
+                
+                // Check if tab content exists
+                $('.tab-pane').each(function() {
+                    console.log('Tab pane:', $(this).attr('id'), 'Visible:', $(this).is(':visible'));
+                });
+            }, 1000);
         });
     </script>
         <script>
