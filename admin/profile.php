@@ -480,8 +480,21 @@ if(isset($_POST['loandata'])){
 if(isset($_POST['transaction'])){
     $extract = towrealarray($_POST);
     extract($extract);
-    $cllid = explode("CLL",$cllid);
-    $cllid = $cllid[1];
+
+    // Validate all required fields
+    $errors = [];
+    if(empty($cllid)) $errors[] = "CLL ID is required";
+    if(empty($transaction_number)) $errors[] = "Transaction Number is required";
+    if(empty($transaction_date)) $errors[] = "Transaction Date is required";
+    if(empty($transaction_amount)) $errors[] = "Transaction Amount is required";
+    if(empty($transaction_flow)) $errors[] = "Transaction Flow is required";
+
+    if(!empty($errors)){
+        $error_message = implode(", ", $errors);
+        echo "<script>alert('Please fill all required fields: $error_message');</script>";
+    } else {
+        $cllid = explode("CLL",$cllid);
+        $cllid = $cllid[1];
     if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
         $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
     if(townum($che) > 0){
@@ -620,7 +633,7 @@ if(isset($_POST['transaction'])){
     $message = "We got a part payment of Rs {$transaction_amount} w.r.t your Creditlab.in loan CLL{$cllid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
     include '../send_sms.php';
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
-}
+    } // Close the validation else block
 }
 ?>
 <?php

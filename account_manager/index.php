@@ -130,7 +130,7 @@ $concatenated_updates = implode("<br><br>", $updated_ats);
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
+                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($users_sloan) && $users_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
                                         <?php if($user_member == 0){echo 'silver';} if($user_member == 1){echo 'gold';} if($user_member == 2){echo 'diamond';} if($user_member == 3){echo 'Platinum';}
                                                      if($user_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
                                         </td>
@@ -248,7 +248,7 @@ $concatenated_updates = implode("<br><br>", $updated_ats);
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
+                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($users_sloan) && $users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"></td>
                                         <td data-title="Mobile"><?=$user_processed_amount?></td>

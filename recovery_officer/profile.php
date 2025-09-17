@@ -378,9 +378,22 @@ if(isset($_POST['loandata'])){
 if(isset($_POST['transaction'])){
     $extract = towrealarray($_POST);
     extract($extract);
-    $cllid = explode("CLL",$cllid);
-    $cllid = $cllid[1];
-    print_r($cllid);
+
+    // Validate all required fields
+    $errors = [];
+    if(empty($cllid)) $errors[] = "CLL ID is required";
+    if(empty($transaction_number)) $errors[] = "Transaction Number is required";
+    if(empty($transaction_date)) $errors[] = "Transaction Date is required";
+    if(empty($transaction_amount)) $errors[] = "Transaction Amount is required";
+    if(empty($transaction_flow)) $errors[] = "Transaction Flow is required";
+
+    if(!empty($errors)){
+        $error_message = implode(", ", $errors);
+        echo "<script>alert('Please fill all required fields: $error_message');</script>";
+    } else {
+        $cllid = explode("CLL",$cllid);
+        $cllid = $cllid[1];
+        print_r($cllid);
     if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi")){
         towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script>window.location.replace('profile.php?id=".$id."');</script>");
         if($transaction_flow == "firstemi"){
@@ -415,7 +428,7 @@ if(isset($_POST['transaction'])){
         $validfetch = towfetch($valid);
      towquery("UPDATE `loan` SET `advance_amount`='$transaction_amount' WHERE uid=".$id." AND lid=".$cllid."");
     towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script> window.location.replace('profile.php?id=".$id."');</script>");
-}
+    } // Close the validation else block
 }
 ?>
 <?php
