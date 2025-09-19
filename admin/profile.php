@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
