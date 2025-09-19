@@ -101,52 +101,103 @@ if(isset($_GET['id'])){
             $cllid = explode("CLL",$cllid);
             $cllid = $cllid[1];
             
-            // INSERT TRANSACTION DETAILS
-            $insert_query = "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$id','$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')";
-            
-            echo "<div style='background: #0000ff; color: #fff; padding: 20px; margin: 10px;'>";
-            echo "<h3>💾 INSERTING TRANSACTION DETAILS</h3>";
-            echo "<p>User ID: $id</p>";
-            echo "<p>CLL ID: $cllid (from $original_cllid)</p>";
-            echo "<p>Transaction Number: $transaction_number</p>";
-            echo "<p>Transaction Date: $transaction_date</p>";
-            echo "<p>Transaction Amount: $transaction_amount</p>";
-            echo "<p>Transaction Flow: $transaction_flow</p>";
-            echo "<p>Query: $insert_query</p>";
-            echo "</div>";
-            
-            $transaction_insert = towquery($insert_query);
-            
-            if($transaction_insert) {
-                echo "<div style='background: #00ff00; color: #000; padding: 20px; margin: 10px;'>";
-                echo "<h3>✅ SUCCESS: Transaction details saved successfully!</h3>";
-                echo "<p>User ID: $id, CLL ID: $cllid</p>";
-                echo "<p>Inserted ID: " . mysqli_insert_id($db) . "</p>";
-                echo "</div>";
-                error_log("Transaction details saved successfully for user $id, CLL $cllid");
+        // PROCESS TRANSACTION FLOW FIRST (like in working code)
+        echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px;'>";
+        echo "<h3>🔄 PROCESSING TRANSACTION FLOW: $transaction_flow</h3>";
+        echo "</div>";
+        
+        if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
+            $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
+            if(townum($che) > 0){
+                $chf = towfetch($che);
                 
-                // Continue with transaction flow processing
-                if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
-                    echo "<p>Processing $transaction_flow flow...</p>";
-                    // Add specific transaction flow logic here if needed
+                if($transaction_flow == "settlement"){
+                    echo "<div style='background: #ff6600; color: #fff; padding: 15px; margin: 10px;'>";
+                    echo "<h3>🏦 PROCESSING SETTLEMENT</h3>";
+                    echo "</div>";
+                    
+                    $loan_data = towquery("SELECT * FROM loan WHERE lid='$cllid' ORDER BY id DESC");
+                    $udpd = towfetch($loan_data);
+                    $dpd = $udpd['exhausted_period']-30; 
+                    if($dpd > 0){
+                        if($dpd > 30){
+                            $point = -50;
+                        }elseif($dpd > 10){
+                            $point = -8;
+                        }else{
+                            $point = 2;
+                        }
+                    }else{$point = 8;}
+                    
+                    if($chf['is_emi'] == 1){
+                        towquery("UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid=$cllid");
+                    }
+                    
+                    towquery("UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$id."");
+                    towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
+                    towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
+                    file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
+                    towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
+                    towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
+                    $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                    
+                    echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
+                    echo "<h3>✅ SETTLEMENT COMPLETED</h3>";
+                    echo "<p>Loan Status: CLEARED</p>";
+                    echo "<p>User Status: CLEARED</p>";
+                    echo "<p>Credit Score Updated: +$point</p>";
+                    echo "</div>";
                 }
                 
+                // INSERT TRANSACTION DETAILS AFTER PROCESSING (like in working code)
+                echo "<div style='background: #0000ff; color: #fff; padding: 15px; margin: 10px;'>";
+                echo "<h3>💾 INSERTING TRANSACTION DETAILS</h3>";
+                echo "</div>";
+                
+                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+                
+                echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
+                echo "<h3>✅ TRANSACTION DETAILS SAVED!</h3>";
+                echo "</div>";
+                
+                // Send SMS
+                $template_id='1107165683325768963';
+                $mobile = $userpro_mobile;
+                include '../send_sms.php';
+                
                 echo "<div style='background: #008000; color: #fff; padding: 15px; margin: 10px;'>";
-                echo "<h3>✅ TRANSACTION COMPLETED!</h3>";
+                echo "<h3>✅ TRANSACTION COMPLETED SUCCESSFULLY!</h3>";
+                echo "<p>Loan Status: " . ($transaction_flow == 'settlement' ? 'CLEARED' : 'PROCESSED') . "</p>";
                 echo "<p><a href='profile.php?id=$id&tab=transaction_details' style='color: #fff;'>View Transaction Details</a></p>";
                 echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Back to Profile</a></p>";
                 echo "</div>";
                 exit;
-                
-            } else {
-                echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px;'>";
-                echo "<h3>❌ ERROR: Failed to save transaction details!</h3>";
-                echo "<p>Database Error: " . mysqli_error($db) . "</p>";
-                echo "<p>User ID: $id, CLL ID: $cllid</p>";
-                echo "<p>Query: $insert_query</p>";
-                echo "</div>";
-                error_log("Failed to save transaction details for user $id, CLL $cllid. Error: " . mysqli_error($db));
             }
+        }elseif($transaction_flow == "creditlab To Customer"){
+            echo "<div style='background: #ff6600; color: #fff; padding: 15px; margin: 10px;'>";
+            echo "<h3>🏦 PROCESSING DISBURSAL</h3>";
+            echo "</div>";
+            
+            $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
+            $validfetch = towfetch($valid);
+            towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
+            towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$date' WHERE uid=".$id." AND id=".$cllid."");
+            if($userpro_approvenew == 0){$is_emi = 0;}else{$is_emi = 1;}
+            $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
+            towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
+                            VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
+            
+            // Insert transaction details
+            towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+            
+            echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
+            echo "<h3>✅ DISBURSAL COMPLETED!</h3>";
+            echo "<p>Loan Status: ACCOUNT MANAGER</p>";
+            echo "<p><a href='profile.php?id=$id&tab=transaction_details' style='color: #fff;'>View Transaction Details</a></p>";
+            echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Back to Profile</a></p>";
+            echo "</div>";
+            exit;
+        }
         }
     }
     
