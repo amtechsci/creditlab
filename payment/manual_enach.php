@@ -68,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         $key = '9BIB9D914T';
         $salt = 'GGW1QF6ONH';
         $txnid = uniqid("txn_");
-        $surl = "https://creditlab.in/payment/cb.php";
-        $furl = "https://creditlab.in/payment/cb.php";
+        $surl = "https://creditlab.in/payment/cb_auto.php";
+        $furl = "https://creditlab.in/payment/cb_auto.php";
 
         $requiredKeys = [
             "amount" => "", "productinfo" => "", "firstname" => "", "email" => "", "phone" => "",

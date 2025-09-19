@@ -46,7 +46,83 @@ function towfetch($query_result) {
 $data = $_POST;
 
 // Make sure the required fields are available in the callback
-if (isset($data['txnid'], $data['authorization_status']) && $data['furl'] == 'https://creditlab.in/payment/cb.php') {
+if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
+    // Handle auto-debit execution results
+    if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'success') {
+        $merchant_debit_id = $data['merchant_debit_id'];
+        $amount = $data['amount'];
+        $bank_ref_num = $data['bank_ref_num'];
+        $txnid = $data['txnid'];
+        
+        // Extract loan.lid from merchant_debit_id (remove CLL_AUTO_ prefix)
+        if (strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
+            $loan_lid = substr($merchant_debit_id, 9); // Remove 'CLL_AUTO_' (9 characters)
+            
+            echo "Processing auto-debit success for loan.lid: $loan_lid\n";
+            
+            // Get loan details
+            $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
+            if (townum($loan_data) > 0) {
+                $loan_details = towfetch($loan_data);
+                $uid = $loan_details['uid'];
+                
+                // Get user details
+                $user_data = towquery($db, "SELECT * FROM user WHERE id='$uid'");
+                $user_details = towfetch($user_data);
+                
+                // Calculate credit score points (same logic as admin/profile.php)
+                $dpd = $loan_details['exhausted_period'] - 30;
+                if ($dpd > 0) {
+                    if ($dpd > 30) {
+                        $point = -50;
+                    } elseif ($dpd > 10) {
+                        $point = -8;
+                    } else {
+                        $point = 2;
+                    }
+                } else {
+                    $point = 8;
+                }
+                
+                // Check if it's EMI
+                $chf_data = towquery($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid'");
+                $chf = towfetch($chf_data);
+                if ($chf && $chf['is_emi'] == 1) {
+                    towquery($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid=$loan_lid");
+                }
+                
+                // Update user credit score and loan count
+                towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);
+                
+                // Clear the loan
+                towquery($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$loan_lid");
+                towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
+                towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_lid);
+                towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid'");
+                
+                // Insert transaction details
+                towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
+                
+                // Generate no-due certificate
+                file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+                
+                // Send SMS notification
+                $template_id = '1107165683325768963';
+                $mobile = $user_details['mobile'];
+                include 'send_sms.php';
+                
+                echo "SUCCESS: Loan $loan_lid cleared successfully via auto-debit\n";
+            } else {
+                echo "ERROR: Loan with lid $loan_lid not found\n";
+            }
+        } else {
+            echo "ERROR: Invalid merchant_debit_id format: $merchant_debit_id\n";
+        }
+    } else {
+        echo "Auto-debit request state: " . (isset($data['auto_debit_request_state']) ? $data['auto_debit_request_state'] : 'not set') . "\n";
+    }
+}
+elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
     // Using prepared statements to prevent SQL Injection
     $stmt1 = mysqli_prepare($db, "UPDATE easebuzz_adtd SET authorization_status = ?, net_amount_debit = ?, bank_ref_num = ?, easepayid = ?, addedon = ?, cash_back_percentage = ?, status = ?, auto_debit_access_key = ? WHERE txnid = ?");
 
