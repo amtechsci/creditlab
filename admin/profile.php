@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
@@ -95,7 +98,9 @@ $validation
 Thanks - Team creditlab.in";
 mail($to,$subject,$message,$headers);
 }
-    print_r("<script>alert('Your data is successfully updated'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    echo "<h3 style='color: green;'>SUCCESS: Your data is successfully updated!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
+    exit;
 }
 ?>
 <?php
@@ -103,7 +108,9 @@ if(isset($_POST['mobile'])){
     $extract = towrealarray($_POST);
     extract($extract);
     if($mobile == $altmobile){
-        print_r("<script>alert('please enter mobile number of any family person if you don’t have alternate number');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+        echo "<h3 style='color: red;'>ERROR: Please enter mobile number of any family person if you don't have alternate number</h3>";
+        echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
+        exit;
     }else{
     if(isset($_POST['pus'])){
         if($userpro_loan_limit != $loan_limit){
@@ -139,24 +146,29 @@ towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processin
         }else{
         $fee = $t * $day / 100 * 0.3;
         $interest = "0.3%";
-        }}
+        }
         $total_amount = $fee; 
         towquery("UPDATE `loan_apply` SET `service_charge`='$total_amount' WHERE id='".$validfetch['id']."'");
-}}
+    }
+}
 if(towquery($pqu)) {
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
 } else {
-    print_r("<script>alert('Phone No. already register');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+    echo "<h3 style='color: red;'>ERROR: Phone No. already register</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
 }
 exit;
     }elseif(($salary < 20000) and ($salarystatus == "Salaried")){
         if(towquery("UPDATE `user` SET `verify`=3 WHERE id='$userpro_id'")) {
-            print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            echo "<h3 style='color: blue;'>Operation completed!</h3>";
+            echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
         }
         exit;
     }else{
         if(towquery("UPDATE `user` SET `verify`=4 WHERE id='$userpro_id'")) {
-            print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            echo "<h3 style='color: blue;'>Operation completed!</h3>";
+            echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
         }
         exit;
     }
@@ -210,7 +222,8 @@ if(isset($_POST['user_conta'])){
         $v = towreal($_POST['user_contact']);
     towquery("UPDATE `user_contact_details` SET `user_contact`='$v' WHERE uid=$userpro_id");
     }
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";exit;
 }
 if(isset($_POST['conta'])){
     $a = towquery("SELECT * FROM user_contact_details WHERE uid=$userpro_id");
@@ -221,12 +234,13 @@ if(isset($_POST['conta'])){
         $v = towreal($_POST['contact']);
     towquery("UPDATE `user_contact_details` SET `contact`='$v' WHERE uid=$userpro_id");
     }
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";exit;
 }
 if(isset($_POST['document'])){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['conpanydocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $conpanydocument = $_FILES["conpanydocument"]["name"];
@@ -276,12 +290,11 @@ if (!$success) $personaldocument[$i] = $userpro_personaldocument[$i];
     }else{$salarydocument = $userpro_salarydocument;}
     
     if(!empty($_FILES['bankdocument']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['bankdocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument']['name'];
-$ext = explode(".",$a);
-$ext = end($ext);
+$ext = pathinfo($a, PATHINFO_EXTENSION);
 $new = date('ymdhis');
 $bankdocument = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument']['tmp_name'], $bankdocument, 'application/octet-stream');
@@ -311,12 +324,11 @@ if (!$success) $bankdocument2 = $userpro_bankdocument2;
     }
     
     if(!empty($_FILES['bankdocument3']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument3']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['bankdocument3']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument3']['name'];
-$ext = explode(".",$a);
-$ext = end($ext);
+$ext = pathinfo($a, PATHINFO_EXTENSION);
 $new = date('ymdhis');
 $bankdocument3 = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument3']['tmp_name'], $bankdocument3, 'application/octet-stream');
@@ -328,7 +340,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["addressdocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['addressdocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['addressdocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $addressdocument = $_FILES["addressdocument"]["name"];
@@ -344,7 +356,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["companyidcard"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['companyidcard']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['companyidcard']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $companyidcard = $_FILES["companyidcard"]["name"];
@@ -360,7 +372,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["signature"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['signature']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $signature = $_FILES["signature"]["name"];
@@ -375,7 +387,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
         $signature = "$userpro_signature";
     }
     if(!empty($_FILES["selfie"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['selfie']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['selfie']['name'], PATHINFO_EXTENSION));
     $allowed = array("mkv", "mp4");
     if(in_array($file_type, $allowed)) {
     $selfie = $_FILES["selfie"]["name"];
@@ -478,8 +490,23 @@ if(isset($_POST['loandata'])){
 ?>
 <?php
 if(isset($_POST['transaction'])){
+    echo "<h2>DEBUG: Transaction Form Submitted</h2>";
+    echo "<pre>POST Data: ";
+    print_r($_POST);
+    echo "</pre>";
+    
     $extract = towrealarray($_POST);
     extract($extract);
+    
+    echo "<h3>DEBUG: Extracted Variables</h3>";
+    echo "<pre>";
+    echo "ID: $id\n";
+    echo "CLL ID: $cllid\n";
+    echo "Transaction Number: $transaction_number\n";
+    echo "Transaction Date: $transaction_date\n";
+    echo "Transaction Amount: $transaction_amount\n";
+    echo "Transaction Flow: $transaction_flow\n";
+    echo "</pre>";
 
     // Validate all required fields
     $errors = [];
@@ -491,11 +518,35 @@ if(isset($_POST['transaction'])){
 
     if(!empty($errors)){
         $error_message = implode(", ", $errors);
-        echo "<script>alert('Please fill all required fields: $error_message');</script>";
+        echo "<h3 style='color: red;'>VALIDATION ERRORS:</h3>";
+        echo "<p style='color: red;'>$error_message</p>";
+        echo "<p><a href='profile.php?id=$id'>Go Back</a></p>";
     } else {
         $cllid = explode("CLL",$cllid);
         $cllid = $cllid[1];
+        
+        // Insert transaction details for ALL transaction flows
+        echo "<h3>DEBUG: Attempting to insert transaction details</h3>";
+        echo "<p>Query: INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')</p>";
+        
+        $transaction_insert = towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+        
+        // Debug: Show transaction insertion result
+        if($transaction_insert) {
+            echo "<h3 style='color: green;'>SUCCESS: Transaction details saved successfully!</h3>";
+            echo "<p>User ID: $id, CLL ID: $cllid</p>";
+            error_log("Transaction details saved successfully for user $id, CLL $cllid");
+        } else {
+            echo "<h3 style='color: red;'>ERROR: Failed to save transaction details!</h3>";
+            echo "<p>Database Error: " . mysqli_error($db) . "</p>";
+            echo "<p>User ID: $id, CLL ID: $cllid</p>";
+            error_log("Failed to save transaction details for user $id, CLL $cllid. Error: " . mysqli_error($db));
+        }
+        
+    echo "<h3>DEBUG: Processing transaction flow: $transaction_flow</h3>";
+    
     if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
+        echo "<p>DEBUG: Entering EMI/Full payment flow</p>";
         $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
     if(townum($che) > 0){
         $chf = towfetch($che);
@@ -578,13 +629,17 @@ if(isset($_POST['transaction'])){
             towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
             $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
         }
-        towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+        // Transaction details already inserted above for all flows
         $template_id='1107165683325768963';
         $mobile = $userpro_mobile;
         include '../send_sms.php';
-        print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+        echo "<h3 style='color: blue;'>Transaction processing completed!</h3>";
+        echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
+        echo "<p><a href='profile.php?id=".$id."'>Go back to profile (no tab)</a></p>";
+        exit;
     }
     }elseif($transaction_flow == "creditlab To Customer"){
+        echo "<p>DEBUG: Entering Creditlab To Customer flow</p>";
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
@@ -594,7 +649,7 @@ if(isset($_POST['transaction'])){
         $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
         towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
                         VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+    // Transaction details already inserted above for all flows
     if($userpro_approvenew ==0){
         if(file_get_contents("https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=$cllid&url2=https://creditlab.in/key2.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
             towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
@@ -612,9 +667,11 @@ if(isset($_POST['transaction'])){
     $message = "Dear $userpro_name, your assigned RelationShip Manager is {$acmf['name']} {$acmf['mobile']}. For any info, you can contact your Manager. -Creditlab";
     include '../send_sms.php';
     }
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";
     exit;
     }elseif($transaction_flow == "renew"){
+        echo "<p>DEBUG: Entering Renew flow</p>";
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
@@ -622,18 +679,24 @@ if(isset($_POST['transaction'])){
      
      towquery("UPDATE `loan` SET `processed_date`='$date' WHERE uid=".$id." AND lid=".$cllid."");
 
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    // Transaction details already inserted above for all flows
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";exit;
 }elseif($transaction_flow == "part"){
+        echo "<p>DEBUG: Entering Part payment flow</p>";
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `loan` SET `advance_amount`='$transaction_amount' WHERE uid=".$id." AND lid=".$cllid."");
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+    // Transaction details already inserted above for all flows
     $template_id = '1107169454135117024';
     $mobile = $userpro_mobile;
     $message = "We got a part payment of Rs {$transaction_amount} w.r.t your Creditlab.in loan CLL{$cllid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
     include '../send_sms.php';
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    echo "<h3 style='color: blue;'>Operation completed!</h3>";
+    echo "<p><a href='profile.php?id=".$id."&tab=".$tab."'>Go back to profile</a></p>";exit;
     } // Close the validation else block
+    } // Close the transaction flow if block
+    } // Close the main else block for validation
 }
 ?>
 <?php
