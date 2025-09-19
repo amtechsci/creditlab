@@ -9,6 +9,23 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// DEBUG: Show POST data immediately
+if(!empty($_POST)) {
+    echo "<div style='background: #ff00ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "📝 POST DATA DEBUG - Form Submitted!";
+    echo "<br>POST Method: " . $_SERVER['REQUEST_METHOD'];
+    echo "<br>POST Data: ";
+    echo "<pre style='background: #000; color: #0f0; padding: 10px; overflow: auto; max-height: 300px;'>";
+    print_r($_POST);
+    echo "</pre>";
+    echo "</div>";
+} else {
+    echo "<div style='background: #888; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "📝 POST DATA DEBUG - No POST data received";
+    echo "<br>Request Method: " . $_SERVER['REQUEST_METHOD'];
+    echo "</div>";
+}
+
 // DEBUG: Check authentication before head.php
 echo "<div style='background: #ff0000; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
 echo "🔍 AUTH DEBUG - Before head.php";
@@ -33,6 +50,14 @@ require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
+    
+    // DEBUG: Show User ID after it's set
+    echo "<div style='background: #0000ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #ffff00; font-weight: bold;'>";
+    echo "👤 USER DEBUG - User ID: $id";
+    echo "<br>URL Parameters: ";
+    print_r($_GET);
+    echo "</div>";
+    
   $userprofile = towquery("SELECT * FROM `user` WHERE id=".$id."");
   $userprofetch = towfetch($userprofile);
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
@@ -516,29 +541,57 @@ if(isset($_POST['loandata'])){
 <?php
 // DEBUG: Show this message to verify file is updated
 echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
-echo "<h3>🔧 DEBUG MODE ACTIVE - File Updated Successfully!</h3>";
+echo "<h3>🔧 TRANSACTION DEBUG SECTION ACTIVE!</h3>";
 echo "<p>Current Time: " . date('Y-m-d H:i:s') . "</p>";
 echo "<p>User ID: " . (isset($id) ? $id : 'Not set') . "</p>";
+echo "<p>Tab: " . (isset($tab) ? $tab : 'Not set') . "</p>";
+echo "<p>This section handles transaction form submissions</p>";
 echo "</div>";
 
 if(isset($_POST['transaction'])){
-    echo "<h2>DEBUG: Transaction Form Submitted</h2>";
-    echo "<pre>POST Data: ";
+    echo "<div style='background: #ff6600; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
+    echo "<h2>🚨 TRANSACTION FORM SUBMITTED!</h2>";
+    echo "<h3>Raw POST Data:</h3>";
+    echo "<pre style='background: #000; color: #0f0; padding: 15px; overflow: auto; max-height: 400px; border: 2px solid #fff;'>";
     print_r($_POST);
     echo "</pre>";
+    echo "<h3>Request Details:</h3>";
+    echo "<p>Method: " . $_SERVER['REQUEST_METHOD'] . "</p>";
+    echo "<p>Content Type: " . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'Not set') . "</p>";
+    echo "<p>Content Length: " . (isset($_SERVER['CONTENT_LENGTH']) ? $_SERVER['CONTENT_LENGTH'] : 'Not set') . "</p>";
+    echo "</div>";
+    
+    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "<h3>🔄 PROCESSING POST DATA</h3>";
+    echo "<p>Before towrealarray():</p>";
+    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
+    print_r($_POST);
+    echo "</pre>";
+    echo "</div>";
     
     $extract = towrealarray($_POST);
+    
+    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "<h3>🔄 AFTER towrealarray()</h3>";
+    echo "<p>Extracted data:</p>";
+    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
+    print_r($extract);
+    echo "</pre>";
+    echo "</div>";
+    
     extract($extract);
     
-    echo "<h3>DEBUG: Extracted Variables</h3>";
-    echo "<pre>";
-    echo "ID: $id\n";
-    echo "CLL ID: $cllid\n";
-    echo "Transaction Number: $transaction_number\n";
-    echo "Transaction Date: $transaction_date\n";
-    echo "Transaction Amount: $transaction_amount\n";
-    echo "Transaction Flow: $transaction_flow\n";
+    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "<h3>🔄 AFTER extract() - Individual Variables</h3>";
+    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
+    echo "ID: " . (isset($id) ? $id : 'NOT SET') . "\n";
+    echo "CLL ID: " . (isset($cllid) ? $cllid : 'NOT SET') . "\n";
+    echo "Transaction Number: " . (isset($transaction_number) ? $transaction_number : 'NOT SET') . "\n";
+    echo "Transaction Date: " . (isset($transaction_date) ? $transaction_date : 'NOT SET') . "\n";
+    echo "Transaction Amount: " . (isset($transaction_amount) ? $transaction_amount : 'NOT SET') . "\n";
+    echo "Transaction Flow: " . (isset($transaction_flow) ? $transaction_flow : 'NOT SET') . "\n";
     echo "</pre>";
+    echo "</div>";
 
     // Validate all required fields
     $errors = [];
