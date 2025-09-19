@@ -9,54 +9,19 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// DEBUG: Show POST data immediately
-if(!empty($_POST)) {
-    echo "<div style='background: #ff00ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "📝 POST DATA DEBUG - Form Submitted!";
-    echo "<br>POST Method: " . $_SERVER['REQUEST_METHOD'];
-    echo "<br>POST Data: ";
-    echo "<pre style='background: #000; color: #0f0; padding: 10px; overflow: auto; max-height: 300px;'>";
-    print_r($_POST);
-    echo "</pre>";
-    echo "</div>";
-} else {
-    echo "<div style='background: #888; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "📝 POST DATA DEBUG - No POST data received";
-    echo "<br>Request Method: " . $_SERVER['REQUEST_METHOD'];
-    echo "</div>";
-}
+// POST data processing - debug removed
 
-// DEBUG: Check authentication before head.php
-echo "<div style='background: #ff0000; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-echo "🔍 AUTH DEBUG - Before head.php";
-echo "<br>Admin variable: " . (isset($admin) ? $admin : 'NOT SET');
-echo "<br>Session data: ";
-if(session_status() == PHP_SESSION_ACTIVE) {
-    print_r($_SESSION);
-} else {
-    echo "No session active";
-}
-echo "</div>";
+// Authentication processing
 
 include_once 'head.php';
 
-// DEBUG: Show this immediately to verify file is updated
-echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px; border: 3px solid #ff0000; font-weight: bold;'>";
-echo "🚀 DEBUG MODE ENABLED - File Updated: " . date('Y-m-d H:i:s');
-echo "<br>Admin variable: " . (isset($admin) ? $admin : 'NOT SET');
-echo "<br>User ID: " . (isset($id) ? $id : 'NOT SET');
-echo "</div>";
+// File loaded successfully
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
     
-    // DEBUG: Show User ID after it's set
-    echo "<div style='background: #0000ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #ffff00; font-weight: bold;'>";
-    echo "👤 USER DEBUG - User ID: $id";
-    echo "<br>URL Parameters: ";
-    print_r($_GET);
-    echo "</div>";
+    // User ID set from URL parameters
     
   $userprofile = towquery("SELECT * FROM `user` WHERE id=".$id."");
   $userprofetch = towfetch($userprofile);
@@ -64,13 +29,8 @@ if(isset($_GET['id'])){
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
     
-    // TRANSACTION PROCESSING - MOVED HERE TO BE IN SCOPE
+    // TRANSACTION PROCESSING
     if(isset($_POST['transaction'])){
-        echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000;'>";
-        echo "<h2>🚨 TRANSACTION FORM SUBMITTED!</h2>";
-        echo "<p>User ID: $id</p>";
-        echo "<p>POST Data received</p>";
-        echo "</div>";
         
         // Extract POST data
         $extract = towrealarray($_POST);
@@ -86,25 +46,15 @@ if(isset($_GET['id'])){
         if(empty($transaction_flow)) $errors[] = "Transaction Flow is required";
 
         if(!empty($errors)){
-            echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px;'>";
-            echo "<h3>VALIDATION ERRORS:</h3>";
-            echo "<ul>";
-            foreach($errors as $error) {
-                echo "<li>$error</li>";
-            }
-            echo "</ul>";
-            echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Go Back</a></p>";
-            echo "</div>";
+            $error_message = implode(", ", $errors);
+            echo "<script>alert('Please fill all required fields: $error_message');</script>";
         } else {
             // Process CLL ID
             $original_cllid = $cllid;
             $cllid = explode("CLL",$cllid);
             $cllid = $cllid[1];
             
-        // PROCESS TRANSACTION FLOW FIRST (like in working code)
-        echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px;'>";
-        echo "<h3>🔄 PROCESSING TRANSACTION FLOW: $transaction_flow</h3>";
-        echo "</div>";
+        // PROCESS TRANSACTION FLOW
         
         if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
             $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
@@ -112,10 +62,6 @@ if(isset($_GET['id'])){
                 $chf = towfetch($che);
                 
                 if($transaction_flow == "settlement"){
-                    echo "<div style='background: #ff6600; color: #fff; padding: 15px; margin: 10px;'>";
-                    echo "<h3>🏦 PROCESSING SETTLEMENT</h3>";
-                    echo "</div>";
-                    
                     $loan_data = towquery("SELECT * FROM loan WHERE lid='$cllid' ORDER BY id DESC");
                     $udpd = towfetch($loan_data);
                     $dpd = $udpd['exhausted_period']-30; 
@@ -140,44 +86,19 @@ if(isset($_GET['id'])){
                     towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                     towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
                     $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
-                    
-                    echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
-                    echo "<h3>✅ SETTLEMENT COMPLETED</h3>";
-                    echo "<p>Loan Status: CLEARED</p>";
-                    echo "<p>User Status: CLEARED</p>";
-                    echo "<p>Credit Score Updated: +$point</p>";
-                    echo "</div>";
                 }
                 
-                // INSERT TRANSACTION DETAILS AFTER PROCESSING (like in working code)
-                echo "<div style='background: #0000ff; color: #fff; padding: 15px; margin: 10px;'>";
-                echo "<h3>💾 INSERTING TRANSACTION DETAILS</h3>";
-                echo "</div>";
-                
+                // INSERT TRANSACTION DETAILS AFTER PROCESSING
                 towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
-                
-                echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
-                echo "<h3>✅ TRANSACTION DETAILS SAVED!</h3>";
-                echo "</div>";
                 
                 // Send SMS
                 $template_id='1107165683325768963';
                 $mobile = $userpro_mobile;
                 include '../send_sms.php';
                 
-                echo "<div style='background: #008000; color: #fff; padding: 15px; margin: 10px;'>";
-                echo "<h3>✅ TRANSACTION COMPLETED SUCCESSFULLY!</h3>";
-                echo "<p>Loan Status: " . ($transaction_flow == 'settlement' ? 'CLEARED' : 'PROCESSED') . "</p>";
-                echo "<p><a href='profile.php?id=$id&tab=transaction_details' style='color: #fff;'>View Transaction Details</a></p>";
-                echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Back to Profile</a></p>";
-                echo "</div>";
-                exit;
+                print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
             }
         }elseif($transaction_flow == "creditlab To Customer"){
-            echo "<div style='background: #ff6600; color: #fff; padding: 15px; margin: 10px;'>";
-            echo "<h3>🏦 PROCESSING DISBURSAL</h3>";
-            echo "</div>";
-            
             $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
             $validfetch = towfetch($valid);
             towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
@@ -190,12 +111,7 @@ if(isset($_GET['id'])){
             // Insert transaction details
             towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
             
-            echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px;'>";
-            echo "<h3>✅ DISBURSAL COMPLETED!</h3>";
-            echo "<p>Loan Status: ACCOUNT MANAGER</p>";
-            echo "<p><a href='profile.php?id=$id&tab=transaction_details' style='color: #fff;'>View Transaction Details</a></p>";
-            echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Back to Profile</a></p>";
-            echo "</div>";
+            print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
             exit;
         }
         }
