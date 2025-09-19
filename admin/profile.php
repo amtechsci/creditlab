@@ -497,6 +497,17 @@ if(isset($_POST['transaction'])){
     } else {
         $cllid = explode("CLL",$cllid);
         $cllid = $cllid[1];
+        
+        // Insert transaction details for ALL transaction flows
+        $transaction_insert = towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+        
+        // Debug: Log transaction insertion result
+        if($transaction_insert) {
+            error_log("Transaction details saved successfully for user $id, CLL $cllid");
+        } else {
+            error_log("Failed to save transaction details for user $id, CLL $cllid. Error: " . mysqli_error($db));
+        }
+        
     if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
         $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
     if(townum($che) > 0){
@@ -580,7 +591,7 @@ if(isset($_POST['transaction'])){
             towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
             $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
         }
-        towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+        // Transaction details already inserted above for all flows
         $template_id='1107165683325768963';
         $mobile = $userpro_mobile;
         include '../send_sms.php';
@@ -596,7 +607,7 @@ if(isset($_POST['transaction'])){
         $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
         towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
                         VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+    // Transaction details already inserted above for all flows
     if($userpro_approvenew ==0){
         if(file_get_contents("https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=$cllid&url2=https://creditlab.in/key2.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
             towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
@@ -624,12 +635,13 @@ if(isset($_POST['transaction'])){
      
      towquery("UPDATE `loan` SET `processed_date`='$date' WHERE uid=".$id." AND lid=".$cllid."");
 
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    // Transaction details already inserted above for all flows
+    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }elseif($transaction_flow == "part"){
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `loan` SET `advance_amount`='$transaction_amount' WHERE uid=".$id." AND lid=".$cllid."");
-    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+    // Transaction details already inserted above for all flows
     $template_id = '1107169454135117024';
     $mobile = $userpro_mobile;
     $message = "We got a part payment of Rs {$transaction_amount} w.r.t your Creditlab.in loan CLL{$cllid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
