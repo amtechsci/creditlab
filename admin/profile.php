@@ -3,7 +3,32 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 ob_start(); // Start output buffering to prevent header issues
+
+// Start session for authentication
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// DEBUG: Check authentication before head.php
+echo "<div style='background: #ff0000; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+echo "🔍 AUTH DEBUG - Before head.php";
+echo "<br>Admin variable: " . (isset($admin) ? $admin : 'NOT SET');
+echo "<br>Session data: ";
+if(session_status() == PHP_SESSION_ACTIVE) {
+    print_r($_SESSION);
+} else {
+    echo "No session active";
+}
+echo "</div>";
+
 include_once 'head.php';
+
+// DEBUG: Show this immediately to verify file is updated
+echo "<div style='background: #00ff00; color: #000; padding: 15px; margin: 10px; border: 3px solid #ff0000; font-weight: bold;'>";
+echo "🚀 DEBUG MODE ENABLED - File Updated: " . date('Y-m-d H:i:s');
+echo "<br>Admin variable: " . (isset($admin) ? $admin : 'NOT SET');
+echo "<br>User ID: " . (isset($id) ? $id : 'NOT SET');
+echo "</div>";
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
@@ -489,6 +514,13 @@ if(isset($_POST['loandata'])){
 }
 ?>
 <?php
+// DEBUG: Show this message to verify file is updated
+echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
+echo "<h3>🔧 DEBUG MODE ACTIVE - File Updated Successfully!</h3>";
+echo "<p>Current Time: " . date('Y-m-d H:i:s') . "</p>";
+echo "<p>User ID: " . (isset($id) ? $id : 'Not set') . "</p>";
+echo "</div>";
+
 if(isset($_POST['transaction'])){
     echo "<h2>DEBUG: Transaction Form Submitted</h2>";
     echo "<pre>POST Data: ";
