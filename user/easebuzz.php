@@ -1,41 +1,11 @@
 <?php
-// --- DATABASE CONNECTION ---
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-
-if (mysqli_connect_errno()) {
-    error_log("Database connection failed: " . mysqli_connect_error());
-    http_response_code(500);
-    die("Database connection failed.");
-}
-mysqli_set_charset($db, 'utf8');
-
-// --- DATABASE FUNCTIONS ---
-function towquery($db, $query) {
-    $result = mysqli_query($db, $query);
-    if (!$result) {
-        error_log("SQL Error: " . mysqli_error($db) . " - Query: " . $query);
-        return false;
-    }
-    return $result;
-}
-function townum($query_result) {
-    return mysqli_num_rows($query_result);
-}
-function towfetch($query_result) {
-    return mysqli_fetch_array($query_result);
-}
-function towreal($db, $query) {
-    $re = str_replace("<","&lt;",$query);
-    $re = str_replace(">","&gt;",$re);
-    $re = mysqli_real_escape_string($db, $re);
-    return $re;
-}
+include_once '../db.php';
 
 $MERCHANT_KEY = "9BIB9D914T"; // Replace with actual key
 $SALT = "GGW1QF6ONH";         // Replace with actual salt
 $ENV = "prod";               // Set to "test" or "prod"
 
-$bankcode = towquery($db, "SELECT * FROM `bank_name`");
+$bankcode = towquery("SELECT * FROM `bank_name`");
 $bankCodes = [];
 while($nc = towfetch($bankcode)){$bankCodes[$nc['bank_code']] = $nc['bank_name'];}
 
@@ -86,14 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Extract and sanitize fields
-    $firstname = towreal($db, $_POST['firstname']);
-    $phone = towreal($db, $_POST['phone']);
-    $email = towreal($db, $_POST['email']);
-    $bankCode = towreal($db, $_POST['bank_code']);
-    $accountNo = towreal($db, $_POST['account_no']);
-    $auth_mode = towreal($db, $_POST['auth_mode']);
-    $accountType = towreal($db, $_POST['account_type']);
-    $ifsc = towreal($db, $_POST['ifsc']);
+    $firstname = towreal($_POST['firstname']);
+    $phone = towreal($_POST['phone']);
+    $email = towreal($_POST['email']);
+    $bankCode = towreal($_POST['bank_code']);
+    $accountNo = towreal($_POST['account_no']);
+    $auth_mode = towreal($_POST['auth_mode']);
+    $accountType = towreal($_POST['account_type']);
+    $ifsc = towreal($_POST['ifsc']);
 
     // Validate user_id exists
     if (!isset($user_id) || empty($user_id)) {
@@ -128,14 +98,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $access_key = $authResponse['data'];
         
         // Delete existing records for this user
-        if (!towquery($db, "DELETE FROM `easebuzz_adtd` WHERE `easebuzz_adtd`.`uid` = $user_id")) {
+        if (!towquery("DELETE FROM `easebuzz_adtd` WHERE `easebuzz_adtd`.`uid` = $user_id")) {
             error_log("Failed to delete existing easebuzz_adtd records for uid: $user_id");
         }
 
         // Insert new record
         $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`) VALUES ($user_id, '{$authData['txnid']}', '$firstname', '$phone', '$email', '{$authData['udf5']}', '{$authData['request_flow']}', '$cai', '{$authData['final_collection_date']}', '{$authData['hash']}', '$access_key', 'EN', '$ifsc', '$accountType', '$accountNo', '$auth_mode', '$bankCode')";
         
-        if (towquery($db, $insert_query)) {
+        if (towquery($insert_query)) {
             echo "
                     <form id='seamless_auto_submit_upi_form' method='POST' action='https://pay.easebuzz.in/initiate_seamless_payment/'>
                         <input type='hidden' name='access_key' value='".$access_key."'>
@@ -160,11 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         die('Error in Auto Debit Authorization: ' . $error_msg);
     }
 } else {
-    $ub = towquery($db, "SELECT * FROM `user_bank` WHERE uid=$user_id AND verify=1 ORDER BY id DESC");
+    $ub = towquery("SELECT * FROM `user_bank` WHERE uid=$user_id AND verify=1 ORDER BY id DESC");
     if(townum($ub) > 0){
         $ubf = towfetch($ub);
         $ubank_name = $ubf['bank_name'];
-        $bankcode = towquery($db, "SELECT * FROM `bank_name` WHERE bank_name LIKE '%".$ubank_name."%'");
+        $bankcode = towquery("SELECT * FROM `bank_name` WHERE bank_name LIKE '%".$ubank_name."%'");
         if(townum($bankcode) > 0){
             $bankcode = towfetch($bankcode);
             $bankcoden = $bankcode['bank_name'];

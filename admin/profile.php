@@ -226,7 +226,7 @@ if(isset($_POST['conta'])){
 if(isset($_POST['document'])){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['conpanydocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $conpanydocument = $_FILES["conpanydocument"]["name"];
@@ -276,12 +276,11 @@ if (!$success) $personaldocument[$i] = $userpro_personaldocument[$i];
     }else{$salarydocument = $userpro_salarydocument;}
     
     if(!empty($_FILES['bankdocument']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['bankdocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument']['name'];
-$ext = explode(".",$a);
-$ext = end($ext);
+$ext = pathinfo($a, PATHINFO_EXTENSION);
 $new = date('ymdhis');
 $bankdocument = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument']['tmp_name'], $bankdocument, 'application/octet-stream');
@@ -311,12 +310,11 @@ if (!$success) $bankdocument2 = $userpro_bankdocument2;
     }
     
     if(!empty($_FILES['bankdocument3']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument3']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['bankdocument3']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument3']['name'];
-$ext = explode(".",$a);
-$ext = end($ext);
+$ext = pathinfo($a, PATHINFO_EXTENSION);
 $new = date('ymdhis');
 $bankdocument3 = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument3']['tmp_name'], $bankdocument3, 'application/octet-stream');
@@ -328,7 +326,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["addressdocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['addressdocument']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['addressdocument']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $addressdocument = $_FILES["addressdocument"]["name"];
@@ -344,7 +342,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["companyidcard"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['companyidcard']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['companyidcard']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $companyidcard = $_FILES["companyidcard"]["name"];
@@ -360,7 +358,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["signature"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['signature']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $signature = $_FILES["signature"]["name"];
@@ -375,7 +373,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
         $signature = "$userpro_signature";
     }
     if(!empty($_FILES["selfie"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['selfie']['name'])));
+    $file_type = strtolower(pathinfo($_FILES['selfie']['name'], PATHINFO_EXTENSION));
     $allowed = array("mkv", "mp4");
     if(in_array($file_type, $allowed)) {
     $selfie = $_FILES["selfie"]["name"];
