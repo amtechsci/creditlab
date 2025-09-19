@@ -1,7 +1,4 @@
 <?php
-ini_set('display_startup_errors', 1);
-ini_set('display_errors', 1);
-error_reporting(-1);
 $MERCHANT_KEY = "9BIB9D914T"; // Replace with actual key
 $SALT = "GGW1QF6ONH";         // Replace with actual salt
 $ENV = "prod";               // Set to "test" or "prod"

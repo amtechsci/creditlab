@@ -635,9 +635,6 @@
         // Initializes a new session and return a cURL.
         $cURL = curl_init();
 
-        ini_set('display_errors', 1);
-        ini_set('display_startup_errors', 1);
-        error_reporting(E_ALL);
 
         // Set multiple options for a cURL transfer.
         curl_setopt_array(

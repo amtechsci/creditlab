@@ -1,10 +1,5 @@
 <?php
 
-// --- FIX 1: Added for debugging ---
-// This will help show any PHP errors directly in the browser.
-// You can remove these two lines once the script is working correctly.
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 include '../db.php';
 

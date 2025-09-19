@@ -2,11 +2,11 @@
 $filename = 'webhook_data.txt';
 date_default_timezone_set('Asia/Kolkata');
 
-// --- LOGGING (No changes here) ---
+// --- LOGGING ---
 $headers = getallheaders();
-$headersFormatted = "Headers:\n" . print_r($headers, true);
-$getData = "GET Data:\n" . print_r($_GET, true);
-$postData = "POST Data:\n" . print_r($_POST, true);
+$headersFormatted = "Headers:\n" . serialize($headers);
+$getData = "GET Data:\n" . serialize($_GET);
+$postData = "POST Data:\n" . serialize($_POST);
 $rawBody = "Raw Body:\n" . file_get_contents('php://input');
 $logData = "\n=== New Request at ".date('Y-m-d H:i:s')." ===\n";
 $logData .= $headersFormatted . "\n";
@@ -58,7 +58,6 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         if (strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
             $loan_lid = substr($merchant_debit_id, 9); // Remove 'CLL_AUTO_' (9 characters)
             
-            echo "Processing auto-debit success for loan.lid: $loan_lid\n";
             
             // Get loan details
             $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
@@ -111,15 +110,8 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                 $mobile = $user_details['mobile'];
                 include 'send_sms.php';
                 
-                echo "SUCCESS: Loan $loan_lid cleared successfully via auto-debit\n";
-            } else {
-                echo "ERROR: Loan with lid $loan_lid not found\n";
             }
-        } else {
-            echo "ERROR: Invalid merchant_debit_id format: $merchant_debit_id\n";
         }
-    } else {
-        echo "Auto-debit request state: " . (isset($data['auto_debit_request_state']) ? $data['auto_debit_request_state'] : 'not set') . "\n";
     }
 }
 elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
@@ -149,7 +141,6 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
     mysqli_stmt_bind_param($stmt1, "sssssssss", $update_status, $net_amount_debit, $bank_ref_num, $easepayid, $addedon, $cash_back_percentage, $status, $auto_debit_access_key, $txnid);
 
     if (mysqli_stmt_execute($stmt1)) {
-        echo "Authorization status updated in easebuzz_adtd.\n";
 
         // Get the `uid` for the txnid to update the corresponding user table
         $stmt2 = mysqli_prepare($db, "SELECT uid FROM easebuzz_adtd WHERE txnid = ?");
@@ -165,17 +156,9 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
             mysqli_stmt_bind_param($stmt3, "is", $user_easebuzz_status, $uid);
 
             if (mysqli_stmt_execute($stmt3)) {
-                echo "User table updated successfully.\n";
-            } else {
-                // FIX: Correctly using $db for the error message
-                echo "Error updating user table: " . mysqli_error($db);
+                // User table updated successfully
             }
-        } else {
-            echo "User ID not found for txnid: $txnid.";
         }
-    } else {
-        // FIX: Correctly using $db for the error message
-        echo "Error updating easebuzz_adtd: " . mysqli_error($db);
     }
 
 } elseif (isset($data['furl']) && $data['furl'] == 'https://creditlab.in/payeasebuzz/response.php') {
@@ -223,15 +206,11 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
         }
     } else {
         $error_msg = isset($result['error_Message']) ? $result['error_Message'] : "Unknown error.";
-        echo "Payment Failed: " . $error_msg;
         towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid'");
     }
-} else {
-    echo "Request could not be processed.";
 }
 
 http_response_code(200);
-echo "Webhook processed.";
 
 // Close the single database connection at the end
 mysqli_close($db);
