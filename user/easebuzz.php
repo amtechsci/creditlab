@@ -1,9 +1,41 @@
 <?php
+// --- DATABASE CONNECTION ---
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+
+if (mysqli_connect_errno()) {
+    error_log("Database connection failed: " . mysqli_connect_error());
+    http_response_code(500);
+    die("Database connection failed.");
+}
+mysqli_set_charset($db, 'utf8');
+
+// --- DATABASE FUNCTIONS ---
+function towquery($db, $query) {
+    $result = mysqli_query($db, $query);
+    if (!$result) {
+        error_log("SQL Error: " . mysqli_error($db) . " - Query: " . $query);
+        return false;
+    }
+    return $result;
+}
+function townum($query_result) {
+    return mysqli_num_rows($query_result);
+}
+function towfetch($query_result) {
+    return mysqli_fetch_array($query_result);
+}
+function towreal($db, $query) {
+    $re = str_replace("<","&lt;",$query);
+    $re = str_replace(">","&gt;",$re);
+    $re = mysqli_real_escape_string($db, $re);
+    return $re;
+}
+
 $MERCHANT_KEY = "9BIB9D914T"; // Replace with actual key
 $SALT = "GGW1QF6ONH";         // Replace with actual salt
 $ENV = "prod";               // Set to "test" or "prod"
 
-$bankcode = towquery("SELECT * FROM `bank_name`");
+$bankcode = towquery($db, "SELECT * FROM `bank_name`");
 $bankCodes = [];
 while($nc = towfetch($bankcode)){$bankCodes[$nc['bank_code']] = $nc['bank_name'];}
 
@@ -29,14 +61,45 @@ function sendCurlRequest($url, $data) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $firstname = $_POST['firstname'];
-    $phone = $_POST['phone'];
-    $email = $_POST['email'];
-    $bankCode = $_POST['bank_code'];
-    $accountNo = $_POST['account_no'];
-    $auth_mode = $_POST['auth_mode'];
-    $accountType = $_POST['account_type'];
-    $ifsc = $_POST['ifsc'];
+    // --- FIELD VALIDATION ---
+    $required_fields = [
+        'firstname',
+        'phone',
+        'email',
+        'bank_code',
+        'account_no',
+        'auth_mode',
+        'account_type',
+        'ifsc'
+    ];
+
+    $missing_fields = [];
+    foreach ($required_fields as $field) {
+        if (!isset($_POST[$field]) || empty($_POST[$field])) {
+            $missing_fields[] = $field;
+        }
+    }
+
+    if (!empty($missing_fields)) {
+        error_log("Missing required fields in user/easebuzz.php: " . implode(', ', $missing_fields));
+        die("Missing required fields: " . implode(', ', $missing_fields));
+    }
+
+    // Extract and sanitize fields
+    $firstname = towreal($db, $_POST['firstname']);
+    $phone = towreal($db, $_POST['phone']);
+    $email = towreal($db, $_POST['email']);
+    $bankCode = towreal($db, $_POST['bank_code']);
+    $accountNo = towreal($db, $_POST['account_no']);
+    $auth_mode = towreal($db, $_POST['auth_mode']);
+    $accountType = towreal($db, $_POST['account_type']);
+    $ifsc = towreal($db, $_POST['ifsc']);
+
+    // Validate user_id exists
+    if (!isset($user_id) || empty($user_id)) {
+        error_log("User ID not set in user/easebuzz.php");
+        die("User session not found. Please login again.");
+    }
 
     $uid = uniqid();
     $cai = uniqid();
@@ -61,35 +124,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $authUrl = "https://pay.easebuzz.in/payment/initiateLink";
     $authResponse = sendCurlRequest($authUrl, $authData);
 
-    if ($authResponse['status'] == 1) {
+    if ($authResponse && isset($authResponse['status']) && $authResponse['status'] == 1) {
         $access_key = $authResponse['data'];
         
-        towquery("DELETE FROM `easebuzz_adtd` WHERE `easebuzz_adtd`.`uid` = $user_id");
+        // Delete existing records for this user
+        if (!towquery($db, "DELETE FROM `easebuzz_adtd` WHERE `easebuzz_adtd`.`uid` = $user_id")) {
+            error_log("Failed to delete existing easebuzz_adtd records for uid: $user_id");
+        }
 
-        $stmt = towquery("INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`) VALUES ($user_id, '{$authData['txnid']}', '$firstname', '$phone', '$email', '{$authData['udf5']}', '{$authData['request_flow']}', '$cai', '{$authData['final_collection_date']}', '{$authData['hash']}', '$access_key', 'EN', '$ifsc', '$accountType', '$accountNo', '$auth_mode', '$bankCode')");
-        echo "
-                <form id='seamless_auto_submit_upi_form' method='POST' action='https://pay.easebuzz.in/initiate_seamless_payment/'>
-                    <input type='hidden' name='access_key' value='".$access_key."'>
-                    <input type='hidden' name='payment_mode' value='EN'>
-                    <input type='hidden' name='ifsc' value='".$ifsc."'>
-                    <input type='hidden' name='account_type' value='".$accountType."'>
-                    <input type='hidden' name='account_no' value='".$accountNo."'>
-                    <input type='hidden' name='auth_mode' value='$auth_mode'>
-                    <input type='hidden' name='bank_code' value='".$bankCode."'>
-                </form>
-                <script type='text/javascript'>
-                    document.getElementById('seamless_auto_submit_upi_form').submit();
-                </script>
-        ";
+        // Insert new record
+        $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`) VALUES ($user_id, '{$authData['txnid']}', '$firstname', '$phone', '$email', '{$authData['udf5']}', '{$authData['request_flow']}', '$cai', '{$authData['final_collection_date']}', '{$authData['hash']}', '$access_key', 'EN', '$ifsc', '$accountType', '$accountNo', '$auth_mode', '$bankCode')";
+        
+        if (towquery($db, $insert_query)) {
+            echo "
+                    <form id='seamless_auto_submit_upi_form' method='POST' action='https://pay.easebuzz.in/initiate_seamless_payment/'>
+                        <input type='hidden' name='access_key' value='".$access_key."'>
+                        <input type='hidden' name='payment_mode' value='EN'>
+                        <input type='hidden' name='ifsc' value='".$ifsc."'>
+                        <input type='hidden' name='account_type' value='".$accountType."'>
+                        <input type='hidden' name='account_no' value='".$accountNo."'>
+                        <input type='hidden' name='auth_mode' value='$auth_mode'>
+                        <input type='hidden' name='bank_code' value='".$bankCode."'>
+                    </form>
+                    <script type='text/javascript'>
+                        document.getElementById('seamless_auto_submit_upi_form').submit();
+                    </script>
+            ";
+        } else {
+            error_log("Failed to insert easebuzz_adtd record for uid: $user_id");
+            die('Database error occurred. Please try again.');
+        }
     } else {
-        die('Error in Auto Debit Authorization: ' . $authResponse['error_desc']);
+        $error_msg = isset($authResponse['error_desc']) ? $authResponse['error_desc'] : 'Unknown API error';
+        error_log("Easebuzz API error: " . $error_msg);
+        die('Error in Auto Debit Authorization: ' . $error_msg);
     }
 } else {
-    $ub = towquery("SELECT * FROM `user_bank` WHERE uid=$user_id AND verify=1 ORDER BY id DESC");
+    $ub = towquery($db, "SELECT * FROM `user_bank` WHERE uid=$user_id AND verify=1 ORDER BY id DESC");
     if(townum($ub) > 0){
         $ubf = towfetch($ub);
         $ubank_name = $ubf['bank_name'];
-        $bankcode = towquery("SELECT * FROM `bank_name` WHERE bank_name LIKE '%".$ubank_name."%'");
+        $bankcode = towquery($db, "SELECT * FROM `bank_name` WHERE bank_name LIKE '%".$ubank_name."%'");
         if(townum($bankcode) > 0){
             $bankcode = towfetch($bankcode);
             $bankcoden = $bankcode['bank_name'];
@@ -148,4 +223,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             </div>
         </div>
-<?php } ?>
+<?php } 
+
+// Close database connection
+mysqli_close($db);
+?>

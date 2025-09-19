@@ -2,9 +2,36 @@
 // Set a longer execution time limit, essential for cron jobs that might process many records.
 set_time_limit(0); 
 
-// Include your database connection and the payment function file.
-// Adjust the path as necessary.
-include '../db.php'; 
+// --- DATABASE CONNECTION ---
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+
+if (mysqli_connect_errno()) {
+    error_log("Database connection failed: " . mysqli_connect_error());
+    die("Database connection failed.");
+}
+mysqli_set_charset($db, 'utf8');
+
+// --- DATABASE FUNCTIONS ---
+function towquery($db, $query) {
+    $result = mysqli_query($db, $query);
+    if (!$result) {
+        error_log("SQL Error: " . mysqli_error($db) . " - Query: " . $query);
+        return false;
+    }
+    return $result;
+}
+function townum($query_result) {
+    return mysqli_num_rows($query_result);
+}
+function towfetch($query_result) {
+    return mysqli_fetch_array($query_result);
+}
+function towreal($db, $query) {
+    $re = str_replace("<","&lt;",$query);
+    $re = str_replace(">","&gt;",$re);
+    $re = mysqli_real_escape_string($db, $re);
+    return $re;
+}
 function initiateEasebuzzDirectDebit(array $postParams): string
 {
     // --- Credentials ---
@@ -101,71 +128,130 @@ function initiateEasebuzzDirectDebit(array $postParams): string
     return $response;
 }
 
-echo "Cron Job Started: " . date('Y-m-d H:i:s') . "";
+// --- CRON JOB LOGIC ---
+$current_date = date('Y-m-d');
+$current_day = date('j'); // Day of month without leading zeros
+$gst = 0; // Define GST variable
 
-// 1. Select all loans that are ready for automatic E-Nach debit.
-$sql = "SELECT * FROM `loan` WHERE `exhausted_period` = 31   AND `status_log` = 'account manager'   AND `enach_request` = 0";
-$eligible_loans = towquery($sql);
+// 1. RESET FAILED E-NACH REQUESTS (3+ days old)
+$reset_query = "UPDATE `loan` SET `enach_request` = 0, `enach_request_date` = NULL 
+                WHERE `enach_request` = 1 
+                AND `enach_request_date` IS NOT NULL 
+                AND DATEDIFF('$current_date', `enach_request_date`) >= 3
+                AND `status_log` != 'cleared'";
+towquery($db, $reset_query);
 
-if (townum($eligible_loans) == 0) {
-    echo "No eligible loans found for E-Nach processing.";
-    exit; // Exit cleanly if there's nothing to do.
+// 2. DETERMINE ELIGIBLE LOANS BASED ON CONDITIONS
+$eligible_loans = [];
+
+// Condition 1: Daily run for exhausted_period = 31
+$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0";
+$loans1 = towquery($db, $sql1);
+while ($loan = towfetch($loans1)) {
+    $eligible_loans[] = $loan;
 }
 
-echo "Found " . townum($eligible_loans) . " loans to process.";
-
-// 2. Loop through each eligible loan.
-while ($loan = towfetch($eligible_loans)) {
-    $lid = $loan['lid'];
-    $uid = $loan['uid'];
-
-    echo "---------------------------------";
-    echo "Processing Loan ID (lid): $lid for User ID (uid): $uid";
-
-    // 3. Fetch associated user and E-Nach data for the current loan.
-    $userdata = towquery("SELECT * FROM `user` WHERE id='$uid'");
-    $userdataff = towfetch($userdata);
-
-    $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid'");
-
-    // Check if E-Nach details exist for the user.
-    if (townum($easebuzz_adtd) > 0) {
-        $easebuzz_adtdff = towfetch($easebuzz_adtd);
-
-        $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$loan['service_charge'] + $gst + (float)$loan['penality_charge'];
-        $totalamount = number_format($totalamount, 2, '.', '');
-
-        // 5. Prepare the payment details for the API call.
-        $paymentDetails = [
-            "amount" => $totalamount,
-            "productinfo" => "Loan Repayment Cron",
-            "firstname" => $userdataff['name'],
-            "email" => $userdataff['email'],
-            "phone" => $userdataff['mobile'],
-            "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-            "merchant_debit_id" => "CLL_AUTO_" . $lid, // Use a unique ID for cron transactions
-            "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
-        ];
-
-        // 6. Call the payment function.
-        $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
-        $res = json_decode($apiResponse, true);
-
-        // 7. Check the response and update the database.
-        if ($res && isset($res['status']) && $res['status']) {
-            towquery("UPDATE `loan` SET `enach_request` = 1 WHERE lid = $lid");
-            echo "SUCCESS: E-Nach request initiated for lid: $lid. Response: $apiResponse";
-        } else {
-            // Log the failure for investigation.
-            $errorMessage = isset($res['error_desc']) ? $res['error_desc'] : 'Unknown API error.';
-            echo "FAILED: E-Nach request for lid: $lid. Error: $errorMessage";
+// Condition 2: On 3rd and 10th of month for exhausted_period > 30
+if ($current_day == 3 || $current_day == 10) {
+    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0";
+    $loans2 = towquery($db, $sql2);
+    while ($loan = towfetch($loans2)) {
+        // Avoid duplicates
+        $exists = false;
+        foreach ($eligible_loans as $existing_loan) {
+            if ($existing_loan['id'] == $loan['id']) {
+                $exists = true;
+                break;
+            }
         }
-    } else {
-        echo "SKIPPED: No E-Nach details found for user uid: $uid.";
+        if (!$exists) {
+            $eligible_loans[] = $loan;
+        }
     }
 }
 
-echo "---------------------------------";
-echo "Cron Job Finished: " . date('Y-m-d H:i:s') . "";
+// Condition 3: Salary date processing
+$sql3 = "SELECT l.* FROM `loan` l 
+         INNER JOIN `user` u ON l.uid = u.id 
+         WHERE l.`exhausted_period` > 30 
+         AND l.`status_log` = 'account manager' 
+         AND l.`enach_request` = 0 
+         AND DAY(u.salary_date) = $current_day";
+$loans3 = towquery($db, $sql3);
+while ($loan = towfetch($loans3)) {
+    // Avoid duplicates
+    $exists = false;
+    foreach ($eligible_loans as $existing_loan) {
+        if ($existing_loan['id'] == $loan['id']) {
+            $exists = true;
+            break;
+        }
+    }
+    if (!$exists) {
+        $eligible_loans[] = $loan;
+    }
+}
+
+// 3. PROCESS ELIGIBLE LOANS
+$processed_count = 0;
+$success_count = 0;
+$failed_count = 0;
+
+foreach ($eligible_loans as $loan) {
+    $lid = $loan['lid'];
+    $uid = $loan['uid'];
+    $processed_count++;
+
+    // Get user details
+    $userdata = towquery($db, "SELECT * FROM `user` WHERE id='$uid'");
+    $userdataff = towfetch($userdata);
+
+    // Get ALL E-Nach details for this user (multiple customer_authentication_id)
+    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND authorization_status = 'accepted'");
+
+    if (townum($easebuzz_adtd) > 0) {
+        // Process each customer_authentication_id
+        while ($easebuzz_adtdff = towfetch($easebuzz_adtd)) {
+            $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$loan['service_charge'] + $gst + (float)$loan['penality_charge'];
+            $totalamount = number_format($totalamount, 2, '.', '');
+
+            // Prepare payment details
+            $paymentDetails = [
+                "amount" => $totalamount,
+                "productinfo" => "Loan Repayment Cron",
+                "firstname" => $userdataff['name'],
+                "email" => $userdataff['email'],
+                "phone" => $userdataff['mobile'],
+                "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
+                "merchant_debit_id" => "CLL_AUTO_" . $lid,
+                "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
+            ];
+
+            // Call Easebuzz API
+            $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
+            $res = json_decode($apiResponse, true);
+
+            // Check response and update database
+            if ($res && isset($res['status']) && $res['status']) {
+                // Update loan with enach_request = 1 and set enach_request_date
+                towquery($db, "UPDATE `loan` SET `enach_request` = 1, `enach_request_date` = '$current_date' WHERE lid = $lid");
+                $success_count++;
+                error_log("SUCCESS: E-Nach request initiated for lid: $lid, customer_auth_id: " . $easebuzz_adtdff['customer_authentication_id']);
+            } else {
+                $errorMessage = isset($res['error_desc']) ? $res['error_desc'] : 'Unknown API error';
+                $failed_count++;
+                error_log("FAILED: E-Nach request for lid: $lid, customer_auth_id: " . $easebuzz_adtdff['customer_authentication_id'] . ", Error: $errorMessage");
+            }
+        }
+    } else {
+        error_log("SKIPPED: No E-Nach details found for user uid: $uid, lid: $lid");
+    }
+}
+
+// 4. LOG CRON JOB SUMMARY
+error_log("E-Nach Cron Job Completed - Date: $current_date, Processed: $processed_count, Success: $success_count, Failed: $failed_count");
+
+// Close database connection
+mysqli_close($db);
 
 ?>

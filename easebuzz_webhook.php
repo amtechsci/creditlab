@@ -45,10 +45,31 @@ function towfetch($query_result) {
 // --- 3. MAIN LOGIC ---
 $data = $_POST;
 
+// --- FIELD VALIDATION ---
+if (!isset($data['furl']) || empty($data['furl'])) {
+    error_log("Missing furl field in webhook request");
+    http_response_code(400);
+    die("Missing required field: furl");
+}
+
 // Make sure the required fields are available in the callback
 if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
     // Handle auto-debit execution results
     if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'success') {
+        // Validate required fields for auto-debit processing
+        $required_fields = ['merchant_debit_id', 'amount', 'bank_ref_num', 'txnid', 'status'];
+        $missing_fields = [];
+        foreach ($required_fields as $field) {
+            if (!isset($data[$field]) || empty($data[$field])) {
+                $missing_fields[] = $field;
+            }
+        }
+        
+        if (!empty($missing_fields)) {
+            error_log("Missing required fields for cb_auto processing: " . implode(', ', $missing_fields));
+            http_response_code(400);
+            die("Missing required fields: " . implode(', ', $missing_fields));
+        }
         $merchant_debit_id = $data['merchant_debit_id'];
         $amount = $data['amount'];
         $bank_ref_num = $data['bank_ref_num'];
@@ -115,6 +136,21 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
     }
 }
 elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
+    // Validate required fields for easebuzz_callback processing
+    $required_fields = ['txnid', 'authorization_status', 'net_amount_debit', 'bank_ref_num', 'easepayid', 'addedon', 'cash_back_percentage', 'status', 'error_Message', 'auto_debit_access_key'];
+    $missing_fields = [];
+    foreach ($required_fields as $field) {
+        if (!isset($data[$field])) {
+            $missing_fields[] = $field;
+        }
+    }
+    
+    if (!empty($missing_fields)) {
+        error_log("Missing required fields for easebuzz_callback processing: " . implode(', ', $missing_fields));
+        http_response_code(400);
+        die("Missing required fields: " . implode(', ', $missing_fields));
+    }
+    
     // Using prepared statements to prevent SQL Injection
     $stmt1 = mysqli_prepare($db, "UPDATE easebuzz_adtd SET authorization_status = ?, net_amount_debit = ?, bank_ref_num = ?, easepayid = ?, addedon = ?, cash_back_percentage = ?, status = ?, auto_debit_access_key = ? WHERE txnid = ?");
 
@@ -162,6 +198,21 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
     }
 
 } elseif (isset($data['furl']) && $data['furl'] == 'https://creditlab.in/payeasebuzz/response.php') {
+    // Validate required fields for payment response processing
+    $required_fields = ['txnid', 'status', 'amount', 'bank_ref_num'];
+    $missing_fields = [];
+    foreach ($required_fields as $field) {
+        if (!isset($data[$field]) || empty($data[$field])) {
+            $missing_fields[] = $field;
+        }
+    }
+    
+    if (!empty($missing_fields)) {
+        error_log("Missing required fields for payment response processing: " . implode(', ', $missing_fields));
+        http_response_code(400);
+        die("Missing required fields: " . implode(', ', $missing_fields));
+    }
+    
     $result = $_POST;
     $txnid = $result['txnid'];
     $status = $result['status'];
