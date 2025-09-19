@@ -549,40 +549,19 @@ echo "<p>This section handles transaction form submissions</p>";
 echo "</div>";
 
 if(isset($_POST['transaction'])){
-    echo "<div style='background: #ff6600; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
-    echo "<h2>🚨 TRANSACTION FORM SUBMITTED!</h2>";
-    echo "<h3>Raw POST Data:</h3>";
-    echo "<pre style='background: #000; color: #0f0; padding: 15px; overflow: auto; max-height: 400px; border: 2px solid #fff;'>";
-    print_r($_POST);
-    echo "</pre>";
-    echo "<h3>Request Details:</h3>";
-    echo "<p>Method: " . $_SERVER['REQUEST_METHOD'] . "</p>";
-    echo "<p>Content Type: " . (isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'Not set') . "</p>";
-    echo "<p>Content Length: " . (isset($_SERVER['CONTENT_LENGTH']) ? $_SERVER['CONTENT_LENGTH'] : 'Not set') . "</p>";
-    echo "</div>";
-    
-    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "<h3>🔄 PROCESSING POST DATA</h3>";
-    echo "<p>Before towrealarray():</p>";
+    echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
+    echo "<h2>🚨 TRANSACTION FORM SUBMITTED - DEBUGGING!</h2>";
+    echo "<p>Raw POST Data:</p>";
     echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
     print_r($_POST);
     echo "</pre>";
     echo "</div>";
     
     $extract = towrealarray($_POST);
-    
-    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "<h3>🔄 AFTER towrealarray()</h3>";
-    echo "<p>Extracted data:</p>";
-    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
-    print_r($extract);
-    echo "</pre>";
-    echo "</div>";
-    
     extract($extract);
     
     echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "<h3>🔄 AFTER extract() - Individual Variables</h3>";
+    echo "<h3>🔄 EXTRACTED VARIABLES</h3>";
     echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
     echo "ID: " . (isset($id) ? $id : 'NOT SET') . "\n";
     echo "CLL ID: " . (isset($cllid) ? $cllid : 'NOT SET') . "\n";
@@ -601,11 +580,23 @@ if(isset($_POST['transaction'])){
     if(empty($transaction_amount)) $errors[] = "Transaction Amount is required";
     if(empty($transaction_flow)) $errors[] = "Transaction Flow is required";
 
+    echo "<div style='background: #ffff00; color: #000; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
+    echo "<h3>🔍 VALIDATION CHECK</h3>";
+    echo "<p>Errors found: " . count($errors) . "</p>";
+    if(!empty($errors)) {
+        echo "<p>Error details: " . implode(", ", $errors) . "</p>";
+    } else {
+        echo "<p>✅ All validation passed!</p>";
+    }
+    echo "</div>";
+
     if(!empty($errors)){
         $error_message = implode(", ", $errors);
-        echo "<h3 style='color: red;'>VALIDATION ERRORS:</h3>";
-        echo "<p style='color: red;'>$error_message</p>";
-        echo "<p><a href='profile.php?id=$id'>Go Back</a></p>";
+        echo "<div style='background: #ff6600; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
+        echo "<h3>VALIDATION ERRORS:</h3>";
+        echo "<p>$error_message</p>";
+        echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Go Back</a></p>";
+        echo "</div>";
     } else {
         $cllid = explode("CLL",$cllid);
         $cllid = $cllid[1];
