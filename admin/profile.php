@@ -1,7 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
@@ -142,11 +139,10 @@ towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processin
         }else{
         $fee = $t * $day / 100 * 0.3;
         $interest = "0.3%";
-        }
+        }}
         $total_amount = $fee; 
         towquery("UPDATE `loan_apply` SET `service_charge`='$total_amount' WHERE id='".$validfetch['id']."'");
-    }
-}
+}}
 if(towquery($pqu)) {
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
 } else {
@@ -230,7 +226,7 @@ if(isset($_POST['conta'])){
 if(isset($_POST['document'])){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
-    $file_type = strtolower(pathinfo($_FILES['conpanydocument']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $conpanydocument = $_FILES["conpanydocument"]["name"];
@@ -280,11 +276,12 @@ if (!$success) $personaldocument[$i] = $userpro_personaldocument[$i];
     }else{$salarydocument = $userpro_salarydocument;}
     
     if(!empty($_FILES['bankdocument']['name'])){
-    $file_type = strtolower(pathinfo($_FILES['bankdocument']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['bankdocument']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument']['name'];
-$ext = pathinfo($a, PATHINFO_EXTENSION);
+$ext = explode(".",$a);
+$ext = end($ext);
 $new = date('ymdhis');
 $bankdocument = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument']['tmp_name'], $bankdocument, 'application/octet-stream');
@@ -314,11 +311,12 @@ if (!$success) $bankdocument2 = $userpro_bankdocument2;
     }
     
     if(!empty($_FILES['bankdocument3']['name'])){
-    $file_type = strtolower(pathinfo($_FILES['bankdocument3']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['bankdocument3']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument3']['name'];
-$ext = pathinfo($a, PATHINFO_EXTENSION);
+$ext = explode(".",$a);
+$ext = end($ext);
 $new = date('ymdhis');
 $bankdocument3 = $userpro_email.'bank'.$new.'.'.$ext;
 list($success, $result) = s3_upload_file($_FILES['bankdocument3']['tmp_name'], $bankdocument3, 'application/octet-stream');
@@ -330,7 +328,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["addressdocument"]["name"])){
-    $file_type = strtolower(pathinfo($_FILES['addressdocument']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['addressdocument']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $addressdocument = $_FILES["addressdocument"]["name"];
@@ -346,7 +344,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["companyidcard"]["name"])){
-    $file_type = strtolower(pathinfo($_FILES['companyidcard']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['companyidcard']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $companyidcard = $_FILES["companyidcard"]["name"];
@@ -362,7 +360,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
     }
     
     if(!empty($_FILES["signature"]["name"])){
-    $file_type = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['signature']['name'])));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $signature = $_FILES["signature"]["name"];
@@ -377,7 +375,7 @@ if (!$success) $bankdocument3 = $userpro_bankdocument3;
         $signature = "$userpro_signature";
     }
     if(!empty($_FILES["selfie"]["name"])){
-    $file_type = strtolower(pathinfo($_FILES['selfie']['name'], PATHINFO_EXTENSION));
+    $file_type = strtolower(end(explode('.',$_FILES['selfie']['name'])));
     $allowed = array("mkv", "mp4");
     if(in_array($file_type, $allowed)) {
     $selfie = $_FILES["selfie"]["name"];
@@ -497,17 +495,6 @@ if(isset($_POST['transaction'])){
     } else {
         $cllid = explode("CLL",$cllid);
         $cllid = $cllid[1];
-        
-        // Insert transaction details for ALL transaction flows
-        $transaction_insert = towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
-        
-        // Debug: Log transaction insertion result
-        if($transaction_insert) {
-            error_log("Transaction details saved successfully for user $id, CLL $cllid");
-        } else {
-            error_log("Failed to save transaction details for user $id, CLL $cllid. Error: " . mysqli_error($db));
-        }
-        
     if(($transaction_flow == "full") or ($transaction_flow == "firstemi") or ($transaction_flow == "secondemi") or ($transaction_flow == "preclose") or ($transaction_flow == "settlement")){
         $che = towquery("SELECT `femi`,`semi`,`is_emi` FROM loan WHERE lid=$cllid");
     if(townum($che) > 0){
@@ -591,7 +578,7 @@ if(isset($_POST['transaction'])){
             towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
             $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
         }
-        // Transaction details already inserted above for all flows
+        towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
         $template_id='1107165683325768963';
         $mobile = $userpro_mobile;
         include '../send_sms.php';
@@ -607,7 +594,7 @@ if(isset($_POST['transaction'])){
         $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
         towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
                         VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
-    // Transaction details already inserted above for all flows
+    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
     if($userpro_approvenew ==0){
         if(file_get_contents("https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=$cllid&url2=https://creditlab.in/key2.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
             towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
@@ -635,21 +622,18 @@ if(isset($_POST['transaction'])){
      
      towquery("UPDATE `loan` SET `processed_date`='$date' WHERE uid=".$id." AND lid=".$cllid."");
 
-    // Transaction details already inserted above for all flows
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }elseif($transaction_flow == "part"){
     $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
         $validfetch = towfetch($valid);
      towquery("UPDATE `loan` SET `advance_amount`='$transaction_amount' WHERE uid=".$id." AND lid=".$cllid."");
-    // Transaction details already inserted above for all flows
+    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
     $template_id = '1107169454135117024';
     $mobile = $userpro_mobile;
     $message = "We got a part payment of Rs {$transaction_amount} w.r.t your Creditlab.in loan CLL{$cllid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
     include '../send_sms.php';
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
     } // Close the validation else block
-    } // Close the transaction flow if block
-    } // Close the main else block for validation
 }
 ?>
 <?php
