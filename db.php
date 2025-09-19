@@ -11,6 +11,19 @@ mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISI
 function towquery($query)
 {
 	global $db;
+	
+	// Check if connection is still valid
+	if (!$db || mysqli_ping($db) === false) {
+		// Reconnect if connection is lost
+		$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+		if (!$db) {
+			error_log("Database reconnection failed: " . mysqli_connect_error());
+			return false;
+		}
+		mysqli_set_charset($db,'utf8');
+		mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+	}
+	
 	$re = mysqli_query($db,$query);
 	if (!$re) {
 		error_log("SQL Error: " . mysqli_error($db) . " - Query: " . $query);

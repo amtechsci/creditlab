@@ -142,10 +142,11 @@ towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processin
         }else{
         $fee = $t * $day / 100 * 0.3;
         $interest = "0.3%";
-        }}
+        }
         $total_amount = $fee; 
         towquery("UPDATE `loan_apply` SET `service_charge`='$total_amount' WHERE id='".$validfetch['id']."'");
-}}
+    }
+}
 if(towquery($pqu)) {
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
 } else {
@@ -635,6 +636,8 @@ if(isset($_POST['transaction'])){
     include '../send_sms.php';
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
     } // Close the validation else block
+    } // Close the transaction flow if block
+    } // Close the main else block for validation
 }
 ?>
 <?php

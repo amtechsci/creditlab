@@ -1,5 +1,7 @@
 <?php
-include_once '../db.php';
+if (!function_exists('towquery')) {
+    include_once '../db.php';
+}
 
 $MERCHANT_KEY = "9BIB9D914T"; // Replace with actual key
 $SALT = "GGW1QF6ONH";         // Replace with actual salt
