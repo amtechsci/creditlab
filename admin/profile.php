@@ -539,83 +539,72 @@ if(isset($_POST['loandata'])){
 }
 ?>
 <?php
-// DEBUG: Show this message to verify file is updated
-echo "<div style='background: yellow; padding: 10px; margin: 10px; border: 2px solid red;'>";
-echo "<h3>🔧 TRANSACTION DEBUG SECTION ACTIVE!</h3>";
-echo "<p>Current Time: " . date('Y-m-d H:i:s') . "</p>";
-echo "<p>User ID: " . (isset($id) ? $id : 'Not set') . "</p>";
-echo "<p>Tab: " . (isset($tab) ? $tab : 'Not set') . "</p>";
-echo "<p>This section handles transaction form submissions</p>";
-echo "</div>";
-
+// CLEAN TRANSACTION PROCESSING - SIMPLIFIED AND FIXED
 if(isset($_POST['transaction'])){
-    echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
-    echo "<h2>🚨 TRANSACTION FORM SUBMITTED - DEBUGGING!</h2>";
-    echo "<p>Raw POST Data:</p>";
-    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
-    print_r($_POST);
-    echo "</pre>";
-    echo "</div>";
+    // Ensure we have the user ID
+    if(!isset($id) && isset($_GET['id'])) {
+        $id = towreal($_GET['id']);
+    }
     
+    // Extract POST data
     $extract = towrealarray($_POST);
     extract($extract);
     
-    echo "<div style='background: #0066ff; color: #fff; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "<h3>🔄 EXTRACTED VARIABLES</h3>";
-    echo "<pre style='background: #000; color: #0f0; padding: 10px;'>";
-    echo "ID: " . (isset($id) ? $id : 'NOT SET') . "\n";
-    echo "CLL ID: " . (isset($cllid) ? $cllid : 'NOT SET') . "\n";
-    echo "Transaction Number: " . (isset($transaction_number) ? $transaction_number : 'NOT SET') . "\n";
-    echo "Transaction Date: " . (isset($transaction_date) ? $transaction_date : 'NOT SET') . "\n";
-    echo "Transaction Amount: " . (isset($transaction_amount) ? $transaction_amount : 'NOT SET') . "\n";
-    echo "Transaction Flow: " . (isset($transaction_flow) ? $transaction_flow : 'NOT SET') . "\n";
-    echo "</pre>";
-    echo "</div>";
-
-    // Validate all required fields
+    // Validate required fields
     $errors = [];
+    if(empty($id)) $errors[] = "User ID is required";
     if(empty($cllid)) $errors[] = "CLL ID is required";
     if(empty($transaction_number)) $errors[] = "Transaction Number is required";
     if(empty($transaction_date)) $errors[] = "Transaction Date is required";
     if(empty($transaction_amount)) $errors[] = "Transaction Amount is required";
     if(empty($transaction_flow)) $errors[] = "Transaction Flow is required";
 
-    echo "<div style='background: #ffff00; color: #000; padding: 15px; margin: 10px; border: 3px solid #000; font-weight: bold;'>";
-    echo "<h3>🔍 VALIDATION CHECK</h3>";
-    echo "<p>Errors found: " . count($errors) . "</p>";
-    if(!empty($errors)) {
-        echo "<p>Error details: " . implode(", ", $errors) . "</p>";
-    } else {
-        echo "<p>✅ All validation passed!</p>";
-    }
-    echo "</div>";
-
     if(!empty($errors)){
-        $error_message = implode(", ", $errors);
-        echo "<div style='background: #ff6600; color: #fff; padding: 20px; margin: 10px; border: 5px solid #000; font-weight: bold;'>";
+        echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px;'>";
         echo "<h3>VALIDATION ERRORS:</h3>";
-        echo "<p>$error_message</p>";
+        echo "<ul>";
+        foreach($errors as $error) {
+            echo "<li>$error</li>";
+        }
+        echo "</ul>";
         echo "<p><a href='profile.php?id=$id' style='color: #fff;'>Go Back</a></p>";
         echo "</div>";
     } else {
+        // Process CLL ID
+        $original_cllid = $cllid;
         $cllid = explode("CLL",$cllid);
         $cllid = $cllid[1];
         
-        // Insert transaction details for ALL transaction flows
-        echo "<h3>DEBUG: Attempting to insert transaction details</h3>";
-        echo "<p>Query: INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')</p>";
+        // INSERT TRANSACTION DETAILS - THIS IS THE MAIN FIX
+        $insert_query = "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$id','$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')";
         
-        $transaction_insert = towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+        echo "<div style='background: #0000ff; color: #fff; padding: 20px; margin: 10px;'>";
+        echo "<h3>💾 INSERTING TRANSACTION DETAILS</h3>";
+        echo "<p>User ID: $id</p>";
+        echo "<p>CLL ID: $cllid (from $original_cllid)</p>";
+        echo "<p>Transaction Number: $transaction_number</p>";
+        echo "<p>Transaction Date: $transaction_date</p>";
+        echo "<p>Transaction Amount: $transaction_amount</p>";
+        echo "<p>Transaction Flow: $transaction_flow</p>";
+        echo "<p>Query: $insert_query</p>";
+        echo "</div>";
         
-        // Debug: Show transaction insertion result
+        $transaction_insert = towquery($insert_query);
+        
         if($transaction_insert) {
-            echo "<h3 style='color: green;'>SUCCESS: Transaction details saved successfully!</h3>";
+            echo "<div style='background: #00ff00; color: #000; padding: 20px; margin: 10px;'>";
+            echo "<h3>✅ SUCCESS: Transaction details saved successfully!</h3>";
             echo "<p>User ID: $id, CLL ID: $cllid</p>";
+            echo "</div>";
             error_log("Transaction details saved successfully for user $id, CLL $cllid");
         } else {
-            echo "<h3 style='color: red;'>ERROR: Failed to save transaction details!</h3>";
+            global $db;
+            echo "<div style='background: #ff0000; color: #fff; padding: 20px; margin: 10px;'>";
+            echo "<h3>❌ ERROR: Failed to save transaction details!</h3>";
             echo "<p>Database Error: " . mysqli_error($db) . "</p>";
             echo "<p>User ID: $id, CLL ID: $cllid</p>";
+            echo "<p>Query: $insert_query</p>";
+            echo "</div>";
             error_log("Failed to save transaction details for user $id, CLL $cllid. Error: " . mysqli_error($db));
         }
         
