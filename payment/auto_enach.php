@@ -73,9 +73,15 @@ function initiateEasebuzzDirectDebit(array $postParams): string
 
     // --- Generate Hash ---
     // The order of fields is critical for the hash to be valid.
-    $hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
-                   $data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
-                   $data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
+    // --- Generate Hash ---
+// The order of fields is critical for the Direct Debit hash to be valid.
+$hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
+$data['phone'] . '|' .
+$data['customer_authentication_id'] . '|' .
+$data['merchant_debit_id'] . '|' .
+$data['auto_debit_access_key'] . '|' .
+$data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
+$data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
 
     $hash = hash("sha512", $hash_string);
 
