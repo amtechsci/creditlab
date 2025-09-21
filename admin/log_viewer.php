@@ -63,19 +63,30 @@ function formatFileSize($bytes) {
     }
 }
 
-// Get log files
-$cronLogs = getLogFiles('../logs');
+// Get log files from both directories
+$cronLogs = getLogFiles('../payment/logs');
 $webhookLogs = getLogFiles('../logs');
 $allLogs = array_merge($cronLogs, $webhookLogs);
+
+// Debug: Check if directories exist
+$cronDirExists = is_dir('../payment/logs');
+$webhookDirExists = is_dir('../logs');
 
 // Handle log file viewing
 $selectedLog = null;
 $logContent = null;
 if (isset($_GET['view']) && isset($_GET['file'])) {
     $selectedFile = $_GET['file'];
-    $filePath = '../logs/' . $selectedFile;
     
-    if (file_exists($filePath)) {
+    // Check both log directories
+    $filePath = null;
+    if (file_exists('../payment/logs/' . $selectedFile)) {
+        $filePath = '../payment/logs/' . $selectedFile;
+    } elseif (file_exists('../logs/' . $selectedFile)) {
+        $filePath = '../logs/' . $selectedFile;
+    }
+    
+    if ($filePath && file_exists($filePath)) {
         $selectedLog = $selectedFile;
         $lines = isset($_GET['lines']) ? (int)$_GET['lines'] : 100;
         $logContent = readLogFile($filePath, $lines);
@@ -85,9 +96,16 @@ if (isset($_GET['view']) && isset($_GET['file'])) {
 // Handle log download
 if (isset($_GET['download']) && isset($_GET['file'])) {
     $downloadFile = $_GET['file'];
-    $filePath = '../logs/' . $downloadFile;
     
-    if (file_exists($filePath)) {
+    // Check both log directories
+    $filePath = null;
+    if (file_exists('../payment/logs/' . $downloadFile)) {
+        $filePath = '../payment/logs/' . $downloadFile;
+    } elseif (file_exists('../logs/' . $downloadFile)) {
+        $filePath = '../logs/' . $downloadFile;
+    }
+    
+    if ($filePath && file_exists($filePath)) {
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . $downloadFile . '"');
         header('Content-Length: ' . filesize($filePath));
@@ -157,6 +175,18 @@ ksort($logsByDate);
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
+                        <!-- Debug Information -->
+                        <div class="row">
+                            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                <div class="alert alert-info">
+                                    <strong>Debug Info:</strong> 
+                                    Cron logs directory (../payment/logs): <?= $cronDirExists ? '✅ Found' : '❌ Not found' ?> | 
+                                    Webhook logs directory (../logs): <?= $webhookDirExists ? '✅ Found' : '❌ Not found' ?> |
+                                    Total log files found: <?= count($allLogs) ?>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Statistics Cards -->
                         <div class="row">
                             <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
@@ -253,8 +283,12 @@ ksort($logsByDate);
                                                     </td>
                                                     <td><?= formatFileSize($stats['size']) ?></td>
                                                     <td>
-                                                        <a href="?view=1&file=enach_cron_<?= $date ?>.log" class="btn btn-xs btn-primary">View Cron</a>
-                                                        <a href="?view=1&file=webhook_<?= $date ?>.log" class="btn btn-xs btn-success">View Webhook</a>
+                                                        <?php if (file_exists('../payment/logs/enach_cron_'.$date.'.log')): ?>
+                                                            <a href="?view=1&file=enach_cron_<?= $date ?>.log" class="btn btn-xs btn-primary">View Cron</a>
+                                                        <?php endif; ?>
+                                                        <?php if (file_exists('../logs/webhook_'.$date.'.log')): ?>
+                                                            <a href="?view=1&file=webhook_<?= $date ?>.log" class="btn btn-xs btn-success">View Webhook</a>
+                                                        <?php endif; ?>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>
