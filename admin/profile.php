@@ -737,6 +737,42 @@
         echo "<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>";
         exit;
     }
+    
+    // SMS Processing
+    if(isset($_POST['sms'])){
+        $extract = towrealarray($_POST);
+        extract($extract);
+        
+        // Send SMS using the SMS system
+        $mobile = $sms_num;
+        $message = $sms;
+        $template_id = '1107165683325768963'; // Default template ID
+        include '../send_sms.php';
+        
+        print_r("<script>alert('SMS sent successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        exit;
+    }
+    
+    // Mail Processing
+    if(isset($_POST['smail'])){
+        $extract = towrealarray($_POST);
+        extract($extract);
+        
+        // Send Email
+        $headers = "MIME-Version: 1.0" . "\r\n";
+        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+        $headers .= 'From: <noreply@creditlab.in>' . "\r\n";
+        $to = $smail;
+        $subject = "Message from Creditlab Admin";
+        $message = $sms; // Using the same field name as in the form
+        
+        if(mail($to, $subject, $message, $headers)){
+            print_r("<script>alert('Email sent successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        } else {
+            print_r("<script>alert('Failed to send email'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        }
+        exit;
+    }
     ?>
 
     <body onload="adddate('<?=date('Y-m-d')?>')">
