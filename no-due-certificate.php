@@ -10,7 +10,10 @@ $b = $loanf;
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'];
-             $salary_date = $userpro_salary_date;
+             // Get salary date from user data
+             $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$loanf['uid']."'");
+             $user_salary_data = towfetch($user_salary_query);
+             $salary_date = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : '';
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");
              $dis_date = date('Y-m-d', strtotime( $dis_datee . " -1 day"));

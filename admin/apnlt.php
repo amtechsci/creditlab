@@ -94,7 +94,10 @@ WHERE `sloan` > 0 AND status='cleared' ORDER BY user.id DESC LIMIT $offset, $no_
                                         <td data-title="Email"><?=$users_email?></td>
                                         <td data-title="Mobile"><?=$users_mobile?></td>
                                         <td data-title="loan_limit"><?=$users_loan_limit?></td>
-                                        <td data-title="assign_account_manager"><?php echo towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$users_assign_account_manager'"))['name']; ?></td>
+                                        <td data-title="assign_account_manager"><?php 
+                                        $account_manager = towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$users_assign_account_manager'"));
+                                        echo isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';
+                                        ?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($users_status == "waiting"){echo "Just Registered";}else{echo $users_status;}?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$users_id?>">View</a></td>
                                     </tr>

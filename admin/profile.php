@@ -1,7 +1,7 @@
     <?php
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
+    // ini_set('display_errors', 1);
+    // ini_set('display_startup_errors', 1);
+    // error_reporting(E_ALL);
     ob_start(); // Start output buffering to prevent header issues
 
 
@@ -1994,7 +1994,11 @@
                                             <td></td>
                                             <?php }?>
                                             <td <?php if($usersd_action == "no data"){ ?>class="bg-success" <?php }?>><?=$usersd_status_log?></td>
-                                            <td><?php $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); $paid_amtf = towfetch($paid_amt); echo $paid_amtf['paid_amt'] ? $paid_amtf['paid_amt'] : 0;?></td>
+                                            <td><?php 
+                                            $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); 
+                                            $paid_amtf = towfetch($paid_amt); 
+                                            echo isset($paid_amtf['paid_amt']) ? $paid_amtf['paid_amt'] : 0;
+                                            ?></td>
                                             <td><?=$usersd_cleard_date?></td>
                                             <td><?php $dpd = $usersd_exhausted_period-30; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
                                             <td><?php if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ ?>

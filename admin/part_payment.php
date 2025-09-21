@@ -101,8 +101,14 @@ if (isset($_GET['pageno'])) {
                                         <td data-title="Mobile"><?=$users_total_amount?></td>
                                         <td data-title="Mobile"><?=$users_advance_amount?></td>
                                         <td data-title="Mobile"></td>
-                                        <td data-title="Mobile"><?php echo towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$user_assign_account_manager'"))['name']; ?></td>
-                                        <td data-title="Mobile"><?php echo towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"))['name']; ?></td>
+                                        <td data-title="Mobile"><?php 
+                                        $account_manager = towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$user_assign_account_manager'"));
+                                        echo isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';
+                                        ?></td>
+                                        <td data-title="Mobile"><?php 
+                                        $recovery_officer = towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"));
+                                        echo isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';
+                                        ?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$user_status?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
                                     </tr>

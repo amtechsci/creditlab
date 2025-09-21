@@ -5,12 +5,25 @@ if(isset($_GET['id'])){
 $loan  = towquery("SELECT loan_apply.*,user.name,user.present_address,user.permanent_address,user.father_name,user.permanent_address,user.mobile,user.altmobile,user.email,user.pan,user.signature,user.personaldocument,user.conpanydocument,user.marital_status FROM `loan_apply` INNER JOIN user
       ON loan_apply.uid=user.id WHERE loan_apply.id='$id'");
 $loanf = towfetch($loan);
+
+// Check if loan data exists
+if (!$loanf) {
+    die("Loan not found for ID: $id");
+}
 $a = towquery("SELECT * FROM user_login_details WHERE uid='".$loanf['uid']."' ORDER BY id DESC");
 $b = $loanf;
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
+             
+             // Check if loan details exist
+             if (!$lof) {
+                 die("Loan details not found for loan ID: ".$b['id']);
+             }
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'];
-             $salary_date = $userpro_salary_date;
+             // Get salary date from user data
+             $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$loanf['uid']."'");
+             $user_salary_data = towfetch($user_salary_query);
+             $salary_date = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : '';
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");
              $dis_date = date('Y-m-d', strtotime( $dis_datee . " -1 day"));
@@ -83,20 +96,20 @@ $imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
         </div>
         <div class="col-12">
             <br><br>
-            <h4>Date : <?=$lof['cleard_date']?></h4>
-            <h4>Name of the Customer: <?=$b['name']?></h4>
-            <h4>Address: <?=$b['permanent_address'] ? $b['permanent_address'] : $b['present_address']?></h4>
-            <h4>Mobile no: <?=$b['mobile']?></h4>
+            <h4>Date : <?=isset($lof['cleard_date']) ? $lof['cleard_date'] : date('Y-m-d')?></h4>
+            <h4>Name of the Customer: <?=isset($b['name']) ? $b['name'] : 'N/A'?></h4>
+            <h4>Address: <?=isset($b['permanent_address']) && !empty($b['permanent_address']) ? $b['permanent_address'] : (isset($b['present_address']) ? $b['present_address'] : 'N/A')?></h4>
+            <h4>Mobile no: <?=isset($b['mobile']) ? $b['mobile'] : 'N/A'?></h4>
         </div>
         <div class="col-12 d-flex flex-column justify-content-center align-items-center">
             <br>
-            <h4>Sub: No Dues Certificate for Loan ID - CLL<?=$b['id']?></h4>
+            <h4>Sub: No Dues Certificate for Loan ID - CLL<?=isset($b['id']) ? $b['id'] : 'N/A'?></h4>
             <br>
         </div>
         <div class="col-12">
             <h4>Dear Sir/Madam,</h4><br>
-            <h4>This letter is to confirm that loan account ID CLL<?=$b['id']?> belongs to Mr./Ms. <?=$b['name']?> having the PAN number -<?=$b['pan']?>
-            and that there is no amount outstanding and payable by the Mr./Ms. </span><?=$b['name']?> to the Company under the aforesaid loan account. </h4><br><br>
+            <h4>This letter is to confirm that loan account ID CLL<?=isset($b['id']) ? $b['id'] : 'N/A'?> belongs to Mr./Ms. <?=isset($b['name']) ? $b['name'] : 'N/A'?> having the PAN number -<?=isset($b['pan']) ? $b['pan'] : 'N/A'?>
+            and that there is no amount outstanding and payable by the Mr./Ms. </span><?=isset($b['name']) ? $b['name'] : 'N/A'?> to the Company under the aforesaid loan account. </h4><br><br>
             <h4>Thanking you,</h4>
             <h4>On behalf of sonu marketing pvt ltd</h4>
         </div>

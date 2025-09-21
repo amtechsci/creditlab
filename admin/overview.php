@@ -7,20 +7,19 @@ if (isset($_GET['pageno'])) {
         }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $disb = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan`"))['disb'];
+        $disb_result = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan`"));
+        $disb = isset($disb_result['disb']) ? $disb_result['disb'] : 0;
         $cdisb = townum(towquery("SELECT processed_amount FROM `loan`"));
         
-        $def = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan` WHERE exhausted_period > 65"))['disb'];
+        $def_result = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan` WHERE exhausted_period > 65"));
+        $def = isset($def_result['disb']) ? $def_result['disb'] : 0;
         $cdef = townum(towquery("SELECT processed_amount FROM `loan` WHERE exhausted_period > 65"));
         
-        $cle = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan` WHERE status_log='cleared'"))['disb'];
+        $cle_result = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan` WHERE status_log='cleared'"));
+        $cle = isset($cle_result['disb']) ? $cle_result['disb'] : 0;
         $ccle = townum(towquery("SELECT processed_amount FROM `loan` WHERE status_log='cleared'"));
         
-        $disb = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan`"))['disb'];
-        $cdisb = townum(towquery("SELECT processed_amount FROM `loan`"));
-        
-        $disb = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan`"))['disb'];
-        $cdisb = townum(towquery("SELECT processed_amount FROM `loan`"));
+        // Remove duplicate lines - keeping only the first calculation
         
 ?>
 <body>

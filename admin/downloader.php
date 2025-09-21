@@ -7,10 +7,12 @@ if (isset($_GET['pageno'])) {
         }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $iss_amt = towfetch(towquery("SELECT SUM(transaction_amount) as triss FROM `transaction_details` WHERE transaction_flow='R4C To Customer'"))['triss'];
+        $iss_result = towfetch(towquery("SELECT SUM(transaction_amount) as triss FROM `transaction_details` WHERE transaction_flow='R4C To Customer'"));
+        $iss_amt = isset($iss_result['triss']) ? $iss_result['triss'] : 0;
         $iss_lc = townum(towquery("SELECT `cllid` as trcou FROM `transaction_details` WHERE transaction_flow='R4C To Customer' GROUP BY `cllid`"));
         
-        $rec_amt = towfetch(towquery("SELECT SUM(transaction_amount) as triss FROM `transaction_details` WHERE transaction_flow IN ('part','renew','full')"))['triss'];
+        $rec_result = towfetch(towquery("SELECT SUM(transaction_amount) as triss FROM `transaction_details` WHERE transaction_flow IN ('part','renew','full')"));
+        $rec_amt = isset($rec_result['triss']) ? $rec_result['triss'] : 0;
         $rec_lc = townum(towquery("SELECT `cllid` as trcou FROM `transaction_details` WHERE transaction_flow IN ('part','renew','full') GROUP BY `cllid`"));
 ?>
 <body>

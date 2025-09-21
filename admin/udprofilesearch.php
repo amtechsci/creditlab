@@ -110,7 +110,8 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
     $buid = $userfetchmain['id'];
     $uban = towquery("SELECT * FROM `user_login_details` WHERE uid=$buid ORDER BY id DESC");
     if(townum($uban) > 0){
-    $uban = towfetch($uban)['mobile_handset_uid'];
+    $uban_result = towfetch($uban);
+    $uban = isset($uban_result['mobile_handset_uid']) ? $uban_result['mobile_handset_uid'] : '';
     $ubanaa = towquery("SELECT uid FROM `user_login_details` WHERE mobile_handset_uid = '$uban' AND NOT uid=$buid ORDER BY id DESC");
     $accc = townum($ubanaa);
     if($accc > 0){
@@ -190,7 +191,8 @@ $usernumber[0] = $userfetchmain['altmobile'];$number = array_filter($usernumber)
     $buid = $userfetchmain['id'];
     $uban = towquery("SELECT * FROM `user_bank` WHERE uid=$buid ORDER BY id DESC");
     if(townum($uban) > 0){
-    $uban = towfetch($uban)['ac_no'];
+    $uban_result = towfetch($uban);
+    $uban = isset($uban_result['ac_no']) ? $uban_result['ac_no'] : '';
     $ubanaa = towquery("SELECT uid FROM `user_bank` WHERE ac_no = '$uban' AND NOT uid=$buid ORDER BY id DESC");
     $accc = townum($ubanaa);
     if($accc > 0){

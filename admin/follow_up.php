@@ -100,7 +100,10 @@ if (isset($_GET['pageno'])) {
                                         <td data-title="amount"><?=$users_amount?></td>
                                         <td data-title="amount"><?=$users_processing_fees?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($user_status == "waiting"){echo "Just Register";}else{echo $user_status;}?></td>
-                                        <td data-title="approvenew"><?php echo towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"))['name']; ?></td>
+                                        <td data-title="approvenew"><?php 
+                                        $recovery_officer = towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"));
+                                        echo isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';
+                                        ?></td>
                                         <td data-title="approvenew"><?=$users_apply_date?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
                                     </tr>
