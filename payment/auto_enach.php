@@ -45,8 +45,8 @@ function initiateEasebuzzDirectDebit(array $postParams): string
 
     // --- Static & Required Data ---
     $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request
-    $surl = "https://creditlab.in/payment/cb.php"; // Your success URL
-    $furl = "https://creditlab.in/payment/cb.php"; // Your failure URL
+    $surl = "https://creditlab.in/payment/cb_auto.php"; // Your success URL
+    $furl = "https://creditlab.in/payment/cb_auto.php"; // Your failure URL
 
     // --- Map and Sanitize Input Parameters ---
     // This ensures that only expected keys are used and provides default empty values.
@@ -520,7 +520,7 @@ foreach ($eligible_loans as $loan) {
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL_AUTO_test_" . $lid,
+                    "merchant_debit_id" => "CLL_AUTO_" . $lid . "_" . time(),
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 

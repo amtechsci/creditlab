@@ -216,9 +216,19 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         
         // Extract loan.lid from merchant_debit_id (remove CLL_AUTO_ prefix)
         if (strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
-            $loan_lid = substr($merchant_debit_id, 9); // Remove 'CLL_AUTO_' (9 characters)
+            // Parse merchant_debit_id format: CLL_AUTO_{lid}_{timestamp}
+            $parts = explode('_', $merchant_debit_id);
+            if (count($parts) >= 3) {
+                $loan_lid = $parts[2]; // Get the loan ID (third part after CLL_AUTO_)
+                $timestamp = isset($parts[3]) ? $parts[3] : null; // Get timestamp if available
+            } else {
+                // Fallback for old format without timestamp
+                $loan_lid = substr($merchant_debit_id, 9); // Remove 'CLL_AUTO_' (9 characters)
+                $timestamp = null;
+            }
             
-            writeWebhookLog("Processing auto-debit for loan CLL$loan_lid | Amount: ₹$amount | Bank Ref: $bank_ref_num", $log_file);
+            $timestamp_info = $timestamp ? " | Timestamp: $timestamp (" . date('Y-m-d H:i:s', $timestamp) . ")" : "";
+            writeWebhookLog("Processing auto-debit for loan CLL$loan_lid | Amount: ₹$amount | Bank Ref: $bank_ref_num$timestamp_info", $log_file);
             
             // Get loan details to verify loan exists and get user ID
             $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");

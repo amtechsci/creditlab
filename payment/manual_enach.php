@@ -73,7 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         
         // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
         $days++;
-        $days++;
         
         // Calculate base amount with GST on processing fee (18% GST)
         $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -231,8 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         $key = '9BIB9D914T';
         $salt = 'GGW1QF6ONH';
         $txnid = uniqid("txn_");
-        $surl = "https://creditlab.in/payment/cb.php";
-        $furl = "https://creditlab.in/payment/cb.php";
+        $surl = "https://creditlab.in/payment/cb_auto.php";
+        $furl = "https://creditlab.in/payment/cb_auto.php";
 
         $requiredKeys = [
             "amount" => "", "productinfo" => "", "firstname" => "", "email" => "", "phone" => "",
@@ -316,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL_AUTO_" . $lid,
+                    "merchant_debit_id" => "CLL_AUTO_" . $lid . "_" . time(),
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 
