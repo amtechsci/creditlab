@@ -388,12 +388,20 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
     if (isset($status) && $status == "success") {
         $pg_transaction = towquery($db, "SELECT * FROM pg_transaction WHERE txnid='$txnid' AND `status`!='success'");
         if (townum($pg_transaction) > 0) {
+            writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
             $pg_data = towfetch($pg_transaction);
             $cllid = $pg_data['loan_id'];
             
             $loan_data = towquery($db, "SELECT * FROM loan WHERE id='$cllid'");
             $loan_details = towfetch($loan_data);
             $uid = $loan_details['uid'];
+
+            // Check if loan is already cleared to prevent duplicate processing
+            if ($loan_details['status_log'] == 'cleared') {
+                writeWebhookLog("SKIPPED: Loan CLL{$loan_details['lid']} already cleared for txnid: $txnid", $log_file);
+                towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount', `payment_method`='$payment_method', `bank_reference_number`='$bank_ref_num' WHERE txnid='$txnid'");
+                continue;
+            }
 
             // FIX: Fetch user details so $user_details is defined
             $user_data_result = towquery($db, "SELECT * FROM user WHERE id='$uid'");
