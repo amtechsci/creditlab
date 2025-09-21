@@ -1,7 +1,7 @@
 <!-- <?php
- ini_set('display_startup_errors', 1);
- ini_set('display_errors', 1);
- error_reporting(-1);
+//  ini_set('display_startup_errors', 1);
+//  ini_set('display_errors', 1);
+//  error_reporting(-1);
 // Set a longer execution time limit, essential for cron jobs that might process many records.
 set_time_limit(0); 
 
@@ -472,7 +472,7 @@ foreach ($eligible_loans as $loan) {
     }
     
     // Now check for authorized authorizations (case-insensitive)
-    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) = 'authorized'");
+    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) IN ('authorized', 'accepted')");
     $enach_count = townum($easebuzz_adtd);
 
     if ($enach_count > 0) {

@@ -295,7 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
             $userdataff = towfetch($userdata);
 
             // Check for authorized E-Nach authorizations (case-insensitive)
-            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) = 'authorized'");
+            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) IN ('authorized', 'accepted')");
 
             if (townum($easebuzz_adtd) > 0) {
                 $easebuzz_adtdff = towfetch($easebuzz_adtd);

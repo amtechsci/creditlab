@@ -338,7 +338,7 @@ writeZzenachLog("Loan CLL$lid: Dynamic calculation completed - Amount: ₹$total
 writeZzenachLog("Loan CLL$lid: Breakdown - Processed: ₹" . number_format($breakdown['processed_amount'], 2) . " | Processing Fee: ₹" . number_format($breakdown['p_fee'], 2) . " | Service Charge: ₹" . number_format($breakdown['service_charge'], 2) . " | Penalty: ₹" . number_format($breakdown['penalty_charge'], 2), $log_file);
 
 // Get ALL E-Nach details for this user (multiple customer_authentication_id)
-$easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='{$userdataff['uid']}' AND LOWER(authorization_status) = 'authorized'");
+$easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='{$userdataff['uid']}' AND LOWER(authorization_status) IN ('authorized', 'accepted')");
 $enach_count = townum($easebuzz_adtd);
 
 if($enach_count > 0){

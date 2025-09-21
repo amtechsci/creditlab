@@ -801,7 +801,7 @@
                         <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
                         $recovery_officer = towfetch($recovery_officer);
                         ?>
-                    <p>Account Manager : <?=$account_manager['name'];?> </p><p>Recovery Officer : <?=$recovery_officer['name'];?></p>
+                    <p>Account Manager : <?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?> </p><p>Recovery Officer : <?=isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';?></p>
                     <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
                     <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
                     $totalflss = $totalfls['total'] ? $totalfls['total'] : 0;
@@ -2334,7 +2334,7 @@
                                             <td><?=$ub_commitment_date;?></td>
                                             <td><?=$ub_commitment_text;?></td>
                                             <td><?=$ub_updated_at;?></td>
-                                            <td><?=$account_manager['name'];?></td>
+                                            <td><?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?></td>
                                             </form>
                                         </tr>
                                         <?php } ?>
