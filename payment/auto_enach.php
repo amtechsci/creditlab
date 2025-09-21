@@ -520,7 +520,8 @@ foreach ($eligible_loans as $loan) {
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 
-                // Debug: Log the exact API call data
+                // Debug: Log the exact API call data and E-Nach details
+                writeLog("Loan CLL$lid: E-Nach Details - Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Auto Debit Access Key: {$easebuzz_adtdff['auto_debit_access_key']} | Authorization Status: {$easebuzz_adtdff['authorization_status']}", $log_file);
                 writeLog("Loan CLL$lid: API Call Data - " . json_encode($paymentDetails), $log_file);
                 
                 // Call Easebuzz API
@@ -540,6 +541,9 @@ foreach ($eligible_loans as $loan) {
                     $failed_count++;
                     $failed_loans[] = "CLL$lid";
                     writeLog("FAILED: E-Nach request for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Error: $errorMessage", $log_file);
+                    
+                    // Reset enach_request flag for failed loans so they can be retried
+                    towquery($db, "UPDATE `loan` SET `enach_request` = 0 WHERE lid = $lid");
                 }
             } else {
                 // In dry-run mode, just count as would-be success
