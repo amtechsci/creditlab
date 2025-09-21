@@ -2,7 +2,34 @@
 $filename = 'webhook_data.txt';
 date_default_timezone_set('Asia/Kolkata');
 
-// --- LOGGING ---
+// --- ENHANCED LOGGING ---
+$current_date = date('Y-m-d');
+$current_time = date('Y-m-d H:i:s');
+
+// Create daily log file
+$log_file = "logs/webhook_" . $current_date . ".log";
+$log_dir = dirname($log_file);
+if (!is_dir($log_dir)) {
+    mkdir($log_dir, 0755, true);
+}
+
+// Function to write detailed logs
+function writeWebhookLog($message, $log_file) {
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[$timestamp] $message\n";
+    file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    error_log($message); // Also log to system error log
+}
+
+// Initialize transaction tracking arrays
+$successful_transactions = [];
+$failed_transactions = [];
+
+// Start webhook processing
+writeWebhookLog("=== WEBHOOK REQUEST STARTED ===", $log_file);
+writeWebhookLog("Date: $current_date | Time: $current_time", $log_file);
+
+// --- RAW DATA LOGGING ---
 $headers = getallheaders();
 $headersFormatted = "Headers:\n" . serialize($headers);
 $getData = "GET Data:\n" . serialize($_GET);
@@ -32,13 +59,125 @@ mysqli_set_charset($db, 'utf8');
 // --- 2. REVISED DATABASE FUNCTIONS ---
 // These now require the $db connection to be passed in.
 function towquery($db, $query) {
-    return mysqli_query($db, $query);
+    $result = mysqli_query($db, $query);
+    if (!$result) {
+        error_log("Database query failed: " . mysqli_error($db) . " - Query: " . $query);
+        return false;
+    }
+    return $result;
 }
 function townum($query_result) {
     return mysqli_num_rows($query_result);
 }
 function towfetch($query_result) {
     return mysqli_fetch_array($query_result);
+}
+
+// --- 3. STANDARDIZED BUSINESS LOGIC FUNCTIONS ---
+/**
+ * Calculate credit score points based on DPD (Days Past Due)
+ * @param int $dpd Days past due
+ * @return int Credit score points
+ */
+function calculateCreditScorePoints($dpd) {
+    if ($dpd > 0) {
+        if ($dpd > 30) {
+            return -50;
+        } elseif ($dpd > 10) {
+            return -8;
+        } else {
+            return 2;
+        }
+    } else {
+        return 8;
+    }
+}
+
+/**
+ * Process loan clearance with transaction support
+ * @param mysqli $db Database connection
+ * @param int $loan_lid Loan ID
+ * @param int $uid User ID
+ * @param float $amount Transaction amount
+ * @param string $bank_ref_num Bank reference number
+ * @param string $transaction_flow Transaction flow type
+ * @return bool Success status
+ */
+function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $transaction_flow = 'full') {
+    // Start transaction
+    mysqli_autocommit($db, false);
+    
+    try {
+        // Get loan details for DPD calculation
+        $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
+        if (!$loan_data || townum($loan_data) == 0) {
+            throw new Exception("Loan not found: $loan_lid");
+        }
+        $loan_details = towfetch($loan_data);
+        
+        // Calculate credit score points
+        $dpd = $loan_details['exhausted_period'] - 30;
+        $point = calculateCreditScorePoints($dpd);
+        
+        // Check if it's EMI and update accordingly
+        $chf_data = towquery($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid'");
+        if ($chf_data && townum($chf_data) > 0) {
+            $chf = towfetch($chf_data);
+            if ($chf && isset($chf['is_emi']) && $chf['is_emi'] == 1) {
+                $emi_result = towquery($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid=$loan_lid");
+                if (!$emi_result) {
+                    throw new Exception("Failed to update EMI status");
+                }
+            }
+        }
+        
+        // Update user credit score and loan count
+        $user_update = towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);
+        if (!$user_update) {
+            throw new Exception("Failed to update user credit score");
+        }
+        
+        // Clear the loan
+        $loan_clear = towquery($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$loan_lid");
+        if (!$loan_clear) {
+            throw new Exception("Failed to clear loan");
+        }
+        
+        $user_clear = towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
+        if (!$user_clear) {
+            throw new Exception("Failed to clear user status");
+        }
+        
+        $loan_apply_clear = towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_lid);
+        if (!$loan_apply_clear) {
+            throw new Exception("Failed to clear loan application");
+        }
+        
+        // Delete payment references
+        $pay_ref_delete = towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid'");
+        if (!$pay_ref_delete) {
+            throw new Exception("Failed to delete payment references");
+        }
+        
+        // Insert transaction details
+        $transaction_insert = towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', '$transaction_flow')");
+        if (!$transaction_insert) {
+            throw new Exception("Failed to insert transaction details");
+        }
+        
+        // Commit transaction
+        mysqli_commit($db);
+        return true;
+        
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        mysqli_rollback($db);
+        error_log("Transaction failed for loan $loan_lid: " . $e->getMessage());
+        return false;
+    } finally {
+        // Re-enable autocommit
+        mysqli_autocommit($db, true);
+    }
 }
 
 
@@ -79,59 +218,74 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         if (strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
             $loan_lid = substr($merchant_debit_id, 9); // Remove 'CLL_AUTO_' (9 characters)
             
+            writeWebhookLog("Processing auto-debit for loan CLL$loan_lid | Amount: ₹$amount | Bank Ref: $bank_ref_num", $log_file);
             
-            // Get loan details
+            // Get loan details to verify loan exists and get user ID
             $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
+            if (!$loan_data) {
+                $error_msg = "Database error while fetching loan $loan_lid";
+                writeWebhookLog("ERROR: $error_msg", $log_file);
+                $failed_transactions[] = "CLL$loan_lid - $error_msg";
+                http_response_code(500);
+                die($error_msg);
+            }
+            
             if (townum($loan_data) > 0) {
                 $loan_details = towfetch($loan_data);
                 $uid = $loan_details['uid'];
                 
                 // Get user details
                 $user_data = towquery($db, "SELECT * FROM user WHERE id='$uid'");
+                if (!$user_data || townum($user_data) == 0) {
+                    $error_msg = "User not found for loan CLL$loan_lid";
+                    writeWebhookLog("ERROR: $error_msg", $log_file);
+                    $failed_transactions[] = "CLL$loan_lid - $error_msg";
+                    http_response_code(404);
+                    die($error_msg);
+                }
                 $user_details = towfetch($user_data);
                 
-                // Calculate credit score points (same logic as admin/profile.php)
-                $dpd = $loan_details['exhausted_period'] - 30;
-                if ($dpd > 0) {
-                    if ($dpd > 30) {
-                        $point = -50;
-                    } elseif ($dpd > 10) {
-                        $point = -8;
+                // Process loan clearance with transaction support
+                $clearance_success = processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, 'full');
+                
+                if ($clearance_success) {
+                    writeWebhookLog("SUCCESS: Loan CLL$loan_lid cleared successfully | User: {$user_details['name']} | Amount: ₹$amount", $log_file);
+                    $successful_transactions[] = "CLL$loan_lid - ₹$amount";
+                    
+                    // Generate no-due certificate
+                    $cert_result = file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+                    if ($cert_result) {
+                        writeWebhookLog("No-due certificate generated for CLL$loan_lid", $log_file);
                     } else {
-                        $point = 2;
+                        writeWebhookLog("WARNING: Failed to generate no-due certificate for CLL$loan_lid", $log_file);
                     }
+                    
+                    // Send SMS notification
+                    $template_id = '1107165683325768963';
+                    $mobile = $user_details['mobile'];
+                    include 'send_sms.php';
+                    writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
+                    
                 } else {
-                    $point = 8;
+                    $error_msg = "Failed to process loan clearance for CLL$loan_lid";
+                    writeWebhookLog("ERROR: $error_msg", $log_file);
+                    $failed_transactions[] = "CLL$loan_lid - $error_msg";
+                    http_response_code(500);
+                    die($error_msg);
                 }
-                
-                // Check if it's EMI
-                $chf_data = towquery($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid'");
-                $chf = towfetch($chf_data);
-                if ($chf && $chf['is_emi'] == 1) {
-                    towquery($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid=$loan_lid");
-                }
-                
-                // Update user credit score and loan count
-                towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);
-                
-                // Clear the loan
-                towquery($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$loan_lid");
-                towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
-                towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_lid);
-                towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid'");
-                
-                // Insert transaction details
-                towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
-                
-                // Generate no-due certificate
-                file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
-                
-                // Send SMS notification
-                $template_id = '1107165683325768963';
-                $mobile = $user_details['mobile'];
-                include 'send_sms.php';
-                
+            } else {
+                $error_msg = "Loan CLL$loan_lid not found";
+                writeWebhookLog("ERROR: $error_msg", $log_file);
+                $failed_transactions[] = "CLL$loan_lid - $error_msg";
+                http_response_code(404);
+                die($error_msg);
             }
+        } else {
+            $error_msg = "Invalid merchant_debit_id format: $merchant_debit_id";
+            writeWebhookLog("ERROR: $error_msg", $log_file);
+            $failed_transactions[] = "Invalid ID - $error_msg";
+            http_response_code(400);
+            die($error_msg);
         }
     }
 }
@@ -260,6 +414,29 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
         towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid'");
     }
 }
+
+// --- FINAL SUMMARY LOGGING ---
+writeWebhookLog("=== WEBHOOK PROCESSING SUMMARY ===", $log_file);
+writeWebhookLog("Date: $current_date | Time: $current_time", $log_file);
+writeWebhookLog("Successful Transactions: " . count($successful_transactions), $log_file);
+writeWebhookLog("Failed Transactions: " . count($failed_transactions), $log_file);
+
+// Log detailed transaction lists
+if (!empty($successful_transactions)) {
+    writeWebhookLog("Successful Transaction Details:", $log_file);
+    foreach ($successful_transactions as $transaction) {
+        writeWebhookLog("  ✓ $transaction", $log_file);
+    }
+}
+
+if (!empty($failed_transactions)) {
+    writeWebhookLog("Failed Transaction Details:", $log_file);
+    foreach ($failed_transactions as $transaction) {
+        writeWebhookLog("  ✗ $transaction", $log_file);
+    }
+}
+
+writeWebhookLog("=== WEBHOOK PROCESSING COMPLETED ===", $log_file);
 
 http_response_code(200);
 
