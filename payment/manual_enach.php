@@ -63,6 +63,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         die("Invalid option selected."); // Exit if the form value is manipulated
     }
 
+    // Add the same calculation functions as auto_enach.php
+    function calculateTotalAmount($loan, $loan_apply) {
+        $processed_amount = (float)$loan['processed_amount'];
+        $p_fee = (float)$loan['p_fee'];
+        $service_charge = (float)$loan['service_charge'];
+        $penalty_charge = (float)$loan['penality_charge'];
+        
+        // Calculate GST on processing fee (18%)
+        $p_fee_gst = $p_fee * 0.18;
+        
+        // Calculate total amount
+        $total = $processed_amount + $p_fee + $p_fee_gst + $service_charge + $penalty_charge;
+        
+        return $total;
+    }
+
+    function calculateAmountBreakdown($loan, $loan_apply) {
+        $processed_amount = (float)$loan['processed_amount'];
+        $p_fee = (float)$loan['p_fee'];
+        $service_charge = (float)$loan['service_charge'];
+        $penalty_charge = (float)$loan['penality_charge'];
+        
+        // Calculate GST on processing fee (18%)
+        $p_fee_gst = $p_fee * 0.18;
+        
+        return [
+            'processed_amount' => $processed_amount,
+            'p_fee' => $p_fee,
+            'p_fee_gst' => $p_fee_gst,
+            'service_charge' => $service_charge,
+            'penalty_charge' => $penalty_charge
+        ];
+    }
+
     // This function remains unchanged.
     function initiateEasebuzzDirectDebit(array $postParams): string {
         $key = '9BIB9D914T';
@@ -132,20 +166,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
             $userdata = towquery("SELECT * FROM `user` WHERE id='$uid'");
             $userdataff = towfetch($userdata);
 
-            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid'");
+            // Check for accepted or authorized E-Nach authorizations (case-insensitive)
+            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND (LOWER(authorization_status) = 'accepted' OR LOWER(authorization_status) = 'authorized')");
 
             if (townum($easebuzz_adtd) > 0) {
                 $easebuzz_adtdff = towfetch($easebuzz_adtd);
                 
-                // IMPORTANT: Fixed a potential undefined variable error for $gst. Set it to 0 or your actual GST value.
-                $gst = 0; 
+                // Get loan application details for proper calculation
+                $loan_apply_data = towquery("SELECT * FROM `loan_apply` WHERE id='$lid'");
+                $loan_apply = towfetch($loan_apply_data);
                 
-                $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$loan['service_charge'] + $gst + (float)$loan['penality_charge'];
+                // Use the same calculation logic as auto_enach.php
+                $totalamount = calculateTotalAmount($loan, $loan_apply);
                 $totalamount = number_format($totalamount, 2, '.', '');
 
                 $paymentDetails = [
                     "amount" => $totalamount,
-                    "productinfo" => "Loan Repayment Cron",
+                    "productinfo" => "Loan Repayment Manual",
                     "firstname" => $userdataff['name'],
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
@@ -157,12 +194,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
                 $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
                 $res = json_decode($apiResponse, true);
 
+                // Show calculation breakdown
+                $breakdown = calculateAmountBreakdown($loan, $loan_apply);
+                echo "Calculation Breakdown for CLL$lid:\n";
+                echo "  Processed Amount: ₹" . number_format($loan['processed_amount'], 2) . "\n";
+                echo "  Processing Fee: ₹" . number_format($loan['p_fee'], 2) . "\n";
+                echo "  Processing Fee GST (18%): ₹" . number_format($breakdown['p_fee_gst'], 2) . "\n";
+                echo "  Service Charge: ₹" . number_format($breakdown['service_charge'], 2) . "\n";
+                echo "  Penalty Charge: ₹" . number_format($breakdown['penalty_charge'], 2) . "\n";
+                echo "  Total Amount: ₹$totalamount\n\n";
+
                 if ($res && isset($res['status']) && $res['status']) {
-                    towquery("UPDATE `loan` SET `enach_request` = 1 WHERE lid = $lid");
-                    echo "SUCCESS: E-Nach request initiated for lid: $lid. Response: $apiResponse\n";
+                    towquery("UPDATE `loan` SET `enach_request` = 1, `enach_request_date` = '" . date('Y-m-d') . "' WHERE lid = $lid");
+                    echo "SUCCESS: E-Nach request initiated for CLL$lid | Amount: ₹$totalamount | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}\n";
                 } else {
                     $errorMessage = isset($res['error_desc']) ? $res['error_desc'] : 'Unknown API error.';
-                    echo "FAILED: E-Nach request for lid: $lid. Error: $errorMessage\n";
+                    echo "FAILED: E-Nach request for CLL$lid | Error: $errorMessage\n";
                 }
             } else {
                 echo "SKIPPED: No E-Nach details found for user uid: $uid.\n";

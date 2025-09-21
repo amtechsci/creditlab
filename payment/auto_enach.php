@@ -453,7 +453,19 @@ foreach ($eligible_loans as $loan) {
     $loan_apply = towfetch($loan_apply_data);
 
     // Get ALL E-Nach details for this user (multiple customer_authentication_id)
-    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND authorization_status = 'accepted'");
+    // First, let's check what E-Nach records exist for this user
+    $debug_query = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid'");
+    $debug_count = townum($debug_query);
+    writeLog("Loan CLL$lid: Found $debug_count total E-Nach records for user $uid", $log_file);
+    
+    if ($debug_count > 0) {
+        while ($debug_record = towfetch($debug_query)) {
+            writeLog("Loan CLL$lid: E-Nach record - Auth Status: '{$debug_record['authorization_status']}' | Customer Auth ID: '{$debug_record['customer_authentication_id']}' | TxnID: '{$debug_record['txnid']}'", $log_file);
+        }
+    }
+    
+    // Now check for accepted or authorized authorizations (case-insensitive)
+    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND (LOWER(authorization_status) = 'accepted' OR LOWER(authorization_status) = 'authorized')");
     $enach_count = townum($easebuzz_adtd);
 
     if ($enach_count > 0) {
@@ -535,9 +547,9 @@ foreach ($eligible_loans as $loan) {
         }
     } else {
         $skipped_loans[] = "CLL$lid";
-        writeLog("SKIPPED: No E-Nach details found for user uid: $uid, loan CLL$lid", $log_file);
+        writeLog("SKIPPED: No accepted E-Nach authorizations found for user uid: $uid, loan CLL$lid", $log_file);
         if ($dry_run) {
-            echo "SKIPPED: No E-Nach details found for user uid: $uid, lid: $lid\n";
+            echo "SKIPPED: No accepted E-Nach authorizations found for user uid: $uid, lid: $lid\n";
         }
     }
 }
