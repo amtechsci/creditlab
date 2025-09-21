@@ -293,8 +293,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
             $userdata = towquery("SELECT * FROM `user` WHERE id='$uid'");
             $userdataff = towfetch($userdata);
 
-            // Check for accepted or authorized E-Nach authorizations (case-insensitive)
-            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND (LOWER(authorization_status) = 'accepted' OR LOWER(authorization_status) = 'authorized')");
+            // Check for authorized E-Nach authorizations (case-insensitive)
+            $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) = 'authorized'");
 
             if (townum($easebuzz_adtd) > 0) {
                 $easebuzz_adtdff = towfetch($easebuzz_adtd);
@@ -314,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL_AUTO_" . $lid,
+                    "merchant_debit_id" => "CLL" . $lid,
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 

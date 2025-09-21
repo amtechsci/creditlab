@@ -74,14 +74,10 @@ function initiateEasebuzzDirectDebit(array $postParams): string
     // --- Generate Hash ---
     // The order of fields is critical for the hash to be valid.
     // --- Generate Hash ---
-// The order of fields is critical for the Direct Debit hash to be valid.
-$hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
-$data['phone'] . '|' .
-$data['customer_authentication_id'] . '|' .
-$data['merchant_debit_id'] . '|' .
-$data['auto_debit_access_key'] . '|' .
-$data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
-$data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
+    // The order of fields is critical for the hash to be valid.
+    $hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
+                   $data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
+                   $data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
 
     $hash = hash("sha512", $hash_string);
 
@@ -469,8 +465,8 @@ foreach ($eligible_loans as $loan) {
         }
     }
     
-    // Now check for accepted or authorized authorizations (case-insensitive)
-    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND (LOWER(authorization_status) = 'accepted' OR LOWER(authorization_status) = 'authorized')");
+    // Now check for authorized authorizations (case-insensitive)
+    $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND LOWER(authorization_status) = 'authorized'");
     $enach_count = townum($easebuzz_adtd);
 
     if ($enach_count > 0) {
@@ -522,7 +518,7 @@ foreach ($eligible_loans as $loan) {
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL_AUTO_" . $lid,
+                    "merchant_debit_id" => "CLL" . $lid,
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 
@@ -560,9 +556,9 @@ foreach ($eligible_loans as $loan) {
         }
     } else {
         $skipped_loans[] = "CLL$lid";
-        writeLog("SKIPPED: No accepted E-Nach authorizations found for user uid: $uid, loan CLL$lid", $log_file);
+        writeLog("SKIPPED: No authorized E-Nach authorizations found for user uid: $uid, loan CLL$lid", $log_file);
         if ($dry_run) {
-            echo "SKIPPED: No accepted E-Nach authorizations found for user uid: $uid, lid: $lid\n";
+            echo "SKIPPED: No authorized E-Nach authorizations found for user uid: $uid, lid: $lid\n";
         }
     }
 }
