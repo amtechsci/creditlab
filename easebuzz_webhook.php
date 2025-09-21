@@ -273,6 +273,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                     // Send SMS notification
                     $template_id = '1107165683325768963';
                     $mobile = $user_details['mobile'];
+                    $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
                     include 'send_sms.php';
                     writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
                     
@@ -422,6 +423,7 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
             $template_id='1107165683325768963';
             // FIX: $user_details is now defined and can be used here
             $mobile = $user_details['mobile'];
+            $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
             include '../send_sms.php';
 
             // FIX: The query now includes the defined $payment_method variable

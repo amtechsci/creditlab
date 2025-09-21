@@ -137,6 +137,7 @@ if ($_POST) {
 
                 $template_id='1107165683325768963';
                 $mobile = $user_details['mobile'];
+                $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
                 include '../send_sms.php';
                 
             } catch (Exception $e) {
@@ -165,7 +166,7 @@ if ($_POST) {
             // print_r($a);
             // echo "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount', `payment_method`='$payment_method', `bank_reference_number`='$bank_reference_number', `payment_date`='".date('Y-m-d H:i:s')."' WHERE txnid='$txnid'";
             echo '<script>';
-            // echo 'setTimeout(function() { window.location.href = "/user/"; }, 2000);';
+            echo 'setTimeout(function() { window.location.href = "/user/"; }, 2000);';
             echo '</script>';
             echo '</body></html>';
         }
