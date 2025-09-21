@@ -65,35 +65,162 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
 
     // Add the same calculation functions as auto_enach.php
     function calculateTotalAmount($loan, $loan_apply) {
-        $processed_amount = (float)$loan['processed_amount'];
-        $p_fee = (float)$loan['p_fee'];
-        $service_charge = (float)$loan['service_charge'];
-        $penalty_charge = (float)$loan['penality_charge'];
+        // Get current date and calculate days since processed_date
+        $stop_date = date_create($loan['processed_date']);
+        $sa = date_create(date('Y-m-d 23:59:59'));
+        $aa = date_diff($stop_date, $sa);
+        $days = $aa->format("%a");
         
-        // Calculate GST on processing fee (18%)
-        $p_fee_gst = $p_fee * 0.18;
+        // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
+        $days++;
+        
+        // Calculate base amount with GST on processing fee (18% GST)
+        $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
+        
+        $service_charge = 0;
+        $penality = 0;
+        
+        // Calculate service charge based on interest percentage
+        if ($loan_apply['interest_percentage'] == 1) {
+            // Special case for 1% interest - tiered calculation
+            $remaining_days = $days;
+            if ($remaining_days >= 3) {
+                $fee = $t * 3 / 100 * 0;
+                $remaining_days = $remaining_days - 3;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 7) {
+                $fee = $t * 7 / 100 * 0.1;
+                $remaining_days = $remaining_days - 7;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0.1;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 20) {
+                $fee = $t * 20 / 100 * 0.115;
+                $remaining_days = $remaining_days - 20;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0.115;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 1) {
+                $fee = $t * $remaining_days / 100 * 0.1;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+        } else {
+            // Standard interest calculation
+            $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
+            $service_charge += $fee;
+        }
+        
+        // Calculate penalty for days > 30
+        if ($days > 30) {
+            $penalitydays = $days - 30;
+            $penalitydays--;
+            $penality = (($t) / 100) * 4;
+            $atnp = ((($t) / 100) * 0.2) * $penalitydays;
+            $penality = $penality + $atnp;
+        } else {
+            $penality = 0;
+        }
+        
+        // Add 18% GST to penalty
+        $penality = ($penality + ($penality * 0.18));
         
         // Calculate total amount
-        $total = $processed_amount + $p_fee + $p_fee_gst + $service_charge + $penalty_charge;
+        $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$service_charge + (float)$penality;
         
-        return $total;
+        return $totalamount;
     }
 
     function calculateAmountBreakdown($loan, $loan_apply) {
-        $processed_amount = (float)$loan['processed_amount'];
-        $p_fee = (float)$loan['p_fee'];
-        $service_charge = (float)$loan['service_charge'];
-        $penalty_charge = (float)$loan['penality_charge'];
+        // Get current date and calculate days since processed_date
+        $stop_date = date_create($loan['processed_date']);
+        $sa = date_create(date('Y-m-d 23:59:59'));
+        $aa = date_diff($stop_date, $sa);
+        $days = $aa->format("%a");
         
-        // Calculate GST on processing fee (18%)
-        $p_fee_gst = $p_fee * 0.18;
+        // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
+        $days++;
+        
+        // Calculate base amount with GST on processing fee (18% GST)
+        $p_fee_gst = $loan['p_fee'] * 0.18;
+        $t = $loan['processed_amount'] + $loan['p_fee'] + $p_fee_gst;
+        
+        $service_charge = 0;
+        $penality = 0;
+        
+        // Calculate service charge based on interest percentage
+        if ($loan_apply['interest_percentage'] == 1) {
+            // Special case for 1% interest - tiered calculation
+            $remaining_days = $days;
+            if ($remaining_days >= 3) {
+                $fee = $t * 3 / 100 * 0;
+                $remaining_days = $remaining_days - 3;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 7) {
+                $fee = $t * 7 / 100 * 0.1;
+                $remaining_days = $remaining_days - 7;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0.1;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 20) {
+                $fee = $t * 20 / 100 * 0.115;
+                $remaining_days = $remaining_days - 20;
+                $service_charge += $fee;
+            } else {
+                $fee = $t * $remaining_days / 100 * 0.115;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+            if ($remaining_days >= 1) {
+                $fee = $t * $remaining_days / 100 * 0.1;
+                $remaining_days = 0;
+                $service_charge += $fee;
+            }
+        } else {
+            // Standard interest calculation
+            $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
+            $service_charge += $fee;
+        }
+        
+        // Calculate penalty for days > 30
+        if ($days > 30) {
+            $penalitydays = $days - 30;
+            $penalitydays--;
+            $penality = (($t) / 100) * 4;
+            $atnp = ((($t) / 100) * 0.2) * $penalitydays;
+            $penality = $penality + $atnp;
+        } else {
+            $penality = 0;
+        }
+        
+        // Add 18% GST to penalty
+        $penality = ($penality + ($penality * 0.18));
         
         return [
-            'processed_amount' => $processed_amount,
-            'p_fee' => $p_fee,
+            'processed_amount' => (float)$loan['processed_amount'],
+            'p_fee' => (float)$loan['p_fee'],
             'p_fee_gst' => $p_fee_gst,
             'service_charge' => $service_charge,
-            'penalty_charge' => $penalty_charge
+            'penalty_charge' => $penality
         ];
     }
 

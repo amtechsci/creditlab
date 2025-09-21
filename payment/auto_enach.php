@@ -156,37 +156,38 @@ function calculateTotalAmount($loan, $loan_apply) {
     // Calculate service charge based on interest percentage
     if ($loan_apply['interest_percentage'] == 1) {
         // Special case for 1% interest - tiered calculation
-        if ($days >= 3) {
+        $remaining_days = $days;
+        if ($remaining_days >= 3) {
             $fee = $t * 3 / 100 * 0;
-            $days = $days - 3;
+            $remaining_days = $remaining_days - 3;
             $service_charge += $fee;
         } else {
-            $fee = $t * $days / 100 * 0;
-            $days = 0;
+            $fee = $t * $remaining_days / 100 * 0;
+            $remaining_days = 0;
             $service_charge += $fee;
         }
-        if (($days) >= 7) {
+        if ($remaining_days >= 7) {
             $fee = $t * 7 / 100 * 0.1;
-            $days = $days - 7;
+            $remaining_days = $remaining_days - 7;
             $service_charge += $fee;
         } else {
-            $fee = $t * $days / 100 * 0.1;
-            $days = 0;
+            $fee = $t * $remaining_days / 100 * 0.1;
+            $remaining_days = 0;
             $service_charge += $fee;
         }
-        if (($days) >= 20) {
+        if ($remaining_days >= 20) {
             $fee = $t * 20 / 100 * 0.115;
-            $days = $days - 20;
+            $remaining_days = $remaining_days - 20;
             $service_charge += $fee;
         } else {
-            $fee = $t * $days / 100 * 0.115;
-            $days = 0;
+            $fee = $t * $remaining_days / 100 * 0.115;
+            $remaining_days = 0;
             $service_charge += $fee;
         }
-        if (($days) >= 1) {
-            $fee = $t * $days / 100 * 0.1;
+        if ($remaining_days >= 1) {
+            $fee = $t * $remaining_days / 100 * 0.1;
+            $remaining_days = 0;
             $service_charge += $fee;
-            $days = 0;
         }
     } else {
         // Standard interest calculation
