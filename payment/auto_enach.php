@@ -1,4 +1,4 @@
-<?php
+<!-- <?php
 // Set a longer execution time limit, essential for cron jobs that might process many records.
 set_time_limit(0); 
 
@@ -307,12 +307,39 @@ $dry_run = isset($_GET['dry_run']) ? (bool)$_GET['dry_run'] : false;
 
 // --- CRON JOB LOGIC ---
 $current_date = date('Y-m-d');
+$current_time = date('Y-m-d H:i:s');
 $current_day = date('j'); // Day of month without leading zeros
 $gst = 0; // Define GST variable
 
+// Initialize detailed logging arrays
+$processed_loans = [];
+$successful_loans = [];
+$failed_loans = [];
+$skipped_loans = [];
+
+// Create log file with date
+$log_file = "logs/enach_cron_" . $current_date . ".log";
+$log_dir = dirname($log_file);
+if (!is_dir($log_dir)) {
+    mkdir($log_dir, 0755, true);
+}
+
+// Function to write detailed logs
+function writeLog($message, $log_file) {
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[$timestamp] $message\n";
+    file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    error_log($message); // Also log to system error log
+}
+
+// Start cron job logging
+writeLog("=== E-NACH CRON JOB STARTED ===", $log_file);
+writeLog("Date: $current_date | Time: $current_time", $log_file);
+writeLog("Dry Run Mode: " . ($dry_run ? 'YES' : 'NO'), $log_file);
+
 // Log dry-run mode
 if ($dry_run) {
-    error_log("DRY RUN MODE ENABLED - No actual API calls will be made");
+    writeLog("DRY RUN MODE ENABLED - No actual API calls will be made", $log_file);
     echo "=== DRY RUN MODE ENABLED ===\n";
     echo "Date: $current_date\n";
     echo "No actual API calls will be made\n\n";
@@ -324,7 +351,9 @@ $reset_query = "UPDATE `loan` SET `enach_request` = 0, `enach_request_date` = NU
                 AND `enach_request_date` IS NOT NULL 
                 AND DATEDIFF('$current_date', `enach_request_date`) >= 3
                 AND `status_log` != 'cleared'";
-towquery($db, $reset_query);
+$reset_result = towquery($db, $reset_query);
+$reset_count = mysqli_affected_rows($db);
+writeLog("Reset $reset_count failed E-Nach requests (3+ days old)", $log_file);
 
 // 2. DETERMINE ELIGIBLE LOANS BASED ON CONDITIONS
 $eligible_loans = [];
@@ -332,27 +361,37 @@ $eligible_loans = [];
 // Condition 1: Daily run for exhausted_period = 31
 $sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0";
 $loans1 = towquery($db, $sql1);
+$condition1_count = 0;
 while ($loan = towfetch($loans1)) {
     $eligible_loans[] = $loan;
+    $condition1_count++;
 }
+writeLog("Condition 1 (exhausted_period = 31): Found $condition1_count eligible loans", $log_file);
 
 // Condition 2: On 3rd and 10th of month for exhausted_period > 30
 if ($current_day == 3 || $current_day == 10) {
     $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0";
     $loans2 = towquery($db, $sql2);
+    $condition2_count = 0;
+    $duplicates_count = 0;
     while ($loan = towfetch($loans2)) {
         // Avoid duplicates
         $exists = false;
         foreach ($eligible_loans as $existing_loan) {
             if ($existing_loan['id'] == $loan['id']) {
                 $exists = true;
+                $duplicates_count++;
                 break;
             }
         }
         if (!$exists) {
             $eligible_loans[] = $loan;
+            $condition2_count++;
         }
     }
+    writeLog("Condition 2 (exhausted_period > 30, day $current_day): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
+} else {
+    writeLog("Condition 2: Skipped (not 3rd or 10th of month, current day: $current_day)", $log_file);
 }
 
 // Condition 3: Salary date processing
@@ -363,29 +402,44 @@ $sql3 = "SELECT l.* FROM `loan` l
          AND l.`enach_request` = 0 
          AND DAY(u.salary_date) = $current_day";
 $loans3 = towquery($db, $sql3);
+$condition3_count = 0;
+$condition3_duplicates = 0;
 while ($loan = towfetch($loans3)) {
     // Avoid duplicates
     $exists = false;
     foreach ($eligible_loans as $existing_loan) {
         if ($existing_loan['id'] == $loan['id']) {
             $exists = true;
+            $condition3_duplicates++;
             break;
         }
     }
     if (!$exists) {
         $eligible_loans[] = $loan;
+        $condition3_count++;
     }
 }
+writeLog("Condition 3 (salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
 
 // 3. PROCESS ELIGIBLE LOANS
 $processed_count = 0;
 $success_count = 0;
 $failed_count = 0;
+$total_eligible = count($eligible_loans);
+
+writeLog("=== PROCESSING ELIGIBLE LOANS ===", $log_file);
+writeLog("Total eligible loans found: $total_eligible", $log_file);
+
+// Log all eligible loan IDs
+$loan_ids = array_column($eligible_loans, 'lid');
+writeLog("Eligible Loan IDs: " . implode(', ', $loan_ids), $log_file);
 
 foreach ($eligible_loans as $loan) {
     $lid = $loan['lid'];
     $uid = $loan['uid'];
     $processed_count++;
+
+    writeLog("Processing Loan ID: CLL$lid | User ID: $uid | Progress: $processed_count/$total_eligible", $log_file);
 
     // Get user details
     $userdata = towquery($db, "SELECT * FROM `user` WHERE id='$uid'");
@@ -397,10 +451,16 @@ foreach ($eligible_loans as $loan) {
 
     // Get ALL E-Nach details for this user (multiple customer_authentication_id)
     $easebuzz_adtd = towquery($db, "SELECT * FROM `easebuzz_adtd` WHERE uid='$uid' AND authorization_status = 'accepted'");
+    $enach_count = townum($easebuzz_adtd);
 
-    if (townum($easebuzz_adtd) > 0) {
+    if ($enach_count > 0) {
+        writeLog("Loan CLL$lid: Found $enach_count E-Nach authorization(s) for user $uid", $log_file);
         // Process each customer_authentication_id
+        $auth_count = 0;
         while ($easebuzz_adtdff = towfetch($easebuzz_adtd)) {
+            $auth_count++;
+            writeLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}", $log_file);
+            
             // Calculate total amount with proper logic (matching zzautoloanamountcalculator.php)
             $totalamount = calculateTotalAmount($loan, $loan_apply);
             
@@ -410,7 +470,7 @@ foreach ($eligible_loans as $loan) {
             $totalamount = number_format($totalamount, 2, '.', '');
 
             // Detailed logging for dry-run and regular mode
-            $log_message = "LOAN ID: $lid | User: {$userdataff['name']} | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}\n";
+            $log_message = "LOAN ID: CLL$lid | User: {$userdataff['name']} | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}\n";
             $log_message .= "  Processed Amount: ₹" . number_format($loan['processed_amount'], 2) . "\n";
             $log_message .= "  Processing Fee: ₹" . number_format($loan['p_fee'], 2) . "\n";
             $log_message .= "  Processing Fee GST (18%): ₹" . number_format($breakdown['p_fee_gst'], 2) . "\n";
@@ -425,12 +485,15 @@ foreach ($eligible_loans as $loan) {
             $log_message .= "  Processed Date: {$loan['processed_date']}\n";
             $log_message .= "  ---\n";
             
+            writeLog($log_message, $log_file);
+            
             if ($dry_run) {
                 echo $log_message;
             }
-            error_log($log_message);
 
             if (!$dry_run) {
+                writeLog("Loan CLL$lid: Calling Easebuzz API for amount ₹$totalamount", $log_file);
+                
                 // Prepare payment details
                 $paymentDetails = [
                     "amount" => $totalamount,
@@ -452,38 +515,63 @@ foreach ($eligible_loans as $loan) {
                     // Update loan with enach_request = 1 and set enach_request_date
                     towquery($db, "UPDATE `loan` SET `enach_request` = 1, `enach_request_date` = '$current_date' WHERE lid = $lid");
                     $success_count++;
-                    error_log("SUCCESS: E-Nach request initiated for lid: $lid, customer_auth_id: " . $easebuzz_adtdff['customer_authentication_id']);
+                    $successful_loans[] = "CLL$lid";
+                    writeLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);
                 } else {
                     $errorMessage = isset($res['error_desc']) ? $res['error_desc'] : 'Unknown API error';
                     $failed_count++;
-                    error_log("FAILED: E-Nach request for lid: $lid, customer_auth_id: " . $easebuzz_adtdff['customer_authentication_id'] . ", Error: $errorMessage");
+                    $failed_loans[] = "CLL$lid";
+                    writeLog("FAILED: E-Nach request for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Error: $errorMessage", $log_file);
                 }
             } else {
                 // In dry-run mode, just count as would-be success
                 $success_count++;
+                $successful_loans[] = "CLL$lid (DRY RUN)";
+                writeLog("DRY RUN: Would process CLL$lid for amount ₹$totalamount", $log_file);
             }
         }
     } else {
-        $log_message = "SKIPPED: No E-Nach details found for user uid: $uid, lid: $lid\n";
+        $skipped_loans[] = "CLL$lid";
+        writeLog("SKIPPED: No E-Nach details found for user uid: $uid, loan CLL$lid", $log_file);
         if ($dry_run) {
-            echo $log_message;
+            echo "SKIPPED: No E-Nach details found for user uid: $uid, lid: $lid\n";
         }
-        error_log($log_message);
     }
 }
 
 // 4. LOG CRON JOB SUMMARY
-$summary_message = "E-Nach Cron Job Completed - Date: $current_date, Processed: $processed_count, Success: $success_count, Failed: $failed_count";
+writeLog("=== CRON JOB SUMMARY ===", $log_file);
+writeLog("Date: $current_date | Time: $current_time", $log_file);
+writeLog("Total Eligible Loans: $total_eligible", $log_file);
+writeLog("Processed Loans: $processed_count", $log_file);
+writeLog("Successful: $success_count", $log_file);
+writeLog("Failed: $failed_count", $log_file);
+writeLog("Skipped: " . count($skipped_loans), $log_file);
+
+// Log detailed loan lists
+if (!empty($successful_loans)) {
+    writeLog("Successful Loan IDs: " . implode(', ', $successful_loans), $log_file);
+}
+if (!empty($failed_loans)) {
+    writeLog("Failed Loan IDs: " . implode(', ', $failed_loans), $log_file);
+}
+if (!empty($skipped_loans)) {
+    writeLog("Skipped Loan IDs: " . implode(', ', $skipped_loans), $log_file);
+}
+
+$summary_message = "E-Nach Cron Job Completed - Date: $current_date, Processed: $processed_count, Success: $success_count, Failed: $failed_count, Skipped: " . count($skipped_loans);
 if ($dry_run) {
-    $summary_message = "E-Nach DRY RUN Completed - Date: $current_date, Processed: $processed_count, Would-be Success: $success_count, Would-be Failed: $failed_count";
+    $summary_message = "E-Nach DRY RUN Completed - Date: $current_date, Processed: $processed_count, Would-be Success: $success_count, Would-be Failed: $failed_count, Skipped: " . count($skipped_loans);
     echo "\n=== SUMMARY ===\n";
     echo $summary_message . "\n";
     echo "No actual API calls were made.\n";
     echo "To run for real, remove ?dry_run=1 from URL\n";
+    echo "Log file: $log_file\n";
 }
-error_log($summary_message);
+writeLog($summary_message, $log_file);
+writeLog("=== E-NACH CRON JOB ENDED ===", $log_file);
 
 // Close database connection
 mysqli_close($db);
 
-?>
+?> -->
