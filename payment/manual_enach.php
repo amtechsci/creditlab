@@ -73,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         
         // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
         $days++;
+        $days++;
         
         // Calculate base amount with GST on processing fee (18% GST)
         $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -136,8 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         // Add 18% GST to penalty
         $penality = ($penality + ($penality * 0.18));
         
-        // Calculate total amount
-        $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$service_charge + (float)$penality;
+        // Calculate total amount (including GST on processing fee)
+        $p_fee_gst = $loan['p_fee'] * 0.18;
+        $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + $p_fee_gst + (float)$service_charge + (float)$penality;
         
         return $totalamount;
     }
