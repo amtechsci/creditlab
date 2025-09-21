@@ -19,7 +19,7 @@ function initiateEasebuzzDirectDebit(array $postParams): string
 
     // --- Static & Required Data ---
     $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request
-    $surl = "https://creditlab.in/payment/cb_auto.phpp"; // Your success URL
+    $surl = "https://creditlab.in/payment/cb_auto.php"; // Your success URL
     $furl = "https://creditlab.in/payment/cb_auto.php"; // Your failure URL
 
     // --- Map and Sanitize Input Parameters ---

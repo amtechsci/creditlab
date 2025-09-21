@@ -58,8 +58,7 @@ function initiateEasebuzzDirectDebit(array $postParams): string
         "phone" => "",
         "customer_authentication_id" => "",
         "merchant_debit_id" => "",
-        "auto_debit_access_key" => "",
-        "sub_merchant_id" => ""
+        "auto_debit_access_key" => ""
     ];
 
     // Add User Defined Fields (udf) to the mapping
@@ -96,8 +95,7 @@ function initiateEasebuzzDirectDebit(array $postParams): string
         "furl" => $furl,
         "customer_authentication_id" => $data['customer_authentication_id'],
         "merchant_debit_id" => $data['merchant_debit_id'],
-        "auto_debit_access_key" => $data['auto_debit_access_key'],
-        "sub_merchant_id" => $data['sub_merchant_id']
+        "auto_debit_access_key" => $data['auto_debit_access_key']
     ];
     
     // Add all udf fields to the post data
@@ -522,8 +520,12 @@ foreach ($eligible_loans as $loan) {
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 
+                // Debug: Log the exact API call data
+                writeLog("Loan CLL$lid: API Call Data - " . json_encode($paymentDetails), $log_file);
+                
                 // Call Easebuzz API
                 $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
+                writeLog("Loan CLL$lid: API Response - " . $apiResponse, $log_file);
                 $res = json_decode($apiResponse, true);
 
                 // Check response and update database
