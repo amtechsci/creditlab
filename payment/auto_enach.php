@@ -520,7 +520,7 @@ foreach ($eligible_loans as $loan) {
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL" . $lid,
+                    "merchant_debit_id" => "CLL_AUTO_" . $lid,
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 

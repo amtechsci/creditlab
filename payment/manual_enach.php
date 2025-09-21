@@ -231,8 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
         $key = '9BIB9D914T';
         $salt = 'GGW1QF6ONH';
         $txnid = uniqid("txn_");
-        $surl = "https://creditlab.in/payment/cb_auto.php";
-        $furl = "https://creditlab.in/payment/cb_auto.php";
+        $surl = "https://creditlab.in/payment/cb.php";
+        $furl = "https://creditlab.in/payment/cb.php";
 
         $requiredKeys = [
             "amount" => "", "productinfo" => "", "firstname" => "", "email" => "", "phone" => "",
@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
                     "email" => $userdataff['email'],
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
-                    "merchant_debit_id" => "CLL" . $lid,
+                    "merchant_debit_id" => "CLL_AUTO_" . $lid,
                     "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
                 ];
 
