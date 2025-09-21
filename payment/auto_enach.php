@@ -374,8 +374,11 @@ while ($loan = towfetch($loans1)) {
 }
 writeLog("Condition 1 (exhausted_period = 31): Found $condition1_count eligible loans", $log_file);
 
-// Condition 2: On 3rd and 10th of month for exhausted_period > 30
-if ($current_day == 3 || $current_day == 10) {
+// Get last day of current month for last day processing
+$last_day_of_month = date('t'); // Returns the number of days in the current month
+
+// Condition 2: On 3rd, 10th, and last day of month (30th/31st) for exhausted_period > 30
+if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
     $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0";
     $loans2 = towquery($db, $sql2);
     $condition2_count = 0;
@@ -395,9 +398,10 @@ if ($current_day == 3 || $current_day == 10) {
             $condition2_count++;
         }
     }
-    writeLog("Condition 2 (exhausted_period > 30, day $current_day): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
+    $day_type = ($current_day == 3) ? "3rd" : (($current_day == 10) ? "10th" : "last day ($last_day_of_month)");
+    writeLog("Condition 2 (exhausted_period > 30, day $current_day - $day_type): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
 } else {
-    writeLog("Condition 2: Skipped (not 3rd or 10th of month, current day: $current_day)", $log_file);
+    writeLog("Condition 2: Skipped (not 3rd, 10th, or last day of month, current day: $current_day, last day: $last_day_of_month)", $log_file);
 }
 
 // Condition 3: Salary date processing

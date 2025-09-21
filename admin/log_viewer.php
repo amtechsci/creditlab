@@ -19,7 +19,7 @@ function getLogFiles($directory) {
                     'path' => $filePath,
                     'size' => filesize($filePath),
                     'modified' => filemtime($filePath),
-                    'type' => strpos($file, 'enach_cron') !== false ? 'cron' : (strpos($file, 'webhook') !== false ? 'webhook' : 'other')
+                    'type' => strpos($file, 'enach_cron') !== false ? 'cron' : (strpos($file, 'webhook') !== false ? 'webhook' : 'cron')
                 ];
             }
         }
@@ -390,6 +390,11 @@ ksort($logsByDate);
                                                             <li><a href="?view=1&file=<?= urlencode($selectedLog) ?>&lines=1000">Last 1000 lines</a></li>
                                                         </ul>
                                                     </div>
+                                                    <a href="?view=1&file=<?= urlencode($selectedLog) ?>&autorefresh=<?= isset($_GET['autorefresh']) && $_GET['autorefresh'] == '1' ? '0' : '1' ?>" 
+                                                       class="btn btn-<?= isset($_GET['autorefresh']) && $_GET['autorefresh'] == '1' ? 'warning' : 'default' ?> btn-sm">
+                                                        <i class="fa fa-<?= isset($_GET['autorefresh']) && $_GET['autorefresh'] == '1' ? 'pause' : 'play' ?>"></i> 
+                                                        <?= isset($_GET['autorefresh']) && $_GET['autorefresh'] == '1' ? 'Stop Auto-Refresh' : 'Start Auto-Refresh' ?>
+                                                    </a>
                                                     <a href="?download=1&file=<?= urlencode($selectedLog) ?>" class="btn btn-success btn-sm">
                                                         <i class="fa fa-download"></i> Download
                                                     </a>
@@ -469,13 +474,13 @@ ksort($logsByDate);
         });
     }
 
-    // Auto-refresh log content every 30 seconds if viewing a log
-    <?php if ($selectedLog): ?>
+    // Auto-refresh log content every 30 minutes if viewing a log (optional)
+    <?php if ($selectedLog && isset($_GET['autorefresh']) && $_GET['autorefresh'] == '1'): ?>
     setInterval(function() {
         if (document.visibilityState === 'visible') {
             location.reload();
         }
-    }, 30000);
+    }, 1800000); // 30 minutes (30 * 60 * 1000 milliseconds)
     <?php endif; ?>
 
     // Highlight active log file
