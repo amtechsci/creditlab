@@ -165,7 +165,7 @@ if ($_POST) {
             // print_r($a);
             // echo "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount', `payment_method`='$payment_method', `bank_reference_number`='$bank_reference_number', `payment_date`='".date('Y-m-d H:i:s')."' WHERE txnid='$txnid'";
             echo '<script>';
-            echo 'setTimeout(function() { window.location.href = "/user/"; }, 2000);';
+            // echo 'setTimeout(function() { window.location.href = "/user/"; }, 2000);';
             echo '</script>';
             echo '</body></html>';
         }
