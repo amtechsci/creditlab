@@ -184,7 +184,7 @@
                 if($userpro_approvenew == 0){$is_emi = 0;}else{$is_emi = 1;}
                 $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
                 towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
-                                VALUES (".$cllid.",$id,'$date','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
+                                VALUES (".$cllid.",$id,'$tdate','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
                 
                 // Insert transaction details
                 towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
@@ -750,6 +750,39 @@
         include '../send_sms.php';
         
         print_r("<script>alert('SMS sent successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        exit;
+    }
+    
+    // SMS Test Function
+    if(isset($_POST['test_sms'])){
+        $test_mobile = "918800899875";
+        $test_message = "Test SMS from CreditLab - Portal verification successful!";
+        $template_id = '1107165683325768963';
+        
+        $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$test_mobile&senderid=CREDLB&msg=".urlencode($test_message)."&template_id=$template_id&pe_id=1401337620000065797";
+        
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+        ));
+        
+        $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+        
+        if ($error) {
+            print_r("<script>alert('SMS Test Failed: $error'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        } else {
+            print_r("<script>alert('SMS Test Sent Successfully! HTTP Code: $httpCode\\nResponse: $response'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        }
         exit;
     }
     
@@ -2034,11 +2067,11 @@
                                         </tr>
                                     <?php } ?>
                                     <form action="" method="post"><tr>
-                                            <td><input type="text" name="cllid"></td>
-                                            <td><input type="text" name="transaction_number"></td>
-                                            <td><input type="datetime-local" name="transaction_date"></td>
-                                            <td><input type="text" name="transaction_amount"></td>
-                                            <td><select name="transaction_flow">
+                                            <td><input type="text" name="cllid" required></td>
+                                            <td><input type="text" name="transaction_number" required></td>
+                                            <td><input type="datetime-local" name="transaction_date" value="<?=date('Y-m-d\TH:i')?>" required></td>
+                                            <td><input type="text" name="transaction_amount" required></td>
+                                            <td><select name="transaction_flow" required>
                                                 <option value="creditlab To Customer">creditlab To Customer</option>
                                                 <option value="preclose">Pre Close EMI</option>
                                                 <option value="firstemi">First EMI</option>
@@ -2155,7 +2188,10 @@
                                                 <span>Message</span>
                                                 <textarea class="form-control" name="sms" rows="3"></textarea>
                                                 <br>
-                                                <center><button class="btn btn-primary" type="submit">Submit</button></center>
+                                                <center>
+                                                    <button class="btn btn-primary" type="submit" name="sms">Send SMS</button>
+                                                    <button class="btn btn-success" type="submit" name="test_sms" style="margin-left: 10px;">Test SMS Portal</button>
+                                                </center>
                                             </div></form>
                                         </div>
                                     </div>

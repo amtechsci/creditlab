@@ -5,7 +5,7 @@ $password="kiran@100";
 $sender="FNWINT";
 
 function send($sender,$mobile,$message,$template_id){
-$url="https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=6xuZOxICzUKo51xyQXjIqA&senderid=$sender&channel=2&DCS=0&flashsms=0&number=$mobile&text=".urlencode($message)."&route=1&EntityId=1101689540000061016&dlttemplateid=$template_id";
+$url="https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
 $curl = curl_init();
 curl_setopt_array($curl, array(
   CURLOPT_URL => $url,

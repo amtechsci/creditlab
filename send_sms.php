@@ -1,10 +1,17 @@
 <?php
 $sender="CREDLB";
 
+// New SMS Portal: sms.k7marketinghub.com
+// Credentials: Username: SonuMarketing, Password: Cred@So2025
+// Use working template ID if provided template fails
+$working_template_id = "1407174844163241940"; // OTP-2 template that works
+$final_template_id = (!empty($template_id) && $template_id != "1107165683325768963") ? $template_id : $working_template_id;
 
-$url="https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+$url="https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$final_template_id&pe_id=1401337620000065797";
+
+// Backup URLs (commented out)
 // $url="https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=6xuZOxICzUKo51xyQXjIqA&senderid=$sender&channel=2&DCS=0&flashsms=0&number=$mobile&text=".urlencode($message)."&route=1&EntityId=1101689540000061016&dlttemplateid=$template_id";
-#$url="https://push.smsc.co.in/api/mt/SendSMS?APIKey=RuMCYwfWOE2r4agQGx0fsw&senderid=$sender&channel=2&DCS=0&flashsms=0&number=$mobile&text=".urlencode($message)."&route=1&EntityId=1101689540000061016&dlttemplateid=$template_id";
+// $url="https://push.smsc.co.in/api/mt/SendSMS?APIKey=RuMCYwfWOE2r4agQGx0fsw&senderid=$sender&channel=2&DCS=0&flashsms=0&number=$mobile&text=".urlencode($message)."&route=1&EntityId=1101689540000061016&dlttemplateid=$template_id";
 // print_r($url);exit;
 
 
