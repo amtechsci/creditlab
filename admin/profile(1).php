@@ -51,7 +51,7 @@ if(isset($_POST['validation'])){
             towquery("UPDATE `user` SET `status`='disbursal' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='disbursal', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
         $template_id = '1107165683293779914';
-        $message = 'Your loan is ready for disbursal. Please accept the Borrower Agreement using the link https://creditlab.in -Creditlab';
+        $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to https://creditlab.in & accept the agreement and get the money in minutes.';
         $mobile = $userpro_mobile;
         include '../send_sms.php';
         }
@@ -551,7 +551,7 @@ if(isset($_POST['transaction'])){
     $acmf = towfetch($acm);
     $template_id = '1107165683340185966';
     $mobile = $userpro_mobile;
-    $message = "Dear $userpro_name, your assigned RelationShip Manager is {$acmf['name']} {$acmf['mobile']}. For any info, you can contact your Manager. -Creditlab";
+    $message = "Dear $userpro_name, your creditlab Account Manager is {$acmf['name']} {$acmf['mobile']}. Reach out for any info";
     include '../send_sms.php';
     }
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");

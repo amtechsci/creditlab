@@ -5,7 +5,7 @@ if(isset($_POST['salarystatus'])){
     if(($extract['salary'] >= 18000) and ($extract['get_salary'] == "bank transfer") and (($extract['salarystatus'] == "Salaried") or ($extract['salarystatus'] == "Self-Employed"))){
         $loan_limit = $extract['salary'] / 100 *40;
         $loan_limit = round($loan_limit,-3);
-        $message="Dear Creditlab.in user,  Your loan is few steps away for disbursal. Complete your KYC & get the instant Credit now http://creditlab.in";
+        $message="Dear Creditlab.in user, Your loan is a few steps away from disbursal. Just complete the KYC & withdraw your funds : http://creditlab.in";
         $template_id='1107169453425832956';
         $mobile=$user_mobile;
         include '../send_sms.php';

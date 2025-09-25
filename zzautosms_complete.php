@@ -47,9 +47,8 @@ try {
     $sender="CREDLB";
 
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
-        // Use ONLY working template ID - all other templates are not approved
-        $working_template_id = "1407174844163241940"; // OTP-2 template that works
-        $final_template_id = $working_template_id; // Always use working template
+        // Use the specific template ID for each SMS type
+        $final_template_id = $template_id; // Use the actual template ID from CSV
         
         $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$final_template_id&pe_id=1401337620000065797";
         
