@@ -26,6 +26,12 @@
         $date = date('Y-m-d H:i:s');
         $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
         
+        // Initialize common variables to prevent undefined warnings
+        if (!isset($userpro_name)) $userpro_name = '';
+        if (!isset($userpro_mobile)) $userpro_mobile = '';
+        if (!isset($userpro_email)) $userpro_email = '';
+        if (!isset($userpro_id)) $userpro_id = $id;
+        
         // TRANSACTION PROCESSING
         if(isset($_POST['transaction'])){
             
@@ -784,6 +790,23 @@
             print_r("<script>alert('SMS Test Sent Successfully! HTTP Code: $httpCode\\nResponse: $response'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
         }
         exit;
+    }
+    
+    // Skip E-NACH Function
+    if(isset($_POST['skip_enach'])){
+        $extract = towrealarray($_POST);
+        extract($extract);
+        
+        if(isset($skip_loan_id) && !empty($skip_loan_id)){
+            // Update the loan to skip E-NACH
+            towquery("UPDATE `loan` SET `enach_request`=2, `enach_skip_date`='".date('Y-m-d H:i:s')."', `enach_skip_reason`='$skip_reason' WHERE lid='$skip_loan_id'");
+            
+            print_r("<script>alert('E-NACH skipped for loan CLL$skip_loan_id'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            exit;
+        } else {
+            print_r("<script>alert('Please select a loan to skip E-NACH'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            exit;
+        }
     }
     
     // Mail Processing
@@ -1966,7 +1989,7 @@
                                     if(empty($usersd_penality_charge)){
                                         $usersd_penality_charge = 0;
                                     }
-        $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
+        $lof = towfetch(towquery("SELECT *, enach_skip_date, enach_skip_reason FROM loan WHERE lid=".$usersd_lid));
         $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
         $processed_date = $lof['processed_date'] ?: date('Y-m-d');
         $dis_date = date('Y-m-d', strtotime(date_create($processed_date)->format("Y-m-d") . " -1 day"));
@@ -2034,9 +2057,22 @@
                                             ?></td>
                                             <td><?=$usersd_cleard_date?></td>
                                             <td><?php $dpd = $usersd_exhausted_period-30; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
-                                            <td><?php if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ ?>
-                                                <a href="/payment/zzenach.php?lid=<?=$usersd_lid?>" class="btn btn-primary">request</a>
-                                            <?php }else{echo "requested";} ?></td>
+                                            <td><?php 
+                                            if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
+                                                echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';
+                                                echo '<br><br>';
+                                                echo '<button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#skipEnachModal" data-loan-id="'.$usersd_lid.'">Skip E-NACH</button>';
+                                            } elseif($usersd_enach_request == 1) {
+                                                echo '<span class="badge badge-success">Requested</span>';
+                                            } elseif($usersd_enach_request == 2) {
+                                                echo '<span class="badge badge-warning">Skipped</span>';
+                                                if(!empty($lof['enach_skip_reason'])) {
+                                                    echo '<br><small class="text-muted">Reason: '.$lof['enach_skip_reason'].'</small>';
+                                                }
+                                            } else {
+                                                echo '<span class="badge badge-secondary">N/A</span>';
+                                            }
+                                            ?></td>
                                         </tr></form>
                                     <?php } ?>
                 </tbody>
@@ -2617,6 +2653,74 @@
                     xhr.send();
                 }
             }
+        </script>
+
+        <!-- Skip E-NACH Modal -->
+        <div class="modal fade" id="skipEnachModal" tabindex="-1" role="dialog" aria-labelledby="skipEnachModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="skipEnachModalLabel">Skip E-NACH Request</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form method="POST" action="">
+                        <div class="modal-body">
+                            <input type="hidden" name="skip_loan_id" id="skip_loan_id" value="">
+                            <div class="form-group">
+                                <label for="skip_reason">Reason for skipping E-NACH:</label>
+                                <select class="form-control" name="skip_reason" id="skip_reason" required>
+                                    <option value="">Select a reason...</option>
+                                    <option value="Customer requested manual payment">Customer requested manual payment</option>
+                                    <option value="Bank account issues">Bank account issues</option>
+                                    <option value="Customer not responding">Customer not responding</option>
+                                    <option value="Technical issues">Technical issues</option>
+                                    <option value="Loan amount too small">Loan amount too small</option>
+                                    <option value="Customer prefers other payment method">Customer prefers other payment method</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="custom_reason_group" style="display: none;">
+                                <label for="custom_reason">Custom reason:</label>
+                                <textarea class="form-control" name="custom_reason" id="custom_reason" rows="3" placeholder="Please specify the reason..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="submit" name="skip_enach" class="btn btn-warning">Skip E-NACH</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        // Handle modal loan ID setting
+        $('#skipEnachModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var loanId = button.data('loan-id');
+            var modal = $(this);
+            modal.find('#skip_loan_id').val(loanId);
+        });
+
+        // Handle custom reason field
+        $('#skip_reason').change(function() {
+            if($(this).val() === 'Other') {
+                $('#custom_reason_group').show();
+                $('#custom_reason').prop('required', true);
+            } else {
+                $('#custom_reason_group').hide();
+                $('#custom_reason').prop('required', false);
+            }
+        });
+
+        // Update skip_reason with custom reason if needed
+        $('form').submit(function() {
+            if($('#skip_reason').val() === 'Other' && $('#custom_reason').val()) {
+                $('#skip_reason').val('Other: ' + $('#custom_reason').val());
+            }
+        });
         </script>
     </body>
 

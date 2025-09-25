@@ -10,6 +10,12 @@ if(isset($_GET['id'])){
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
+    
+    // Initialize common variables to prevent undefined warnings
+    if (!isset($userpro_name)) $userpro_name = '';
+    if (!isset($userpro_mobile)) $userpro_mobile = '';
+    if (!isset($userpro_email)) $userpro_email = '';
+    if (!isset($userpro_id)) $userpro_id = $id;
 }else{
     print_r("<script>window.location.replace('index.php');</script>");
 }

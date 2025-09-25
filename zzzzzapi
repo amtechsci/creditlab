@@ -76,14 +76,27 @@ function login($get){
     // $otp = rand(1000,9999);
     $otp = 1111;
     $aa = towquery("SELECT id FROM `account_manager`");
+$min = array();
 while($b = towfetch($aa)){
 $a = towquery("SELECT assign_account_manager FROM `user` WHERE assign_account_manager=".$b['id']."");
 $min[$b['id']] = townum($a);
-}$assign_account = array_keys($min, min($min));$assign_account = $assign_account[0];$aaz = towquery("SELECT id FROM `recovery_officer`");
+}
+if(!empty($min)){
+$assign_account = array_keys($min, min($min));$assign_account = $assign_account[0];
+}else{
+$assign_account = 0;
+}
+$aaz = towquery("SELECT id FROM `recovery_officer`");
+$minz = array();
 while($bz = towfetch($aaz)){
 $az = towquery("SELECT assign_recovery_officer FROM `user` WHERE assign_recovery_officer=".$bz['id']."");
 $minz[$bz['id']] = townum($az);
-}$assign_recovery = array_keys($minz, min($minz));$assign_recovery = $assign_recovery[0];
+}
+if(!empty($minz)){
+$assign_recovery = array_keys($minz, min($minz));$assign_recovery = $assign_recovery[0];
+}else{
+$assign_recovery = 0;
+}
 
 $a = towquery("INSERT INTO `user`(`rcid`, `mobile`, `active`, `verify`, `otp`, `validation`, `reg_date`, `status`, `document_password`, `loan_limit`, `assign_account_manager`, `assign_recovery_officer`) VALUES ('$rcid','$mobile',1,0,$otp,'','$reg_date','waiting','pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',10000,$assign_account,$assign_recovery)");
     login($get);
@@ -156,6 +169,17 @@ function contact_list($get,$id){
     $extract = towrealarray($get['ref'][0]);     extract($extract,EXTR_PREFIX_ALL,"ref_1");
     $extract = towrealarray($get['ref'][1]);     extract($extract,EXTR_PREFIX_ALL,"ref_2");
     $extract = towrealarray($get['ref'][2]);     extract($extract,EXTR_PREFIX_ALL,"ref_3");
+    
+    // Initialize ref variables to prevent undefined warnings
+    if (!isset($ref_1_name)) $ref_1_name = '';
+    if (!isset($ref_1_mobile_number)) $ref_1_mobile_number = '';
+    if (!isset($ref_1_relation)) $ref_1_relation = '';
+    if (!isset($ref_2_name)) $ref_2_name = '';
+    if (!isset($ref_2_mobile_number)) $ref_2_mobile_number = '';
+    if (!isset($ref_2_relation)) $ref_2_relation = '';
+    if (!isset($ref_3_name)) $ref_3_name = '';
+    if (!isset($ref_3_mobile_number)) $ref_3_mobile_number = '';
+    if (!isset($ref_3_relation)) $ref_3_relation = '';
 
     $ref_1 = $ref_1_name.",#".$ref_1_mobile_number.",#".$ref_1_relation;
     $ref_2 = $ref_2_name.",#".$ref_2_mobile_number.",#".$ref_2_relation;
@@ -533,6 +557,25 @@ function hold($get){
 // SHOW PAGE
 function showpage($user){
     extract($user,EXTR_PREFIX_ALL,"user");
+    
+    // Initialize user variables to prevent undefined warnings
+    if (!isset($user_verify)) $user_verify = 0;
+    if (!isset($user_salary)) $user_salary = '';
+    if (!isset($user_salarystatus)) $user_salarystatus = '';
+    if (!isset($user_get_salary)) $user_get_salary = '';
+    if (!isset($user_pan_name)) $user_pan_name = '';
+    if (!isset($user_credit_score)) $user_credit_score = 0;
+    if (!isset($user_altmobile)) $user_altmobile = '';
+    if (!isset($user_altemail)) $user_altemail = '';
+    if (!isset($user_company)) $user_company = '';
+    if (!isset($user_email)) $user_email = '';
+    if (!isset($user_conpanydocument)) $user_conpanydocument = '';
+    if (!isset($user_personaldocument)) $user_personaldocument = '';
+    if (!isset($user_salarydocument)) $user_salarydocument = '';
+    if (!isset($user_bankdocument)) $user_bankdocument = '';
+    if (!isset($user_approvenew)) $user_approvenew = 0;
+    if (!isset($user_reg_date)) $user_reg_date = date('Y-m-d H:i:s');
+    
 if(($user_verify == 0) or ($user_verify == 1)){
  if(empty($user_salary) or empty($user_salarystatus) or empty($user_get_salary)){
         $page = 1; //salary page

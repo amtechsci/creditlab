@@ -365,7 +365,7 @@ writeLog("Reset $reset_count failed E-Nach requests (3+ days old)", $log_file);
 $eligible_loans = [];
 
 // Condition 1: Daily run for exhausted_period = 31
-$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0";
+$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0 AND `enach_request` != 2";
 $loans1 = towquery($db, $sql1);
 $condition1_count = 0;
 while ($loan = towfetch($loans1)) {
@@ -374,12 +374,20 @@ while ($loan = towfetch($loans1)) {
 }
 writeLog("Condition 1 (exhausted_period = 31): Found $condition1_count eligible loans", $log_file);
 
+// Check for loans that are skipped due to E-NACH skip flag
+$skipped_enach_query = "SELECT COUNT(*) as skipped_count FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 2";
+$skipped_result = towquery($db, $skipped_enach_query);
+$skipped_count = towfetch($skipped_result)['skipped_count'];
+if($skipped_count > 0) {
+    writeLog("Condition 1: $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
+}
+
 // Get last day of current month for last day processing
 $last_day_of_month = date('t'); // Returns the number of days in the current month
 
 // Condition 2: On 3rd, 10th, and last day of month (30th/31st) for exhausted_period > 30
 if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
-    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0";
+    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0 AND `enach_request` != 2";
     $loans2 = towquery($db, $sql2);
     $condition2_count = 0;
     $duplicates_count = 0;
@@ -400,6 +408,14 @@ if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_mont
     }
     $day_type = ($current_day == 3) ? "3rd" : (($current_day == 10) ? "10th" : "last day ($last_day_of_month)");
     writeLog("Condition 2 (exhausted_period > 30, day $current_day - $day_type): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
+    
+    // Check for loans that are skipped due to E-NACH skip flag
+    $skipped_enach_query2 = "SELECT COUNT(*) as skipped_count FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 2";
+    $skipped_result2 = towquery($db, $skipped_enach_query2);
+    $skipped_count2 = towfetch($skipped_result2)['skipped_count'];
+    if($skipped_count2 > 0) {
+        writeLog("Condition 2: $skipped_count2 loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
+    }
 } else {
     writeLog("Condition 2: Skipped (not 3rd, 10th, or last day of month, current day: $current_day, last day: $last_day_of_month)", $log_file);
 }
@@ -410,6 +426,7 @@ $sql3 = "SELECT l.* FROM `loan` l
          WHERE l.`exhausted_period` > 30 
          AND l.`status_log` = 'account manager' 
          AND l.`enach_request` = 0 
+         AND l.`enach_request` != 2
          AND DAY(u.salary_date) = $current_day";
 $loans3 = towquery($db, $sql3);
 $condition3_count = 0;
@@ -430,6 +447,19 @@ while ($loan = towfetch($loans3)) {
     }
 }
 writeLog("Condition 3 (salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
+
+// Check for loans that are skipped due to E-NACH skip flag
+$skipped_enach_query3 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
+                        INNER JOIN `user` u ON l.uid = u.id 
+                        WHERE l.`exhausted_period` > 30 
+                        AND l.`status_log` = 'account manager' 
+                        AND l.`enach_request` = 2
+                        AND DAY(u.salary_date) = $current_day";
+$skipped_result3 = towquery($db, $skipped_enach_query3);
+$skipped_count3 = towfetch($skipped_result3)['skipped_count'];
+if($skipped_count3 > 0) {
+    writeLog("Condition 3: $skipped_count3 loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
+}
 
 // 3. PROCESS ELIGIBLE LOANS
 $processed_count = 0;
