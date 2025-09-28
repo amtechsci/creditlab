@@ -932,17 +932,6 @@
                     <p>Bank check : Y </p>
                     <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
                                                         if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
-                    
-                    <!-- SMS Action Buttons -->
-                    <div style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                        <h6 style="margin-bottom: 10px; font-weight: bold;">📱 Quick SMS Actions</h6>
-                        <button type="button" class="btn btn-warning btn-sm send-missing-docs-sms" 
-                                data-user-id="<?= $userpro_id ?>" 
-                                data-user-name="<?= htmlspecialchars($userpro_name) ?>"
-                                style="width: 100%;">
-                            📄 Missing Documents SMS
-                        </button>
-                    </div>
                     </div></div>
                                 </div>
                             </div>
@@ -1932,52 +1921,6 @@
         }, 5000);
     }
     
-    // Missing Documents SMS functionality
-    document.querySelectorAll('.send-missing-docs-sms').forEach(button => {
-        button.addEventListener('click', function() {
-            const userId = this.getAttribute('data-user-id');
-            const userName = this.getAttribute('data-user-name');
-            
-            if (!confirm(`Send Missing Documents SMS to ${userName}?`)) {
-                return;
-            }
-            
-            // Disable button and show loading state
-            const originalText = this.textContent;
-            this.disabled = true;
-            this.textContent = '⏳ Sending...';
-            
-            fetch('send_missing_docs_sms.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: userId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(`Missing Documents SMS sent successfully to ${userName}`);
-                    showSMSMessage('success', 'Missing Documents SMS Sent', data.message);
-                } else {
-                    alert(`Failed to send Missing Documents SMS: ${data.message}`);
-                    showSMSMessage('error', 'Missing Documents SMS Failed', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to send Missing Documents SMS. Please try again.');
-                showSMSMessage('error', 'Network Error', 'Failed to send Missing Documents SMS. Please try again.');
-            })
-            .finally(() => {
-                // Re-enable button
-                this.disabled = false;
-                this.textContent = originalText;
-            });
-        });
-    });
     </script>
 
         </div>
