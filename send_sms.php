@@ -12,6 +12,10 @@ $template_mapping = [
     '1107165683293779914' => '1407175015930870249', // Accept agreement -> accept agreement
     '1107169453425832956' => '1407175190737426693', // KYC pending -> kyc pen
     '1107165683279440796' => '1407175016362205820', // Bank account linked -> bank acc linked
+    
+    // Reference Message Template
+    'reference_message' => '1407175291100618275', // Reference Message template
+    '1407175291100618275' => '1407175291100618275', // Reference Message template ID (direct mapping)
 ];
 
 // Use working template ID from mapping

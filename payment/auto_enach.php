@@ -322,6 +322,8 @@ $processed_loans = [];
 $successful_loans = [];
 $failed_loans = [];
 $skipped_loans = [];
+$sms_sent_count = 0;
+$sms_failed_count = 0;
 
 // Create log file with date
 $log_file = "logs/enach_cron_" . $current_date . ".log";
@@ -336,6 +338,30 @@ function writeLog($message, $log_file) {
     $log_entry = "[$timestamp] $message\n";
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
     error_log($message); // Also log to system error log
+}
+
+// Function to send SMS
+function sendSMS($mobile, $message, $template_id, $sender = "CREDLB") {
+    $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+    
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+    ));
+    
+    $response = curl_exec($curl);
+    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+    
+    return ['success' => !$error, 'response' => $response, 'error' => $error];
 }
 
 // Start cron job logging
@@ -574,6 +600,26 @@ foreach ($eligible_loans as $loan) {
                     $success_count++;
                     $successful_loans[] = "CLL$lid";
                     writeLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);
+                    
+                    // Send E-NACH Reminder SMS (Template: 1407175015994490488)
+                    // Time: 6:50 PM - triggered when E-NACH is initiated
+                    $mobile = $userdataff['mobile'];
+                    $template_id = "1407175015994490488";
+                    $outstanding_amount = number_format($totalamount, 2);
+                    $enach_date = date('d-m-Y'); // Current date when E-NACH is triggered
+                    
+                    $sms_message = "Hi ! Your Creditlab.in loan of Rs. $outstanding_amount will auto-debit on $enach_date. Ensure sufficient balance to avoid chq bounce & legal action under Section 138 N.I. Act";
+                    
+                    $sms_result = sendSMS($mobile, $sms_message, $template_id, "CREDLB");
+                    
+                    if ($sms_result['success']) {
+                        $sms_sent_count++;
+                        writeLog("SMS SENT: E-NACH reminder sent to $mobile for CLL$lid | Amount: ₹$outstanding_amount | Date: $enach_date", $log_file);
+                    } else {
+                        $sms_failed_count++;
+                        writeLog("SMS FAILED: E-NACH reminder failed for CLL$lid | Mobile: $mobile | Error: {$sms_result['error']}", $log_file);
+                    }
+                    
                 } else {
                     $errorMessage = isset($res['error_desc']) ? $res['error_desc'] : 'Unknown API error';
                     $failed_count++;
@@ -588,6 +634,16 @@ foreach ($eligible_loans as $loan) {
                 $success_count++;
                 $successful_loans[] = "CLL$lid (DRY RUN)";
                 writeLog("DRY RUN: Would process CLL$lid for amount ₹$totalamount", $log_file);
+                
+                // Log would-be E-NACH Reminder SMS for dry run
+                $mobile = $userdataff['mobile'];
+                $template_id = "1407175015994490488";
+                $outstanding_amount = number_format($totalamount, 2);
+                $enach_date = date('d-m-Y');
+                $sms_message = "Hi ! Your Creditlab.in loan of Rs. $outstanding_amount will auto-debit on $enach_date. Ensure sufficient balance to avoid chq bounce & legal action under Section 138 N.I. Act";
+                
+                writeLog("DRY RUN SMS: Would send E-NACH reminder to $mobile for CLL$lid | Amount: ₹$outstanding_amount | Date: $enach_date", $log_file);
+                writeLog("DRY RUN SMS MESSAGE: $sms_message", $log_file);
             }
         }
     } else {
@@ -607,6 +663,8 @@ writeLog("Processed Loans: $processed_count", $log_file);
 writeLog("Successful: $success_count", $log_file);
 writeLog("Failed: $failed_count", $log_file);
 writeLog("Skipped: " . count($skipped_loans), $log_file);
+writeLog("SMS Sent: $sms_sent_count", $log_file);
+writeLog("SMS Failed: $sms_failed_count", $log_file);
 
 // Log detailed loan lists
 if (!empty($successful_loans)) {
@@ -619,9 +677,9 @@ if (!empty($skipped_loans)) {
     writeLog("Skipped Loan IDs: " . implode(', ', $skipped_loans), $log_file);
 }
 
-$summary_message = "E-Nach Cron Job Completed - Date: $current_date, Processed: $processed_count, Success: $success_count, Failed: $failed_count, Skipped: " . count($skipped_loans);
+$summary_message = "E-Nach Cron Job Completed - Date: $current_date, Processed: $processed_count, Success: $success_count, Failed: $failed_count, Skipped: " . count($skipped_loans) . ", SMS Sent: $sms_sent_count, SMS Failed: $sms_failed_count";
 if ($dry_run) {
-    $summary_message = "E-Nach DRY RUN Completed - Date: $current_date, Processed: $processed_count, Would-be Success: $success_count, Would-be Failed: $failed_count, Skipped: " . count($skipped_loans);
+    $summary_message = "E-Nach DRY RUN Completed - Date: $current_date, Processed: $processed_count, Would-be Success: $success_count, Would-be Failed: $failed_count, Skipped: " . count($skipped_loans) . ", Would-be SMS Sent: $sms_sent_count";
     echo "\n=== SUMMARY ===\n";
     echo $summary_message . "\n";
     echo "No actual API calls were made.\n";

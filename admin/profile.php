@@ -277,10 +277,67 @@
             }elseif(in_array("Ready for Disbursal",$processcheck)){
                 towquery("UPDATE `user` SET `status`='disbursal' WHERE id=".$id."");
             towquery("UPDATE `loan_apply` SET `status`='disbursal', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
-            $template_id = '1107165683293779914';
-            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to https://creditlab.in & accept the agreement and get the money in minutes.';
-            $mobile = $userpro_mobile;
-            include '../send_sms.php';
+            
+            // Send Accept Agreement SMS when moving to disbursal
+            $template_id = '1407175015930870248'; // Accept Agreement template ID from CSV
+            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes.';
+            $sender = 'CREDLB';
+            
+            // Send to primary mobile
+            if (!empty($userpro_mobile) && strlen($userpro_mobile) >= 10) {
+                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$userpro_mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+                
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                ));
+                $response = curl_exec($curl);
+                $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+                curl_close($curl);
+                
+                // Log SMS attempt
+                $log_message = "Accept Agreement SMS - User: {$userpro_name} (ID: $id), Mobile: $userpro_mobile, Template: $template_id, HTTP Code: $httpCode";
+                error_log($log_message);
+                
+                // Log to database
+                towquery("INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
+                          VALUES ($id, '$userpro_mobile', '" . towreal($message) . "', '$template_id', 'accept_agreement_auto', 'sent', '" . towreal($response) . "', NOW())");
+            }
+            
+            // Send to alternate mobile if available and different
+            if (!empty($userpro_altmobile) && strlen($userpro_altmobile) >= 10 && $userpro_altmobile != $userpro_mobile) {
+                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$userpro_altmobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+                
+                $curl = curl_init();
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                ));
+                $response = curl_exec($curl);
+                $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+                curl_close($curl);
+                
+                // Log SMS attempt
+                $log_message = "Accept Agreement SMS (Alt) - User: {$userpro_name} (ID: $id), Mobile: $userpro_altmobile, Template: $template_id, HTTP Code: $httpCode";
+                error_log($log_message);
+                
+                // Log to database
+                towquery("INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
+                          VALUES ($id, '$userpro_altmobile', '" . towreal($message) . "', '$template_id', 'accept_agreement_auto_alt', 'sent', '" . towreal($response) . "', NOW())");
+            }
             }
         }
         if(isset($sendmail)){
@@ -875,6 +932,17 @@
                     <p>Bank check : Y </p>
                     <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
                                                         if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
+                    
+                    <!-- SMS Action Buttons -->
+                    <div style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                        <h6 style="margin-bottom: 10px; font-weight: bold;">📱 Quick SMS Actions</h6>
+                        <button type="button" class="btn btn-warning btn-sm send-missing-docs-sms" 
+                                data-user-id="<?= $userpro_id ?>" 
+                                data-user-name="<?= htmlspecialchars($userpro_name) ?>"
+                                style="width: 100%;">
+                            📄 Missing Documents SMS
+                        </button>
+                    </div>
                     </div></div>
                                 </div>
                             </div>
@@ -1704,7 +1772,7 @@
                     <th>Phone</th>
                     <th>Relation</th>
                     <th>Valid</th>
-                    <!--<th>Action</th>-->
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -1718,9 +1786,20 @@
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][phone]" value="<?= $ref['phone'] ?>"></td>
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][relation]" value="<?= $ref['relation'] ?>"></td>
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][status]" value="<?= $ref['status'] ?>"></td>
-                            <!--<td>-->
-                                <!--<button type="submit" name="delete_ref" value="<?= $ref['id'] ?>" class="btn btn-danger">Delete</button>-->
-                            <!--</td>-->
+                            <td>
+                                <button type="button" class="btn btn-primary btn-sm send-reference-sms" 
+                                        data-reference-id="<?= $ref['id'] ?>" 
+                                        data-user-id="<?= $userpro_id ?>"
+                                        data-reference-name="<?= htmlspecialchars($ref['name']) ?>"
+                                        data-reference-phone="<?= $ref['phone'] ?>">
+                                    Send SMS
+                                </button>
+                                <button type="submit" name="delete_ref" value="<?= $ref['id'] ?>" 
+                                        class="btn btn-danger btn-sm" 
+                                        onclick="return confirm('Are you sure you want to delete this reference?')">
+                                    Delete
+                                </button>
+                            </td>
                         </tr>
                         <?php
                     }
@@ -1740,7 +1819,12 @@
             <td><input type="text" class="form-control" name="ref[new][phone]"></td>
             <td><input type="text" class="form-control" name="ref[new][relation]"></td>
             <td><input type="text" class="form-control" name="ref[new][status]"></td>
-            <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+            <td>
+                <button type="button" class="btn btn-secondary btn-sm" disabled title="Save reference first to send SMS">
+                    Send SMS
+                </button>
+                <button type="button" class="btn btn-danger btn-sm remove-row">Remove</button>
+            </td>
         `;
         table.appendChild(newRow);
 
@@ -1754,6 +1838,144 @@
     document.querySelectorAll('.remove-row').forEach(button => {
         button.addEventListener('click', function() {
             button.closest('tr').remove();
+        });
+    });
+
+    // Reference SMS functionality
+    document.querySelectorAll('.send-reference-sms').forEach(button => {
+        button.addEventListener('click', function() {
+            const referenceId = this.getAttribute('data-reference-id');
+            const userId = this.getAttribute('data-user-id');
+            const referenceName = this.getAttribute('data-reference-name');
+            const referencePhone = this.getAttribute('data-reference-phone');
+            
+            // Validate reference phone
+            if (!referencePhone || referencePhone.length < 10) {
+                alert('Invalid reference phone number. Please update the phone number first.');
+                return;
+            }
+            
+            // Confirm SMS sending
+            if (!confirm(`Send SMS to reference: ${referenceName} (${referencePhone})?`)) {
+                return;
+            }
+            
+            // Disable button and show loading
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = 'Sending...';
+            
+            // Send AJAX request
+            fetch('send_reference_sms.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    reference_id: referenceId,
+                    user_id: userId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`SMS sent successfully to ${referenceName} (${referencePhone})`);
+                    // Show success message in a more user-friendly way
+                    showSMSMessage('success', `SMS sent to ${referenceName}`, data.message);
+                } else {
+                    alert(`Failed to send SMS: ${data.message}`);
+                    showSMSMessage('error', 'SMS Failed', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to send SMS. Please try again.');
+                showSMSMessage('error', 'Network Error', 'Failed to send SMS. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable button
+                this.disabled = false;
+                this.textContent = originalText;
+            });
+        });
+    });
+    
+    // Function to show SMS messages
+    function showSMSMessage(type, title, message) {
+        // Create or get message container
+        let messageContainer = document.getElementById('sms-message-container');
+        if (!messageContainer) {
+            messageContainer = document.createElement('div');
+            messageContainer.id = 'sms-message-container';
+            messageContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+            document.body.appendChild(messageContainer);
+        }
+        
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        messageDiv.innerHTML = `
+            <strong>${title}</strong><br>
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        
+        messageContainer.appendChild(messageDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // Missing Documents SMS functionality
+    document.querySelectorAll('.send-missing-docs-sms').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-user-id');
+            const userName = this.getAttribute('data-user-name');
+            
+            if (!confirm(`Send Missing Documents SMS to ${userName}?`)) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.textContent = '⏳ Sending...';
+            
+            fetch('send_missing_docs_sms.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Missing Documents SMS sent successfully to ${userName}`);
+                    showSMSMessage('success', 'Missing Documents SMS Sent', data.message);
+                } else {
+                    alert(`Failed to send Missing Documents SMS: ${data.message}`);
+                    showSMSMessage('error', 'Missing Documents SMS Failed', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to send Missing Documents SMS. Please try again.');
+                showSMSMessage('error', 'Network Error', 'Failed to send Missing Documents SMS. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable button
+                this.disabled = false;
+                this.textContent = originalText;
+            });
         });
     });
     </script>
