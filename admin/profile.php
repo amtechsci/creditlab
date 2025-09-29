@@ -851,10 +851,36 @@
         extract($extract);
         
         if(isset($skip_loan_id) && !empty($skip_loan_id)){
-            // Update the loan to skip E-NACH
-            towquery("UPDATE `loan` SET `enach_request`=2, `enach_skip_date`='".date('Y-m-d H:i:s')."', `enach_skip_reason`='$skip_reason' WHERE lid='$skip_loan_id'");
+            // Validate skip type and date
+            $skip_until_date_value = null;
+            $skip_type_value = isset($skip_type) ? $skip_type : 'permanent';
             
-            print_r("<script>alert('E-NACH skipped for loan CLL$skip_loan_id'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            if($skip_type_value === 'temporary') {
+                if(empty($skip_until_date)) {
+                    print_r("<script>alert('Please select a skip until date for temporary skip'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+                    exit;
+                }
+                $skip_until_date_value = "'$skip_until_date'";
+            } else {
+                $skip_until_date_value = 'NULL';
+            }
+            
+            // Update the loan to skip E-NACH
+            $update_query = "UPDATE `loan` SET 
+                `enach_request`=2, 
+                `enach_skip_date`='".date('Y-m-d H:i:s')."', 
+                `enach_skip_reason`='$skip_reason',
+                `enach_skip_type`='$skip_type_value',
+                `enach_skip_until_date`=$skip_until_date_value 
+                WHERE lid='$skip_loan_id'";
+            
+            towquery($update_query);
+            
+            $skip_message = ($skip_type_value === 'temporary') ? 
+                "E-NACH temporarily skipped for loan CLL$skip_loan_id until $skip_until_date" : 
+                "E-NACH permanently skipped for loan CLL$skip_loan_id";
+            
+            print_r("<script>alert('$skip_message'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
             exit;
         } else {
             print_r("<script>alert('Please select a loan to skip E-NACH'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
@@ -2226,7 +2252,13 @@
                                             } elseif($usersd_enach_request == 1) {
                                                 echo '<span class="badge badge-success">Requested</span>';
                                             } elseif($usersd_enach_request == 2) {
-                                                echo '<span class="badge badge-warning">Skipped</span>';
+                                                // Check if it's temporary or permanent skip
+                                                $skip_type = isset($usersd_enach_skip_type) ? $usersd_enach_skip_type : 'permanent';
+                                                if($skip_type === 'temporary' && !empty($usersd_enach_skip_until_date)) {
+                                                    echo '<span class="badge badge-info">Skipped Until ' . date('d-m-Y', strtotime($usersd_enach_skip_until_date)) . '</span>';
+                                                } else {
+                                                    echo '<span class="badge badge-warning">Skipped</span>';
+                                                }
                                                 if(!empty($lof['enach_skip_reason'])) {
                                                     echo '<br><small class="text-muted">Reason: '.$lof['enach_skip_reason'].'</small>';
                                                 }
@@ -2846,6 +2878,19 @@
                                 <label for="custom_reason">Custom reason:</label>
                                 <textarea class="form-control" name="custom_reason" id="custom_reason" rows="3" placeholder="Please specify the reason..."></textarea>
                             </div>
+                            <div class="form-group">
+                                <label for="skip_type">Skip Type:</label>
+                                <select class="form-control" name="skip_type" id="skip_type" required>
+                                    <option value="">Select skip type...</option>
+                                    <option value="permanent">Permanent Skip</option>
+                                    <option value="temporary">Temporary Skip (until date)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="skip_until_date_group" style="display: none;">
+                                <label for="skip_until_date">Skip until date:</label>
+                                <input type="date" class="form-control" name="skip_until_date" id="skip_until_date" min="<?php echo date('Y-m-d'); ?>">
+                                <small class="form-text text-muted">E-NACH will be automatically re-enabled after this date</small>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -2873,6 +2918,17 @@
             } else {
                 $('#custom_reason_group').hide();
                 $('#custom_reason').prop('required', false);
+            }
+        });
+
+        // Handle skip type field
+        $('#skip_type').change(function() {
+            if($(this).val() === 'temporary') {
+                $('#skip_until_date_group').show();
+                $('#skip_until_date').prop('required', true);
+            } else {
+                $('#skip_until_date_group').hide();
+                $('#skip_until_date').prop('required', false);
             }
         });
 

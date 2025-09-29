@@ -387,11 +387,27 @@ $reset_result = towquery($db, $reset_query);
 $reset_count = mysqli_affected_rows($db);
 writeLog("Reset $reset_count failed E-Nach requests (3+ days old)", $log_file);
 
+// 1.1. RESET TEMPORARY SKIPPED E-NACH REQUESTS (past skip_until_date)
+$reset_temporary_query = "UPDATE `loan` SET 
+                `enach_request` = 0, 
+                `enach_skip_date` = NULL,
+                `enach_skip_reason` = NULL,
+                `enach_skip_type` = NULL,
+                `enach_skip_until_date` = NULL
+                WHERE `enach_request` = 2 
+                AND `enach_skip_type` = 'temporary'
+                AND `enach_skip_until_date` IS NOT NULL 
+                AND `enach_skip_until_date` <= '$current_date'
+                AND `status_log` != 'cleared'";
+$reset_temporary_result = towquery($db, $reset_temporary_query);
+$reset_temporary_count = mysqli_affected_rows($db);
+writeLog("Reset $reset_temporary_count temporary skipped E-Nach requests (past skip_until_date)", $log_file);
+
 // 2. DETERMINE ELIGIBLE LOANS BASED ON CONDITIONS
 $eligible_loans = [];
 
 // Condition 1: Daily run for exhausted_period = 31
-$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0 AND `enach_request` != 2";
+$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
 $loans1 = towquery($db, $sql1);
 $condition1_count = 0;
 while ($loan = towfetch($loans1)) {
@@ -404,8 +420,18 @@ writeLog("Condition 1 (exhausted_period = 31): Found $condition1_count eligible 
 $skipped_enach_query = "SELECT COUNT(*) as skipped_count FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 2";
 $skipped_result = towquery($db, $skipped_enach_query);
 $skipped_count = towfetch($skipped_result)['skipped_count'];
+
+// Check for permanent vs temporary skips
+$permanent_skip_query = "SELECT COUNT(*) as permanent_count FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 2 AND (`enach_skip_type` = 'permanent' OR `enach_skip_type` IS NULL)";
+$permanent_result = towquery($db, $permanent_skip_query);
+$permanent_count = towfetch($permanent_result)['permanent_count'];
+
+$temporary_skip_query = "SELECT COUNT(*) as temporary_count FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 2 AND `enach_skip_type` = 'temporary' AND `enach_skip_until_date` > '$current_date'";
+$temporary_result = towquery($db, $temporary_skip_query);
+$temporary_count = towfetch($temporary_result)['temporary_count'];
+
 if($skipped_count > 0) {
-    writeLog("Condition 1: $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
+    writeLog("Condition 1: $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2) - Permanent: $permanent_count, Temporary: $temporary_count", $log_file);
 }
 
 // Get last day of current month for last day processing
@@ -413,7 +439,7 @@ $last_day_of_month = date('t'); // Returns the number of days in the current mon
 
 // Condition 2: On 3rd, 10th, and last day of month (30th/31st) for exhausted_period > 30
 if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
-    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0 AND `enach_request` != 2";
+    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
     $loans2 = towquery($db, $sql2);
     $condition2_count = 0;
     $duplicates_count = 0;
@@ -452,7 +478,7 @@ $sql3 = "SELECT l.* FROM `loan` l
          WHERE l.`exhausted_period` > 30 
          AND l.`status_log` = 'account manager' 
          AND l.`enach_request` = 0 
-         AND l.`enach_request` != 2
+         AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
          AND DAY(u.salary_date) = $current_day";
 $loans3 = towquery($db, $sql3);
 $condition3_count = 0;
