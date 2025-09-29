@@ -109,10 +109,7 @@ curl_close($curl);
 $log_message = "Reference SMS - Reference: $reference_name ($reference_mobile), User: $user_full_name, Template: $template_id, Response: $response";
 error_log($log_message);
 
-// Log to database for tracking
-$log_query = "INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
-              VALUES ($user_id, '$reference_mobile', '" . mysqli_real_escape_string($db, $message) . "', '$template_id', 'reference_sms', '" . ($error ? 'failed' : 'sent') . "', '" . mysqli_real_escape_string($db, $response) . "', NOW())";
-towquery($log_query);
+// SMS logging removed - table doesn't exist
 
 if ($error) {
     echo json_encode([

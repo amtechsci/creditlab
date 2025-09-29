@@ -95,10 +95,7 @@ if (!empty($alt_mobile) && strlen($alt_mobile) >= 10 && $alt_mobile != $primary_
 $log_message = "Missing Documents SMS - User: $user_name (ID: $user_id), Primary: $primary_mobile, Alt: $alt_mobile, Template: $template_id, Sent: $sent_count, Errors: $error_count";
 error_log($log_message);
 
-// Log to database for tracking
-$log_query = "INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
-              VALUES ($user_id, '$primary_mobile', '" . mysqli_real_escape_string($db, $message) . "', '$template_id', 'missing_documents', 'sent', '" . mysqli_real_escape_string($db, json_encode($responses)) . "', NOW())";
-towquery($log_query);
+// SMS logging removed - table doesn't exist
 
 if ($sent_count > 0) {
     echo json_encode([

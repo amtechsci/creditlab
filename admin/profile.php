@@ -306,9 +306,7 @@
                 $log_message = "Accept Agreement SMS - User: {$userpro_name} (ID: $id), Mobile: $userpro_mobile, Template: $template_id, HTTP Code: $httpCode";
                 error_log($log_message);
                 
-                // Log to database
-                towquery("INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
-                          VALUES ($id, '$userpro_mobile', '" . towreal($message) . "', '$template_id', 'accept_agreement_auto', 'sent', '" . towreal($response) . "', NOW())");
+                // SMS logging removed - table doesn't exist
             }
             
             // Send to alternate mobile if available and different
@@ -334,9 +332,7 @@
                 $log_message = "Accept Agreement SMS (Alt) - User: {$userpro_name} (ID: $id), Mobile: $userpro_altmobile, Template: $template_id, HTTP Code: $httpCode";
                 error_log($log_message);
                 
-                // Log to database
-                towquery("INSERT INTO `sms_log` (`user_id`, `mobile`, `message`, `template_id`, `type`, `status`, `response`, `created_at`) 
-                          VALUES ($id, '$userpro_altmobile', '" . towreal($message) . "', '$template_id', 'accept_agreement_auto_alt', 'sent', '" . towreal($response) . "', NOW())");
+                // SMS logging removed - table doesn't exist
             }
             }
         }
