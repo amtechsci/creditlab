@@ -4,8 +4,18 @@
  * Sends SMS to reference numbers when admin clicks "Send SMS" button
  */
 
-session_start();
-include_once '../db.php';
+// Set content type to JSON
+header('Content-Type: application/json');
+
+// Error handling
+try {
+    session_start();
+    include_once 'db.php';
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    exit;
+}
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin'])) {
@@ -33,9 +43,10 @@ if (!isset($input['reference_id']) || !isset($input['user_id'])) {
 $reference_id = (int)$input['reference_id'];
 $user_id = (int)$input['user_id'];
 
-// Get reference details
-$ref_query = "SELECT * FROM user_referrals WHERE id = $reference_id AND uid = $user_id";
-$ref_result = towquery($ref_query);
+try {
+    // Get reference details
+    $ref_query = "SELECT * FROM user_referrals WHERE id = $reference_id AND uid = $user_id";
+    $ref_result = towquery($ref_query);
 
 if (townum($ref_result) == 0) {
     echo json_encode(['success' => false, 'message' => 'Reference not found']);
@@ -126,5 +137,10 @@ if ($error) {
             'http_code' => $httpCode
         ]
     ]);
+}
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
 }
 ?>

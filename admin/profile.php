@@ -1855,7 +1855,7 @@
             this.textContent = 'Sending...';
             
             // Send AJAX request
-            fetch('send_reference_sms.php', {
+            fetch('../send_reference_sms.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
