@@ -1,7 +1,4 @@
 <?php
-ini_set('display_startup_errors', 1);
-ini_set('display_errors', 1);
-error_reporting(-1);
 $filename = 'webhook_data.txt';
 date_default_timezone_set('Asia/Kolkata');
 
@@ -52,11 +49,22 @@ $db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 
 // Always check for connection errors
 if (mysqli_connect_errno()) {
-    error_log("Database connection failed: " . mysqli_connect_error());
+    $error_msg = "Database connection failed: " . mysqli_connect_error();
+    error_log($error_msg);
+    writeWebhookLog("FATAL ERROR: $error_msg", $log_file);
     http_response_code(500);
     die("Database connection failed."); // Stop execution if DB is down
 }
 mysqli_set_charset($db, 'utf8');
+
+// Test the connection
+if (!mysqli_ping($db)) {
+    $error_msg = "Database connection lost";
+    error_log($error_msg);
+    writeWebhookLog("FATAL ERROR: $error_msg", $log_file);
+    http_response_code(500);
+    die("Database connection lost");
+}
 
 
 // --- 2. REVISED DATABASE FUNCTIONS ---
@@ -112,7 +120,8 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
     
     try {
         // Get loan details for DPD calculation
-        $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
+        $loan_lid_escaped = mysqli_real_escape_string($db, $loan_lid);
+        $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid_escaped'");
         if (!$loan_data || townum($loan_data) == 0) {
             throw new Exception("Loan not found: $loan_lid");
         }
@@ -123,11 +132,11 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
         $point = calculateCreditScorePoints($dpd);
         
         // Check if it's EMI and update accordingly
-        $chf_data = towquery($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid'");
+        $chf_data = towquery($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid_escaped'");
         if ($chf_data && townum($chf_data) > 0) {
             $chf = towfetch($chf_data);
             if ($chf && isset($chf['is_emi']) && $chf['is_emi'] == 1) {
-                $emi_result = towquery($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid=$loan_lid");
+                $emi_result = towquery($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid='$loan_lid_escaped'");
                 if (!$emi_result) {
                     throw new Exception("Failed to update EMI status");
                 }
@@ -135,35 +144,42 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
         }
         
         // Update user credit score and loan count
-        $user_update = towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);
+        $uid_escaped = mysqli_real_escape_string($db, $uid);
+        $point_escaped = mysqli_real_escape_string($db, $point);
+        $user_update = towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point_escaped WHERE id='$uid_escaped'");
         if (!$user_update) {
             throw new Exception("Failed to update user credit score");
         }
         
         // Clear the loan
-        $loan_clear = towquery($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$loan_lid");
+        $current_date_escaped = mysqli_real_escape_string($db, date('Y-m-d'));
+        $loan_clear = towquery($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='$current_date_escaped' WHERE lid='$loan_lid_escaped'");
         if (!$loan_clear) {
             throw new Exception("Failed to clear loan");
         }
         
-        $user_clear = towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
+        $user_clear = towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id='$uid_escaped'");
         if (!$user_clear) {
             throw new Exception("Failed to clear user status");
         }
         
-        $loan_apply_clear = towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_lid);
+        $loan_apply_clear = towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id='$loan_lid_escaped'");
         if (!$loan_apply_clear) {
             throw new Exception("Failed to clear loan application");
         }
         
         // Delete payment references
-        $pay_ref_delete = towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid'");
+        $pay_ref_delete = towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid_escaped'");
         if (!$pay_ref_delete) {
             throw new Exception("Failed to delete payment references");
         }
         
         // Insert transaction details
-        $transaction_insert = towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', '$transaction_flow')");
+        $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
+        $amount_escaped = mysqli_real_escape_string($db, $amount);
+        $transaction_flow_escaped = mysqli_real_escape_string($db, $transaction_flow);
+        $current_datetime_escaped = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
+        $transaction_insert = towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', '$transaction_flow_escaped')");
         if (!$transaction_insert) {
             throw new Exception("Failed to insert transaction details");
         }
@@ -190,8 +206,17 @@ $data = $_POST;
 // --- FIELD VALIDATION ---
 if (!isset($data['furl']) || empty($data['furl'])) {
     error_log("Missing furl field in webhook request");
+    writeWebhookLog("ERROR: Missing furl field in webhook request", $log_file);
     http_response_code(400);
     die("Missing required field: furl");
+}
+
+// Validate that furl is a valid URL
+if (!filter_var($data['furl'], FILTER_VALIDATE_URL)) {
+    error_log("Invalid furl URL format: " . $data['furl']);
+    writeWebhookLog("ERROR: Invalid furl URL format: " . $data['furl'], $log_file);
+    http_response_code(400);
+    die("Invalid furl URL format");
 }
 
 // Make sure the required fields are available in the callback
@@ -217,6 +242,22 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         $bank_ref_num = $data['bank_ref_num'];
         $txnid = $data['txnid'];
         
+        // Validate numeric fields
+        if (!is_numeric($amount) || $amount <= 0) {
+            $error_msg = "Invalid amount: $amount";
+            writeWebhookLog("ERROR: $error_msg", $log_file);
+            http_response_code(400);
+            die($error_msg);
+        }
+        
+        // Validate transaction ID format
+        if (empty($txnid) || strlen($txnid) < 5) {
+            $error_msg = "Invalid transaction ID: $txnid";
+            writeWebhookLog("ERROR: $error_msg", $log_file);
+            http_response_code(400);
+            die($error_msg);
+        }
+        
         // Extract loan.lid from merchant_debit_id (remove CLL_AUTO_ prefix)
         if (strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
             // Parse merchant_debit_id format: CLL_AUTO_{lid}_{timestamp}
@@ -234,7 +275,8 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
             writeWebhookLog("Processing auto-debit for loan CLL$loan_lid | Amount: ₹$amount | Bank Ref: $bank_ref_num$timestamp_info", $log_file);
             
             // Get loan details to verify loan exists and get user ID
-            $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid'");
+            $loan_lid_escaped = mysqli_real_escape_string($db, $loan_lid);
+            $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid_escaped'");
             if (!$loan_data) {
                 $error_msg = "Database error while fetching loan $loan_lid";
                 writeWebhookLog("ERROR: $error_msg", $log_file);
@@ -248,7 +290,8 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                 $uid = $loan_details['uid'];
                 
                 // Get user details
-                $user_data = towquery($db, "SELECT * FROM user WHERE id='$uid'");
+                $uid_escaped = mysqli_real_escape_string($db, $uid);
+                $user_data = towquery($db, "SELECT * FROM user WHERE id='$uid_escaped'");
                 if (!$user_data || townum($user_data) == 0) {
                     $error_msg = "User not found for loan CLL$loan_lid";
                     writeWebhookLog("ERROR: $error_msg", $log_file);
@@ -389,36 +432,67 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
     // FIX: Define $payment_method. Change 'payment_mode' to the actual key from your payment provider.
     $payment_method = isset($result['payment_mode']) ? $result['payment_mode'] : 'N/A';
     
+    // Validate numeric fields for payment processing
+    if (!is_numeric($amount) || $amount <= 0) {
+        $error_msg = "Invalid amount for payment processing: $amount";
+        writeWebhookLog("ERROR: $error_msg", $log_file);
+        http_response_code(400);
+        die($error_msg);
+    }
+    
+    // Validate transaction ID format
+    if (empty($txnid) || strlen($txnid) < 5) {
+        $error_msg = "Invalid transaction ID for payment processing: $txnid";
+        writeWebhookLog("ERROR: $error_msg", $log_file);
+        http_response_code(400);
+        die($error_msg);
+    }
+    
     if (isset($status) && $status == "success") {
-        $pg_transaction = towquery($db, "SELECT * FROM pg_transaction WHERE txnid='$txnid' AND `status`!='success'");
+        $txnid_escaped = mysqli_real_escape_string($db, $txnid);
+        $pg_transaction = towquery($db, "SELECT * FROM pg_transaction WHERE txnid='$txnid_escaped' AND `status`!='success'");
         if (townum($pg_transaction) > 0) {
             writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
             $pg_data = towfetch($pg_transaction);
             $cllid = $pg_data['loan_id'];
             
-            $loan_data = towquery($db, "SELECT * FROM loan WHERE id='$cllid'");
+            $cllid_escaped = mysqli_real_escape_string($db, $cllid);
+            $loan_data = towquery($db, "SELECT * FROM loan WHERE id='$cllid_escaped'");
             $loan_details = towfetch($loan_data);
             $uid = $loan_details['uid'];
 
             // Check if loan is already cleared to prevent duplicate processing
             if ($loan_details['status_log'] == 'cleared') {
                 writeWebhookLog("SKIPPED: Loan CLL{$loan_details['lid']} already cleared for txnid: $txnid", $log_file);
-                towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount', `payment_method`='$payment_method', `bank_reference_number`='$bank_ref_num' WHERE txnid='$txnid'");
-                continue;
+                $amount_escaped = mysqli_real_escape_string($db, $amount);
+                $payment_method_escaped = mysqli_real_escape_string($db, $payment_method);
+                $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
+                towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount_escaped', `payment_method`='$payment_method_escaped', `bank_reference_number`='$bank_ref_num_escaped' WHERE txnid='$txnid_escaped'");
+                // Skip to next iteration - this is not in a loop, so we'll just exit this block
+                goto end_payment_processing;
             }
 
             // FIX: Fetch user details so $user_details is defined
-            $user_data_result = towquery($db, "SELECT * FROM user WHERE id='$uid'");
+            $uid_escaped = mysqli_real_escape_string($db, $uid);
+            $user_data_result = towquery($db, "SELECT * FROM user WHERE id='$uid_escaped'");
             $user_details = towfetch($user_data_result);
 
             $dpd = $loan_details['exhausted_period'] - 30;
             $point = ($dpd > 0) ? (($dpd > 30) ? -50 : (($dpd > 10) ? -8 : 2)) : 8;
 
-            towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);
-            towquery($db, "UPDATE `loan` SET `action`='cleared', `status_log`='cleared', `cleard_date`='".date('Y-m-d')."' WHERE id=".$loan_details['id']);
-            towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id=".$uid);
-            towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_details['lid']);
-            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_details['lid']."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
+            $point_escaped = mysqli_real_escape_string($db, $point);
+            $current_date_escaped = mysqli_real_escape_string($db, date('Y-m-d'));
+            $loan_id_escaped = mysqli_real_escape_string($db, $loan_details['id']);
+            $loan_lid_escaped = mysqli_real_escape_string($db, $loan_details['lid']);
+            $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
+            $current_datetime_escaped = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
+            $amount_escaped = mysqli_real_escape_string($db, $amount);
+
+            towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point_escaped WHERE id='$uid_escaped'");
+            towquery($db, "UPDATE `loan` SET `action`='cleared', `status_log`='cleared', `cleard_date`='$current_date_escaped' WHERE id='$loan_id_escaped'");
+            towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id='$uid_escaped'");
+            towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id='$loan_lid_escaped'");
+            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', 'full')");
 
             // FIX: $user_details is now defined and can be used here
             file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);
@@ -430,12 +504,16 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
             include '../send_sms.php';
 
             // FIX: The query now includes the defined $payment_method variable
-            towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount', `payment_method`='$payment_method', `bank_reference_number`='$bank_ref_num' WHERE txnid='$txnid'");
+            $payment_method_escaped = mysqli_real_escape_string($db, $payment_method);
+            towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount_escaped', `payment_method`='$payment_method_escaped', `bank_reference_number`='$bank_ref_num_escaped' WHERE txnid='$txnid_escaped'");
         }
     } else {
         $error_msg = isset($result['error_Message']) ? $result['error_Message'] : "Unknown error.";
-        towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid'");
+        $txnid_escaped = mysqli_real_escape_string($db, $txnid);
+        towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid_escaped'");
     }
+    
+    end_payment_processing:
 }
 
 // --- FINAL SUMMARY LOGGING ---
