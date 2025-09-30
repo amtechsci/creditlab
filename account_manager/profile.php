@@ -100,7 +100,7 @@ if(isset($_POST['mobile'])){
     $extract = towrealarray($_POST);
     extract($extract);
     if($mobile == $altmobile){
-        print_r("<script>alert('please enter mobile number of any family person if you don’t have alternate number');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+        print_r("<script>alert('please enter mobile number of any family person if you don't have alternate number');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
     }else{
     if(isset($_POST['pus'])){
         if($userpro_loan_limit != $loan_limit){
@@ -590,12 +590,22 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             
                                                             <div class="form-group">
                                                                 <lable>Mobile Number</lable>
-                                                            <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                <div class="input-group">
+                                                                    <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                    <div class="input-group-append">
+                                                                        <a href="http://wa.me/91<?=$userpro_mobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Alternate Mobile Number</lable>
-                                                            <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
-                                                            <p id="mess"></p>
+                                                                <div class="input-group">
+                                                                    <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
+                                                                    <div class="input-group-append">
+                                                                        <a href="http://wa.me/91<?=$userpro_altmobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                    </div>
+                                                                </div>
+                                                                <p id="mess"></p>
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Email</lable>
@@ -1366,7 +1376,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                 <th>Phone</th>
                 <th>Relation</th>
                 <th>Valid</th>
-                <!--<th>Action</th>-->
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -1377,12 +1387,25 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                     ?>
                     <tr>
                         <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][name]" value="<?= $ref['name'] ?>"></td>
-                        <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][phone]" value="<?= $ref['phone'] ?>"></td>
+                        <td>
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][phone]" value="<?= $ref['phone'] ?>">
+                                <div class="input-group-append">
+                                    <a href="http://wa.me/91<?= $ref['phone'] ?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                </div>
+                            </div>
+                        </td>
                         <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][relation]" value="<?= $ref['relation'] ?>"></td>
                         <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][status]" value="<?= $ref['status'] ?>"></td>
-                        <!--<td>-->
-                            <!--<button type="submit" name="delete_ref" value="<?= $ref['id'] ?>" class="btn btn-danger">Delete</button>-->
-                        <!--</td>-->
+                        <td>
+                            <button type="button" class="btn btn-primary btn-sm send-reference-sms" 
+                                    data-reference-id="<?= $ref['id'] ?>" 
+                                    data-user-id="<?= $userpro_id ?>"
+                                    data-reference-name="<?= htmlspecialchars($ref['name']) ?>"
+                                    data-reference-phone="<?= $ref['phone'] ?>">
+                                Send SMS
+                            </button>
+                        </td>
                     </tr>
                     <?php
                 }
@@ -1605,6 +1628,7 @@ document.querySelectorAll('.remove-row').forEach(button => {
                                         <th>Paid Amount</th>       
                                         <th>cleared date</th>    
                                         <th>DPD</th>    
+                                        <th>Action</th>
                                     </tr>
         </thead>
         <tbody>
@@ -1712,6 +1736,28 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td><?php $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); $paid_amtf = towfetch($paid_amt); echo $paid_amtf['paid_amt'] ? $paid_amtf['paid_amt'] : 0;?></td>
                                         <td><?=$usersd_cleard_date?></td>
                                         <td><?php $dpd = $usersd_exhausted_period-30; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
+                                        <td><?php 
+                                        if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
+                                            echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';
+                                            echo '<br><br>';
+                                            echo '<button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#skipEnachModal" data-loan-id="'.$usersd_lid.'">Skip E-NACH</button>';
+                                        } elseif($usersd_enach_request == 1) {
+                                            echo '<span class="badge badge-success">Requested</span>';
+                                        } elseif($usersd_enach_request == 2) {
+                                            // Check if it's temporary or permanent skip
+                                            $skip_type = isset($usersd_enach_skip_type) ? $usersd_enach_skip_type : 'permanent';
+                                            if($skip_type === 'temporary' && !empty($usersd_enach_skip_until_date)) {
+                                                echo '<span class="badge badge-info">Skipped Until ' . date('d-m-Y', strtotime($usersd_enach_skip_until_date)) . '</span>';
+                                            } else {
+                                                echo '<span class="badge badge-warning">Skipped</span>';
+                                            }
+                                            if(!empty($lof['enach_skip_reason'])) {
+                                                echo '<br><small class="text-muted">Reason: '.$lof['enach_skip_reason'].'</small>';
+                                            }
+                                        } else {
+                                            echo '<span class="badge badge-secondary">N/A</span>';
+                                        }
+                                        ?></td>
                                     </tr></form>
                                 <?php } ?>
             </tbody>
@@ -1986,8 +2032,8 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <th>Updated date</th>  
                                         <th>Account manger Name</th>   
                                     </tr>
-                                </thead>
-                                <tbody>
+            </thead>
+            <tbody>
                   
                                    <?php
                                    $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' ORDER BY id DESC"); 
@@ -2021,8 +2067,8 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <th>Payment Screenshot</th>  
                                         <th>Payment Type</th>  
                                     </tr>
-                                </thead>
-                                <tbody>
+            </thead>
+            <tbody>
                   
                                    <?php
                                    $ref_data = towquery("SELECT * FROM `pay_ref` WHERE uid='$userpro_id' ORDER BY id DESC"); 
@@ -2145,7 +2191,7 @@ if(mobile != altmobile){
 } else {
    $('#altmobile').css("border-color", "red");
    $("#presub").attr("disabled",true);
-   $("#mess").html("please enter mobile number of any family person if you don’t have alternate number");
+   $("#mess").html("please enter mobile number of any family person if you don't have alternate number");
 }
 });
 </script>
@@ -2246,6 +2292,89 @@ $('textarea').onchange(function () {
             }
         }
     </script>
+
+    <!-- Skip Enach Modal -->
+    <div class="modal fade" id="skipEnachModal" tabindex="-1" role="dialog" aria-labelledby="skipEnachModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="skipEnachModalLabel">Skip E-NACH Request</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="loan_id" id="skipEnachLoanId">
+                        <div class="form-group">
+                            <label for="skipType">Skip Type</label>
+                            <select class="form-control" id="skipType" name="skip_type">
+                                <option value="permanent">Permanent</option>
+                                <option value="temporary">Temporary</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="skipUntilDate" style="display: none;">
+                            <label for="skip_until_date">Skip Until</label>
+                            <input type="date" class="form-control" name="skip_until_date">
+                        </div>
+                        <div class="form-group">
+                            <label for="skip_reason">Reason for skipping</label>
+                            <textarea class="form-control" name="skip_reason" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" name="skip_enach" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- jquery
+        ============================================ -->
+    <script src="js/vendor/jquery-1.11.3.min.js"></script>
+    <script>
+        $('#skipEnachModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var loanId = button.data('loan-id');
+            var modal = $(this);
+            modal.find('#skipEnachLoanId').val(loanId);
+        });
+
+        document.getElementById('skipType').addEventListener('change', function () {
+            var style = this.value === 'temporary' ? 'block' : 'none';
+            document.getElementById('skipUntilDate').style.display = style;
+        });
+    </script>
+    <!-- bootstrap JS
+        ============================================ -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- wow JS
+        ============================================ -->
+    <script src="js/wow.min.js"></script>
+    <!-- price-slider JS
+        ============================================ -->
+    <script src="js/price-slider.js"></script>
+    <!-- meanmenu JS
+        ============================================ -->
+    <script src="js/meanmenu/jquery.meanmenu.js"></script>
+    <!-- owl.carousel JS
+        ============================================ -->
+    <script src="js/owl.carousel.min.js"></script>
+    <!-- sticky JS
+        ============================================ -->
+    <script src="js/jquery.sticky.js"></script>
+    <!-- scrollUp JS
+        ============================================ -->
+    <script src="js/jquery.scrollUp.min.js"></script>
+    <!-- counterup JS
+        ============================================ -->
+    <script src="js/counterup/jquery.counterup.min.js"></script>
+    <script src="js/waypoints.min.js"></script>
+    <!-- main JS
+        ============================================ -->
+    <script src="js/main.js"></script>
 </body>
 
 </html>

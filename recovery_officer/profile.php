@@ -37,20 +37,6 @@ if(isset($_POST['validation'])){
         $update_status = "Hold";
         }
     }
-    $validation = $validation.$valid_status." to ".$update_status." by $user_name on ".date('Y-m-d')." \n";
-    if($valid_status == "Not Process"){
-        towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=4,`status`='Hold',reg_date='".date('Y-m-d H:i:s')."' WHERE id=".$id."");
-        towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
-    }elseif($valid_status == "Re Process"){
-        towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=3,`status`='Hold',reg_date='".date('Y-m-d H:i:s')."' WHERE id=".$id."");
-        towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
-    }elseif($valid_status == "cancel"){
-        towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
-        towquery("UPDATE `user` SET `loan`=2,`sloan`=0 WHERE id=".$userpro_id."");
-        towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `status`='cancel' WHERE id=".$id."");
-        if(in_array("cancel & hold",$processcheck)){
-            towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=4,`status`='Hold',reg_date='".date('Y-m-d H:i:s')."' WHERE id=".$id."");
-        }
     }elseif($valid_status == "unhold"){
         towquery("UPDATE `user` SET `validation`=CONCAT(`validation`,'$validation'), `verify`=0,`status`='waiting' WHERE id=".$id."");
         towquery("UPDATE `user` SET `loan`=0,`sloan`=0 WHERE id=".$userpro_id."");
@@ -75,7 +61,7 @@ if(isset($_POST['mobile'])){
     $extract = towrealarray($_POST);
     extract($extract);
     if($mobile == $altmobile){
-        print_r("<script>alert('please enter mobile number of any family person if you don’t have alternate number');  window.location.replace('profile.php?id=".$id."');</script>");
+        print_r("<script>alert('please enter mobile number of any family person if you don't have alternate number');  window.location.replace('profile.php?id=".$id."');</script>");
     }else{
     if(isset($_POST['pus'])){
         $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`='$mobile',`altmobile`='$altmobile',`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
@@ -560,12 +546,22 @@ if(isset($_POST['loan_acc_man'])){
                                                             
                                                             <div class="form-group">
                                                                 <lable>Mobile Number</lable>
-                                                            <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                <div class="input-group">
+                                                                    <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                    <div class="input-group-append">
+                                                                        <a href="http://wa.me/91<?=$userpro_mobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Alternate Mobile Number</lable>
-                                                            <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
-                                                            <p id="mess"></p>
+                                                                <div class="input-group">
+                                                                    <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
+                                                                    <div class="input-group-append">
+                                                                        <a href="http://wa.me/91<?=$userpro_altmobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                    </div>
+                                                                </div>
+                                                                <p id="mess"></p>
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Email</lable>
@@ -1131,7 +1127,8 @@ if(isset($_POST['loan_acc_man'])){
                                         <th>Name</th>        
                                         <th>Phone</th>        
                                         <th>Relation</th>  
-                                        <th>Valid</th>  
+                                        <th>Valid</th>
+                                        <th>Action</th>
                                     </tr>
         </thead>
         <tbody>
@@ -1148,33 +1145,73 @@ if(isset($_POST['loan_acc_man'])){
                                    ?>
                                     <tr>
                                         <td data-title="CID"><input type="text" class="form-control" name="ref[1][]" value="<?=$ref_1[0];?>"></td>
-                                        <td data-title="Name"><input type="text" class="form-control" name="ref[1][]" value="<?=$ref_1[1];?>"></td>
+                                        <td data-title="Name">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" name="ref[1][]" value="<?=$ref_1[1];?>">
+                                                <div class="input-group-append">
+                                                    <a href="http://wa.me/91<?=$ref_1[1]?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td data-title="Email"><input type="text" class="form-control" name="ref[1][]" value="<?=$ref_1[2];?>"></td>
                                         <td data-title="Email"><input type="text" class="form-control" name="vaild[0]" value="<?=$vaild[0];?>"></td>
+                                        <td><button type="button" class="btn btn-primary btn-sm send-reference-sms" data-user-id="<?=$userpro_id?>" data-reference-name="<?=htmlspecialchars($ref_1[0])?>" data-reference-phone="<?=$ref_1[1]?>">Send SMS</button></td>
                                     </tr>
                                     <tr>
                                         <td data-title="CID"><input type="text" class="form-control" name="ref[2][]"  value="<?=$ref_2[0];?>"></td>
-                                        <td data-title="Name"><input type="text" class="form-control" name="ref[2][]"  value="<?=$ref_2[1];?>"></td>
+                                        <td data-title="Name">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" name="ref[2][]"  value="<?=$ref_2[1];?>">
+                                                <div class="input-group-append">
+                                                    <a href="http://wa.me/91<?=$ref_2[1]?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td data-title="Email"><input type="text" class="form-control" name="ref[2][]"  value="<?=$ref_2[2];?>"></td>
                                         <td data-title="Email"><input type="text" class="form-control" name="vaild[1]" value="<?=$vaild[1];?>"></td>
+                                        <td><button type="button" class="btn btn-primary btn-sm send-reference-sms" data-user-id="<?=$userpro_id?>" data-reference-name="<?=htmlspecialchars($ref_2[0])?>" data-reference-phone="<?=$ref_2[1]?>">Send SMS</button></td>
                                     </tr>
                                     <tr>
                                         <td data-title="CID"><input type="text" class="form-control" name="ref[3][]" value="<?=$ref_3[0];?>"></td>
-                                        <td data-title="Name"><input type="text" class="form-control" name="ref[3][]" value="<?=$ref_3[1];?>"></td>
+                                        <td data-title="Name">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" name="ref[3][]" value="<?=$ref_3[1];?>">
+                                                <div class="input-group-append">
+                                                    <a href="http://wa.me/91<?=$ref_3[1]?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td data-title="Email"><input type="text" class="form-control" name="ref[3][]" value="<?=$ref_3[2];?>"></td>
                                         <td data-title="Email"><input type="text" class="form-control" name="vaild[2]" value="<?=$vaild[2];?>"></td>
+                                        <td><button type="button" class="btn btn-primary btn-sm send-reference-sms" data-user-id="<?=$userpro_id?>" data-reference-name="<?=htmlspecialchars($ref_3[0])?>" data-reference-phone="<?=$ref_3[1]?>">Send SMS</button></td>
                                     </tr>
                                     <tr>
                                         <td data-title="CID"><input type="text" class="form-control" name="ref[4][]" value="<?=$ref_4[0];?>"></td>
-                                        <td data-title="Name"><input type="text" class="form-control" name="ref[4][]" value="<?=$ref_4[1];?>"></td>
+                                        <td data-title="Name">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" name="ref[4][]" value="<?=$ref_4[1];?>">
+                                                <div class="input-group-append">
+                                                    <a href="http://wa.me/91<?=$ref_4[1]?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td data-title="Email"><input type="text" class="form-control" name="ref[4][]" value="<?=$ref_4[2];?>"></td>
                                         <td data-title="Email"><input type="text" class="form-control" name="vaild[3]" value="<?=$vaild[3];?>"></td>
+                                        <td><button type="button" class="btn btn-primary btn-sm send-reference-sms" data-user-id="<?=$userpro_id?>" data-reference-name="<?=htmlspecialchars($ref_4[0])?>" data-reference-phone="<?=$ref_4[1]?>">Send SMS</button></td>
                                     </tr>
                                     <tr>
                                         <td data-title="CID"><input type="text" class="form-control" name="ref[5][]" value="<?=$ref_5[0];?>"></td>
-                                        <td data-title="Name"><input type="text" class="form-control" name="ref[5][]" value="<?=$ref_5[1];?>"></td>
+                                        <td data-title="Name">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" name="ref[5][]" value="<?=$ref_5[1];?>">
+                                                <div class="input-group-append">
+                                                    <a href="http://wa.me/91<?=$ref_5[1]?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td data-title="Email"><input type="text" class="form-control" name="ref[5][]" value="<?=$ref_5[2];?>"></td>
                                         <td data-title="Email"><input type="text" class="form-control" name="vaild[4]" value="<?=$vaild[4];?>"></td>
+                                        <td><button type="button" class="btn btn-primary btn-sm send-reference-sms" data-user-id="<?=$userpro_id?>" data-reference-name="<?=htmlspecialchars($ref_5[0])?>" data-reference-phone="<?=$ref_5[1]?>">Send SMS</button></td>
                                     </tr>
                                 
             </tbody>
@@ -1717,8 +1754,8 @@ if(isset($_POST['loan_acc_man'])){
                                         <th>Updated date</th>  
                                         <th>Account manger Name</th>   
                                     </tr>
-                                </thead>
-                                <tbody>
+        </thead>
+        <tbody>
                   
                                    <?php
                                    $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' ORDER BY id DESC"); 
@@ -1824,7 +1861,7 @@ if(mobile != altmobile){
 } else {
    $('#altmobile').css("border-color", "red");
    $("#presub").attr("disabled",true);
-   $("#mess").html("please enter mobile number of any family person if you don’t have alternate number");
+   $("#mess").html("please enter mobile number of any family person if you don't have alternate number");
 }
 });
 </script>
@@ -1905,6 +1942,107 @@ $('textarea').onchange(function () {
     }
 });
 </script>
+
+    <!-- Skip Enach Modal -->
+    <div class="modal fade" id="skipEnachModal" tabindex="-1" role="dialog" aria-labelledby="skipEnachModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form action="" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="skipEnachModalLabel">Skip E-NACH Request</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="loan_id" id="skipEnachLoanId">
+                        <div class="form-group">
+                            <label for="skipType">Skip Type</label>
+                            <select class="form-control" id="skipType" name="skip_type">
+                                <option value="permanent">Permanent</option>
+                                <option value="temporary">Temporary</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="skipUntilDate" style="display: none;">
+                            <label for="skip_until_date">Skip Until</label>
+                            <input type="date" class="form-control" name="skip_until_date">
+                        </div>
+                        <div class="form-group">
+                            <label for="skip_reason">Reason for skipping</label>
+                            <textarea class="form-control" name="skip_reason" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" name="skip_enach" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- jquery
+        ============================================ -->
+    <script src="js/vendor/jquery-1.11.3.min.js"></script>
+    <script>
+        $('#skipEnachModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var loanId = button.data('loan-id');
+            var modal = $(this);
+            modal.find('#skipEnachLoanId').val(loanId);
+        });
+
+        document.getElementById('skipType').addEventListener('change', function () {
+            var style = this.value === 'temporary' ? 'block' : 'none';
+            document.getElementById('skipUntilDate').style.display = style;
+        });
+    </script>
+    <!-- bootstrap JS
+        ============================================ -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- wow JS
+        ============================================ -->
+    <script src="js/wow.min.js"></script>
+    <!-- price-slider JS
+        ============================================ -->
+    <script src="js/price-slider.js"></script>
+    <!-- meanmenu JS
+        ============================================ -->
+    <script src="js/meanmenu/jquery.meanmenu.js"></script>
+    <!-- owl.carousel JS
+        ============================================ -->
+    <script src="js/owl.carousel.min.js"></script>
+    <!-- sticky JS
+        ============================================ -->
+    <script src="js/jquery.sticky.js"></script>
+    <!-- scrollUp JS
+        ============================================ -->
+    <script src="js/jquery.scrollUp.min.js"></script>
+    <!-- counterup JS
+        ============================================ -->
+    <script src="js/counterup/jquery.counterup.min.js"></script>
+    <script src="js/waypoints.min.js"></script>
+    <!-- owl.carousel-active JS
+        ============================================ -->
+    <script src="js/owl.carousel.active.js"></script>
+    <!-- slick JS
+        ============================================ -->
+    <script src="js/slick.min.js"></script>
+    <!-- swiper JS
+        ============================================ -->
+    <script src="js/swiper.min.js"></script>
+    <!-- carousel JS
+        ============================================ -->
+    <script src="js/owl.carousel.min.js"></script>
+    <!-- contact JS
+        ============================================ -->
+    <script src="js/contact.js"></script>
+    <!-- elements JS
+        ============================================ -->
+    <script src="js/elements.js"></script>
+    <!-- main JS
+        ============================================ -->
+    <script src="js/main.js"></script>
 </body>
 
 </html>
