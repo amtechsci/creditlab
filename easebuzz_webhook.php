@@ -542,5 +542,5 @@ writeWebhookLog("=== WEBHOOK PROCESSING COMPLETED ===", $log_file);
 http_response_code(200);
 
 // Close the single database connection at the end
-mysqli_close($db);
+// mysqli_close($db);
 ?>

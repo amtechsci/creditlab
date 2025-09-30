@@ -126,5 +126,5 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
 http_response_code(200);
 
 // Close database connection
-mysqli_close($db);
+// mysqli_close($db);
 ?>

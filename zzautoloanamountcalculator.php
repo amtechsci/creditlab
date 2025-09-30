@@ -201,6 +201,5 @@ error_log("Cron Job: Completed processing $processed_count loans at " . date('Y-
 echo "$processed_count rows updated\n";
 
 // Close the single database connection at the end of the script.
-mysqli_close($db);
-
+// mysqli_close($db);
 ?>

@@ -151,6 +151,6 @@ echo "--------------------------------------------------\n";
 echo "\n🎉 Processing complete. Processed $requestCount log entries.\n";
 
 // --- 5. CLEANUP ---
-mysqli_close($db);
+// mysqli_close($db);
 echo "</pre>";
 ?>

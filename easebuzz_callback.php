@@ -201,4 +201,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Close database connection
-mysqli_close($db);
+// mysqli_close($db);

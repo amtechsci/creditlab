@@ -716,6 +716,5 @@ writeLog($summary_message, $log_file);
 writeLog("=== E-NACH CRON JOB ENDED ===", $log_file);
 
 // Close database connection
-mysqli_close($db);
-
+// mysqli_close($db);
 ?> -->
