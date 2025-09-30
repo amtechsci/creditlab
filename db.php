@@ -12,17 +12,55 @@ mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISI
 // Helper function to ensure database connection is valid
 function ensure_db_connection() {
 	global $db;
+	static $checking = false;
 	
-	// Check if connection is valid by checking thread_id (null if closed)
-	if (!$db || !($db instanceof mysqli) || @$db->thread_id === null) {
-		$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+	// Prevent infinite recursion
+	if ($checking) {
+		return false;
+	}
+	$checking = true;
+	
+	$needs_reconnect = false;
+	
+	try {
+		// Use gettype to check without accessing the object
+		$db_type = @gettype($db);
+		
+		// If $db is not set or not an object, we need to reconnect
+		if ($db_type !== 'object') {
+			$needs_reconnect = true;
+		} else {
+			// Check class name without accessing object properties
+			$class_name = @get_class($db);
+			if ($class_name !== 'mysqli') {
+				$needs_reconnect = true;
+			}
+		}
+	} catch (Exception $e) {
+		// If any error occurs, reconnect
+		$needs_reconnect = true;
+	} catch (Error $e) {
+		// Catch PHP 7+ errors as well
+		$needs_reconnect = true;
+	}
+	
+	if ($needs_reconnect) {
+		// Just unset and create new - don't try to access the old connection
+		$db = null;
+		unset($db);
+		
+		// Create new connection
+		$db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 		if (!$db) {
 			error_log("Database reconnection failed: " . mysqli_connect_error());
+			$checking = false;
 			return false;
 		}
-		mysqli_set_charset($db,'utf8');
-		mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+		@mysqli_set_charset($db,'utf8');
+		@mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
 	}
+	
+	$checking = false;
 	return true;
 }
 

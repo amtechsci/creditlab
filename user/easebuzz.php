@@ -197,6 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
 <?php } 
 
-// Close database connection
-mysqli_close($db);
+// Don't close the global database connection - it's shared across the application
+// mysqli_close($db);
 ?>
