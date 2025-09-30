@@ -17,8 +17,8 @@ try {
     exit;
 }
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin'])) {
+// Check if admin, account manager, recovery officer, or verify user is logged in
+if (!isset($_SESSION['admin']) && !isset($_SESSION['account_manager']) && !isset($_SESSION['recovery_officer']) && !isset($_SESSION['verify_user'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
     exit;
