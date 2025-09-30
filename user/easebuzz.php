@@ -188,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <input type='hidden' name='account_type' value='SAVINGS'>
             <input type='hidden' name='auth_mode' value='DebitCard'>
             <input type='hidden' name='ifsc' value='".$ubf['ifsc_code']."'>
-                <button class='btn' style='text-align:center;' type='submit'>Continue</button>
+                <button class='btn btn-primary' style='text-align:center;' type='submit'>Continue</button>
             </form>
         ";
     } ?>
