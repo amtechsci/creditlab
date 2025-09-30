@@ -63,10 +63,18 @@ function formatFileSize($bytes) {
     }
 }
 
-// Get log files from both directories
+// Get log files from all directories (payment cron, webhook, sms cron)
 $cronLogs = getLogFiles('../payment/logs');
 $webhookLogs = getLogFiles('../logs');
-$allLogs = array_merge($cronLogs, $webhookLogs);
+$smsCronLogs = array_filter(getLogFiles('../logs'), function($log) {
+    return strpos($log['name'], 'sms_cron_') === 0;
+});
+
+// Tag sms logs distinctly
+foreach ($smsCronLogs as &$l) { $l['type'] = 'sms'; }
+unset($l);
+
+$allLogs = array_merge($cronLogs, $webhookLogs, $smsCronLogs);
 
 // Debug: Check if directories exist
 $cronDirExists = is_dir('../payment/logs');
@@ -78,7 +86,7 @@ $logContent = null;
 if (isset($_GET['view']) && isset($_GET['file'])) {
     $selectedFile = $_GET['file'];
     
-    // Check both log directories
+    // Check all log directories
     $filePath = null;
     if (file_exists('../payment/logs/' . $selectedFile)) {
         $filePath = '../payment/logs/' . $selectedFile;
@@ -97,7 +105,7 @@ if (isset($_GET['view']) && isset($_GET['file'])) {
 if (isset($_GET['download']) && isset($_GET['file'])) {
     $downloadFile = $_GET['file'];
     
-    // Check both log directories
+    // Check all log directories
     $filePath = null;
     if (file_exists('../payment/logs/' . $downloadFile)) {
         $filePath = '../payment/logs/' . $downloadFile;
@@ -117,6 +125,7 @@ if (isset($_GET['download']) && isset($_GET['file'])) {
 // Get log statistics
 $totalCronLogs = count(array_filter($allLogs, function($log) { return $log['type'] === 'cron'; }));
 $totalWebhookLogs = count(array_filter($allLogs, function($log) { return $log['type'] === 'webhook'; }));
+$totalSmsLogs = count(array_filter($allLogs, function($log) { return $log['type'] === 'sms'; }));
 $totalLogSize = array_sum(array_column($allLogs, 'size'));
 
 // Get recent log activity (last 7 days)
@@ -129,9 +138,11 @@ $logsByDate = [];
 foreach ($allLogs as $log) {
     $date = date('Y-m-d', $log['modified']);
     if (!isset($logsByDate[$date])) {
-        $logsByDate[$date] = ['cron' => 0, 'webhook' => 0, 'size' => 0];
+        $logsByDate[$date] = ['cron' => 0, 'webhook' => 0, 'sms' => 0, 'size' => 0];
     }
-    $logsByDate[$date][$log['type']]++;
+    if (isset($logsByDate[$date][$log['type']])) {
+        $logsByDate[$date][$log['type']]++;
+    }
     $logsByDate[$date]['size'] += $log['size'];
 }
 ksort($logsByDate);
@@ -263,6 +274,7 @@ ksort($logsByDate);
                                                     <th>Date</th>
                                                     <th>Cron Logs</th>
                                                     <th>Webhook Logs</th>
+                                                    <th>SMS Cron Logs</th>
                                                     <th>Total Size</th>
                                                     <th>Actions</th>
                                                 </tr>
@@ -281,6 +293,9 @@ ksort($logsByDate);
                                                     <td>
                                                         <span class="badge badge-success"><?= $stats['webhook'] ?></span>
                                                     </td>
+                                                    <td>
+                                                        <span class="badge badge-warning"><?= $stats['sms'] ?></span>
+                                                    </td>
                                                     <td><?= formatFileSize($stats['size']) ?></td>
                                                     <td>
                                                         <?php if (file_exists('../payment/logs/enach_cron_'.$date.'.log')): ?>
@@ -288,6 +303,9 @@ ksort($logsByDate);
                                                         <?php endif; ?>
                                                         <?php if (file_exists('../logs/webhook_'.$date.'.log')): ?>
                                                             <a href="?view=1&file=webhook_<?= $date ?>.log" class="btn btn-xs btn-success">View Webhook</a>
+                                                        <?php endif; ?>
+                                                        <?php if (file_exists('../logs/sms_cron_'.$date.'.log')): ?>
+                                                            <a href="?view=1&file=sms_cron_<?= $date ?>.log" class="btn btn-xs btn-warning">View SMS</a>
                                                         <?php endif; ?>
                                                     </td>
                                                 </tr>
@@ -334,8 +352,10 @@ ksort($logsByDate);
                                                             <i class="fa fa-clock-o" style="color: #337ab7;"></i>
                                                         <?php elseif ($log['type'] === 'webhook'): ?>
                                                             <i class="fa fa-exchange" style="color: #5cb85c;"></i>
+                                                        <?php elseif ($log['type'] === 'sms'): ?>
+                                                            <i class="fa fa-commenting" style="color: #f0ad4e;"></i>
                                                         <?php else: ?>
-                                                            <i class="fa fa-file-text-o" style="color: #f0ad4e;"></i>
+                                                            <i class="fa fa-file-text-o" style="color: #999;"></i>
                                                         <?php endif; ?>
                                                     </div>
                                                     <div class="message">

@@ -12,14 +12,19 @@ date_default_timezone_set('Asia/Kolkata');
 set_time_limit(300); // 5 minutes
 ini_set("memory_limit", "256M");
 
-// Log file
-$log_file = "sms_cron_log.txt";
-$log_date = date("Y-m-d H:i:s");
+// Log file (daily rotation under logs/)
+$log_dir = "logs";
+if (!is_dir($log_dir)) {
+    @mkdir($log_dir, 0755, true);
+}
+$current_log_date = date('Y-m-d');
+$log_file = $log_dir . "/sms_cron_" . $current_log_date . ".log";
 
 // Log function
 function logMessage($message) {
-    global $log_file, $log_date;
-    $log_entry = "[$log_date] $message" . PHP_EOL;
+    global $log_file;
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[$timestamp] $message" . PHP_EOL;
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
 }
 
@@ -402,8 +407,16 @@ try {
             // This should be triggered by webhook or callback when auto debit fails
             // For now, we'll add a placeholder that can be called manually or via webhook
             // Check if there's a bounce flag in the database (you may need to add this field)
-            $bounce_check = towquery("SELECT auto_debit_bounce, bounce_date FROM loan WHERE lid = $value AND auto_debit_bounce = 1 AND bounce_date = CURDATE()");
-            if($bounce_data = towfetch($bounce_check)){
+            // Guard: Skip if columns do not exist to prevent SQL errors
+            $col1 = towquery("SHOW COLUMNS FROM loan LIKE 'auto_debit_bounce'");
+            $col2 = towquery("SHOW COLUMNS FROM loan LIKE 'bounce_date'");
+            if ($col1 && $col2 && townum($col1) > 0 && townum($col2) > 0) {
+                $bounce_check = towquery("SELECT auto_debit_bounce, bounce_date FROM loan WHERE lid = $value AND auto_debit_bounce = 1 AND bounce_date = CURDATE()");
+                $bounce_data = $bounce_check ? towfetch($bounce_check) : null;
+            } else {
+                $bounce_data = null; // columns missing; skip this feature
+            }
+            if($bounce_data){
                 if($current_time == "09:00" || $current_time == "09:01"){ // Send once per day after bounce
                     $template_id = "1407175016580415506";
                     $outstanding_amount = $user_total_amount - $user_advance_amount;
