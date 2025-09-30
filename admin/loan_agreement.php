@@ -468,8 +468,12 @@ Principal Amount at the time of disbursal of the Principal Amount by the Lender 
   </table>
 </DIV>
 <?php
-$bank = towquery("SELECT * FROM `user_bank` WHERE verify=1 AND uid='".$loanf['uid']."' ORDER BY id DESC");
-$bankf = towfetch($bank);
+if (isset($loanf['uid']) && $loanf['uid'] != '') {
+    $bank = towquery("SELECT * FROM `user_bank` WHERE verify=1 AND uid='".$loanf['uid']."' ORDER BY id DESC");
+    $bankf = towfetch($bank);
+} else {
+    $bankf = false; // Set to a default value if no uid
+}
 ?>
 <DIV id="id2_3">
 <P class="p32 ft13"><SPAN class="ft1">7.</SPAN><SPAN class="ft12">Disbursal information</SPAN></P>

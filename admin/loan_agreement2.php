@@ -67,8 +67,13 @@ $b = $loanf;
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'] + ($b['processing_fees']*0.18);
 $result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage']);
 }
-$us_bankq = towquery("SELECT * FROM user_bank WHERE verify=1 AND uid=".$loanf['uid']."' ORDER BY id DESC");
-$us_bank = towfetch($us_bankq);
+if (isset($loanf['uid']) && $loanf['uid'] != '') {
+    $us_bankq = towquery("SELECT * FROM user_bank WHERE verify=1 AND uid='".$loanf['uid']."' ORDER BY id DESC");
+    $us_bank = towfetch($us_bankq);
+} else {
+    $us_bank = false; // or array()
+}
+
 // print_r($us_bank);exit;
 function convertImageToBase64($imageUrl, $altText = 'Image') {
     // Check if it's a local file path and convert to S3 proxy URL
