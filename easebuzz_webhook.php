@@ -239,7 +239,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         }
         $merchant_debit_id = $data['merchant_debit_id'];
         $amount = $data['amount'];
-        $bank_ref_num = $data['bank_ref_num'];
+        $bank_ref_num = $data['bank_ref_num'] ?? $data['easepayid'];
         $txnid = $data['txnid'];
         
         // Validate numeric fields

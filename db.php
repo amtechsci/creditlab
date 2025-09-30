@@ -13,8 +13,19 @@ function towquery($query)
 	global $db;
 	
 	// Check if connection is still valid
-	if (!$db || mysqli_ping($db) === false) {
-		// Reconnect if connection is lost
+	$needs_reconnect = false;
+	
+	if (!$db || !($db instanceof mysqli)) {
+		$needs_reconnect = true;
+	} else {
+		// Use @ to suppress error if connection is closed, then check return value
+		if (@mysqli_ping($db) === false) {
+			$needs_reconnect = true;
+		}
+	}
+	
+	if ($needs_reconnect) {
+		// Reconnect if connection is lost or closed
 		$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 		if (!$db) {
 			error_log("Database reconnection failed: " . mysqli_connect_error());
