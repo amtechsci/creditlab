@@ -2334,7 +2334,7 @@ $('textarea').onchange(function () {
 
     <!-- jquery
         ============================================ -->
-    <script src="js/vendor/jquery-1.11.3.min.js"></script>
+    <script src="../js/vendor/jquery-1.11.3.min.js"></script>
     <script>
         $('#skipEnachModal').on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget);
@@ -2347,35 +2347,90 @@ $('textarea').onchange(function () {
             var style = this.value === 'temporary' ? 'block' : 'none';
             document.getElementById('skipUntilDate').style.display = style;
         });
+
+        // Reference SMS functionality
+        document.querySelectorAll('.send-reference-sms').forEach(button => {
+            button.addEventListener('click', function() {
+                const referenceId = this.getAttribute('data-reference-id');
+                const userId = this.getAttribute('data-user-id');
+                const referenceName = this.getAttribute('data-reference-name');
+                const referencePhone = this.getAttribute('data-reference-phone');
+                
+                // Validate reference phone
+                if (!referencePhone || referencePhone.length < 10) {
+                    alert('Invalid reference phone number. Please update the phone number first.');
+                    return;
+                }
+                
+                // Confirm SMS sending
+                if (!confirm(`Send SMS to reference: ${referenceName} (${referencePhone})?`)) {
+                    return;
+                }
+                
+                // Disable button and show loading
+                const originalText = this.textContent;
+                this.disabled = true;
+                this.textContent = 'Sending...';
+                
+                // Send AJAX request
+                fetch('../send_reference_sms.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reference_id: referenceId,
+                        user_id: userId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`SMS sent successfully to ${referenceName} (${referencePhone})`);
+                    } else {
+                        alert(`Failed to send SMS: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to send SMS. Please try again.');
+                })
+                .finally(() => {
+                    // Re-enable button
+                    this.disabled = false;
+                    this.textContent = originalText;
+                });
+            });
+        });
     </script>
     <!-- bootstrap JS
         ============================================ -->
-    <script src="js/bootstrap.min.js"></script>
+    <script src="../js/bootstrap.min.js"></script>
     <!-- wow JS
         ============================================ -->
-    <script src="js/wow.min.js"></script>
+    <script src="../js/wow.min.js"></script>
     <!-- price-slider JS
         ============================================ -->
-    <script src="js/price-slider.js"></script>
+    <script src="../js/price-slider.js"></script>
     <!-- meanmenu JS
         ============================================ -->
-    <script src="js/meanmenu/jquery.meanmenu.js"></script>
+    <script src="../js/meanmenu/jquery.meanmenu.js"></script>
     <!-- owl.carousel JS
         ============================================ -->
-    <script src="js/owl.carousel.min.js"></script>
+    <script src="../js/owl.carousel.min.js"></script>
     <!-- sticky JS
         ============================================ -->
-    <script src="js/jquery.sticky.js"></script>
+    <script src="../js/jquery.sticky.js"></script>
     <!-- scrollUp JS
         ============================================ -->
-    <script src="js/jquery.scrollUp.min.js"></script>
+    <script src="../js/jquery.scrollUp.min.js"></script>
     <!-- counterup JS
         ============================================ -->
-    <script src="js/counterup/jquery.counterup.min.js"></script>
-    <script src="js/waypoints.min.js"></script>
+    <script src="../js/counterup/jquery.counterup.min.js"></script>
+    <script src="../js/waypoints.min.js"></script>
     <!-- main JS
         ============================================ -->
-    <script src="js/main.js"></script>
+    <script src="../js/main.js"></script>
 </body>
 
 </html>
