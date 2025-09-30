@@ -8,24 +8,13 @@ mysqli_set_charset($db,'utf8');
 
 // Disable SQL strict mode to prevent syntax errors
 mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
-function towquery($query)
-{
+
+// Helper function to ensure database connection is valid
+function ensure_db_connection() {
 	global $db;
 	
-	// Check if connection is still valid
-	$needs_reconnect = false;
-	
-	if (!$db || !($db instanceof mysqli)) {
-		$needs_reconnect = true;
-	} else {
-		// Use @ to suppress error if connection is closed, then check return value
-		if (@mysqli_ping($db) === false) {
-			$needs_reconnect = true;
-		}
-	}
-	
-	if ($needs_reconnect) {
-		// Reconnect if connection is lost or closed
+	// Check if connection is valid by checking thread_id (null if closed)
+	if (!$db || !($db instanceof mysqli) || @$db->thread_id === null) {
 		$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 		if (!$db) {
 			error_log("Database reconnection failed: " . mysqli_connect_error());
@@ -33,6 +22,17 @@ function towquery($query)
 		}
 		mysqli_set_charset($db,'utf8');
 		mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+	}
+	return true;
+}
+
+function towquery($query)
+{
+	global $db;
+	
+	// Ensure connection is valid
+	if (!ensure_db_connection()) {
+		return false;
 	}
 	
 	$re = mysqli_query($db,$query);
@@ -46,7 +46,17 @@ function towquery($query)
  function towquery2($query)
 {
 	global $db;
+	
+	// Ensure connection is valid
+	if (!ensure_db_connection()) {
+		return false;
+	}
+	
 	$re = mysqli_query($db,$query);
+	if (!$re) {
+		error_log("SQL Error in towquery2: " . mysqli_error($db) . " - Query: " . $query);
+		return false;
+	}
 	$re2 = mysqli_insert_id($db);
 	return $re2;
 }
@@ -68,6 +78,15 @@ function towquery($query)
  function towreal($query)
 {
 	global $db;
+	
+	// Ensure connection is valid
+	if (!ensure_db_connection()) {
+		// Fallback to basic escaping if connection fails
+		$re = str_replace("<","&lt;",$query);
+		$re = str_replace(">","&gt;",$re);
+		return $re;
+	}
+	
 	$re = str_replace("<","&lt;",$query);
 	$re = str_replace(">","&gt;",$re);
 	$re = mysqli_real_escape_string($db,$re);
@@ -76,6 +95,12 @@ function towquery($query)
  function towrealarray($query)
 {
 	global $db;
+	
+	// Ensure connection is valid
+	if (!ensure_db_connection()) {
+		return array();
+	}
+	
 	$re = array();
 	if (!is_array($query) || $query === null) {
 		return $re;
@@ -96,6 +121,12 @@ function towquery($query)
  function towrealarray2($query)
 {
 	global $db;
+	
+	// Ensure connection is valid
+	if (!ensure_db_connection()) {
+		return array();
+	}
+	
 	$re = array();
 	foreach ($query as $key => $value) {
 	    if(!is_array($value)){
