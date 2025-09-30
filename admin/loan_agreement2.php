@@ -67,7 +67,7 @@ $b = $loanf;
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'] + ($b['processing_fees']*0.18);
 $result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage']);
 }
-$us_bankq = towquery("SELECT * FROM user_bank WHERE uid=".$loanf['uid']);
+$us_bankq = towquery("SELECT * FROM user_bank WHERE verify=1 AND uid=".$loanf['uid']."' ORDER BY id DESC");
 $us_bank = towfetch($us_bankq);
 // print_r($us_bank);exit;
 function convertImageToBase64($imageUrl, $altText = 'Image') {
