@@ -1010,12 +1010,22 @@
                                                                 
                                                                 <div class="form-group">
                                                                     <lable>Mobile Number</lable>
-                                                                <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                    <div class="input-group">
+                                                                        <input name="mobile" id="mobile" type="text" placeholder="Mobile" class="form-control" value="<?=$userpro_mobile?>" pattern="[6789][0-9]{9}">
+                                                                        <div class="input-group-append">
+                                                                            <a href="http://wa.me/91<?=$userpro_mobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                                 <div class="form-group">
                                                                     <lable>Alternate Mobile Number</lable>
-                                                                <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
-                                                                <p id="mess"></p>
+                                                                    <div class="input-group">
+                                                                        <input name="altmobile" id="altmobile" type="text" placeholder="alternate mobile number" class="form-control" value="<?=$userpro_altmobile?>" pattern="[6789][0-9]{9}">
+                                                                        <div class="input-group-append">
+                                                                            <a href="http://wa.me/91<?=$userpro_altmobile?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p id="mess"></p>
                                                                 </div>
                                                                 <div class="form-group">
                                                                     <lable>Email</lable>
@@ -1794,7 +1804,14 @@
                         ?>
                         <tr>
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][name]" value="<?= $ref['name'] ?>"></td>
-                            <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][phone]" value="<?= $ref['phone'] ?>"></td>
+                            <td>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][phone]" value="<?= $ref['phone'] ?>">
+                                    <div class="input-group-append">
+                                        <a href="http://wa.me/91<?= $ref['phone'] ?>" target="_blank" class="btn btn-success" style="padding: 6px 12px;"><i class="fab fa-whatsapp"></i></a>
+                                    </div>
+                                </div>
+                            </td>
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][relation]" value="<?= $ref['relation'] ?>"></td>
                             <td><input type="text" class="form-control" name="ref[<?= $ref['id'] ?>][status]" value="<?= $ref['status'] ?>"></td>
                             <td>
@@ -2587,29 +2604,29 @@
                                             <th>Updated date</th>  
                                             <th>Account manger Name</th>   
                                         </tr>
-                                    </thead>
-                                    <tbody>
+                </thead>
+                <tbody>
                     
-                                    <?php
-                                    $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' ORDER BY id DESC"); 
-                                    while($bank_fetch = towfetch($ref_data)){
-                                    extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
-                                    ?>
-                                        <tr>
-                                            <form method="post">
-                                            <td><?=$ub_id;?></td>
-                                            <td><?=$ub_lid;?></td>
-                                            <td><?=$ub_customer_response;?></td>
-                                            <td><?=$ub_commitment_date;?></td>
-                                            <td><?=$ub_commitment_text;?></td>
-                                            <td><?=$ub_updated_at;?></td>
-                                            <td><?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?></td>
-                                            </form>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                    </table>                           
-                                        </div>
+                <?php
+                $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' ORDER BY id DESC"); 
+                while($bank_fetch = towfetch($ref_data)){
+                extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
+                ?>
+                    <tr>
+                        <form method="post">
+                        <td><?=$ub_id;?></td>
+                        <td><?=$ub_lid;?></td>
+                        <td><?=$ub_customer_response;?></td>
+                        <td><?=$ub_commitment_date;?></td>
+                        <td><?=$ub_commitment_text;?></td>
+                        <td><?=$ub_updated_at;?></td>
+                        <td><?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?></td>
+                        </form>
+                    </tr>
+                    <?php } ?>
+                </tbody>
+                </table>                           
+                    </div>
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="payment">
                                         <div>
@@ -2622,24 +2639,24 @@
                                             <th>Payment Screenshot</th>  
                                             <th>Payment Type</th>  
                                         </tr>
-                                    </thead>
-                                    <tbody>
+                </thead>
+                <tbody>
                     
-                                    <?php
-                                    $ref_data = towquery("SELECT * FROM `pay_ref` WHERE uid='$userpro_id' ORDER BY id DESC"); 
-                                    while($bank_fetch = towfetch($ref_data)){
-                                    extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
-                                    ?>
-                                        <tr>
-                                            <td><?=$ub_id;?></td>
-                                            <td><?=$ub_loan_id;?></td>
-                                            <td><?=$ub_utr_ref;?></td>
-                                            <td><a href="https://creditlab.in/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
-                                            <td><?=$ub_payment_type;?></td>
-                                        </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                    </table>                           
+                <?php
+                $ref_data = towquery("SELECT * FROM `pay_ref` WHERE uid='$userpro_id' ORDER BY id DESC"); 
+                while($bank_fetch = towfetch($ref_data)){
+                extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
+                ?>
+                    <tr>
+                        <td><?=$ub_id;?></td>
+                        <td><?=$ub_loan_id;?></td>
+                        <td><?=$ub_utr_ref;?></td>
+                        <td><a href="https://creditlab.in/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
+                        <td><?=$ub_payment_type;?></td>
+                    </tr>
+                    <?php } ?>
+                </tbody>
+                </table>                           
                                         </div>
                                     </div>
                                 </div>
@@ -2746,7 +2763,7 @@
     } else {
     $('#altmobile').css("border-color", "red");
     $("#presub").attr("disabled",true);
-    $("#mess").html("please enter mobile number of any family person if you don’t have alternate number");
+    $("#mess").html("please enter mobile number of any family person if you don't have alternate number");
     }
     });
     </script>
