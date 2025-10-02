@@ -3,6 +3,11 @@
  * Complete CreditLab Automated SMS System - DLT COMPLIANT
  * Uses EXACT template text from the approved templates list.
  * Run this via cron job for automated SMS.
+ *
+ * This version includes:
+ * - Time window checks (e.g., 11:45-11:49) instead of exact minute checks.
+ * - A sent-log system to prevent sending duplicate SMS per loan per day.
+ * - Verbose logging for easier debugging of conditions.
  */
 
 // Set timezone to IST
@@ -12,20 +17,53 @@ date_default_timezone_set('Asia/Kolkata');
 set_time_limit(300); // 5 minutes
 ini_set("memory_limit", "256M");
 
-// Log file (daily rotation under logs/)
+// --- LOGGING SETUP ---
 $log_dir = "logs";
-if (!is_dir($log_dir)) {
-    @mkdir($log_dir, 0755, true);
-}
+$sent_log_dir = "sent_logs"; // Directory to track sent messages
+if (!is_dir($log_dir)) { @mkdir($log_dir, 0755, true); }
+if (!is_dir($sent_log_dir)) { @mkdir($sent_log_dir, 0755, true); }
+
 $current_log_date = date('Y-m-d');
 $log_file = $log_dir . "/sms_cron_" . $current_log_date . ".log";
+$sent_log_file = $sent_log_dir . "/sent_" . $current_log_date . ".log";
 
-// Log function
+// Main log function
 function logMessage($message) {
     global $log_file;
     $timestamp = date('Y-m-d H:i:s');
     $log_entry = "[$timestamp] $message" . PHP_EOL;
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+}
+
+// --- DUPLICATE PREVENTION SYSTEM ---
+$sent_today_cache = [];
+function loadSentLog() {
+    global $sent_log_file, $sent_today_cache;
+    if (file_exists($sent_log_file)) {
+        $lines = file($sent_log_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines) {
+            $sent_today_cache = array_flip($lines);
+        }
+    }
+}
+
+function getSentLogKey($loan_id, $template_name) {
+    return $loan_id . '_' . $template_name;
+}
+
+function hasBeenSentToday($loan_id, $template_name) {
+    global $sent_today_cache;
+    $key = getSentLogKey($loan_id, $template_name);
+    return isset($sent_today_cache[$key]);
+}
+
+function markAsSent($loan_id, $template_name) {
+    global $sent_log_file, $sent_today_cache;
+    $key = getSentLogKey($loan_id, $template_name);
+    if (!isset($sent_today_cache[$key])) {
+        file_put_contents($sent_log_file, $key . PHP_EOL, FILE_APPEND | LOCK_EX);
+        $sent_today_cache[$key] = true;
+    }
 }
 
 // Include database
@@ -35,7 +73,7 @@ include_once 'db.php';
 $lock_file = "sms_cron.lock";
 if (file_exists($lock_file)) {
     $lock_time = filemtime($lock_file);
-    if (time() - $lock_time < 300) { // Lock valid for 5 minutes
+    if (time() - $lock_time < 240) { // Lock valid for 4 minutes
         logMessage("Script already running, exiting");
         exit;
     }
@@ -123,7 +161,7 @@ $sms_templates = [
         'template' => 'Hi ! Your Creditlab.in loan of Rs. %s will auto-debit on %s. Ensure sufficient balance to avoid chq bounce & legal action under Section 138 N.I. Act'
     ],
     'enach_will_not_happen' => [
-        'id' => '1407175016153886869',
+        'id' => '14071750161538869',
         'template' => 'Repay your Creditlab.in loan directly through the dashboard %s .If you repay now before any further extension/default, auto-debit will not occur.'
     ],
     'autodebit_bounce' => [
@@ -153,6 +191,7 @@ $sms_templates = [
 // =============================================================================
 try {
     logMessage("Starting complete automated SMS process - IST: " . date('Y-m-d H:i:s'));
+    loadSentLog(); // Load the sent log at the beginning
     
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
         $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
@@ -187,25 +226,15 @@ try {
         $current_hour = (int)date('H');
         $sent_count = 0;
         $error_count = 0;
-
         $target_mobile = null;
 
-        // Morning/Day (before 6 PM): Send to primary mobile
         if ($current_hour < 18) {
-            if (!empty($primary_mobile) && strlen($primary_mobile) >= 10) {
-                $target_mobile = $primary_mobile;
-            }
-        } 
-        // Evening (6 PM onwards): Send to alternate mobile if available and different, otherwise fallback to primary
-        else {
-            if (!empty($alt_mobile) && strlen($alt_mobile) >= 10 && $alt_mobile != $primary_mobile) {
-                $target_mobile = $alt_mobile;
-            } elseif (!empty($primary_mobile) && strlen($primary_mobile) >= 10) {
-                $target_mobile = $primary_mobile;
-            }
+            if (!empty($primary_mobile) && strlen($primary_mobile) >= 10) { $target_mobile = $primary_mobile; }
+        } else {
+            if (!empty($alt_mobile) && strlen($alt_mobile) >= 10 && $alt_mobile != $primary_mobile) { $target_mobile = $alt_mobile; }
+            elseif (!empty($primary_mobile) && strlen($primary_mobile) >= 10) { $target_mobile = $primary_mobile; }
         }
 
-        // Send to the intended recipient first
         if ($target_mobile) {
             if (sendSMS($target_mobile, $message, $template_id, $sender)) {
                 $sent_count++;
@@ -214,27 +243,22 @@ try {
             }
         }
 
-        // Also, send a copy to the specified monitoring number.
         $monitoring_number = '8328350247';
         if ($target_mobile !== $monitoring_number) {
             logMessage("Sending monitoring copy to $monitoring_number for message originally intended for $target_mobile");
-            // We call sendSMS directly but don't track its success in the primary loan-level statistics
             sendSMS($monitoring_number, $message, $template_id, $sender);
         }
 
         return ['sent' => $sent_count, 'errors' => $error_count];
     }
     
-    // Get current IST time details
     $current_time = date('H:i');
-    $current_date = date('Y-m-d');
+    $current_day_of_month = (int)date('j');
     
     logMessage("Current IST Time: $current_time");
 
-    // Fetch all active loans from the last 120 days to cover all conditions
     $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
-    // --- SQL FIX: JOIN with loan_apply table and filter by loan_apply.status ---
     $loan_query_sql = "SELECT 
                            user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit,
@@ -258,195 +282,363 @@ try {
     if ($total_loans > 0) {
         while($loan_data = towfetch($loan_query)){
             $user_lid = $loan_data['lid'];
+            logMessage("--- Processing Loan LID: $user_lid ---");
+
             $first_name = explode(' ', $loan_data['user_name'])[0];
             $primary_mobile = $loan_data['user_mobile'];
             $alt_mobile = $loan_data['user_altmobile'];
             $processed_amount = $loan_data['processed_amount'];
             $outstanding_amount = $loan_data['total_amount'] - $loan_data['advance_amount'];
-            $salary_date = $loan_data['salary_date'];
+            $salary_date = (int)$loan_data['salary_date'];
             $loan_limit = $loan_data['loan_limit'];
-
-            // Calculate days since loan was processed
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
-            
-            $url_link = 'creditlab.in/user'; // Common URL variable
+            $url_link = 'creditlab.in/user';
 
             // --- SCHEDULED SMS CHECKS ---
+            
+            // 1. CIBIL DROP ALERT (Window: 11:45 - 11:49 AM)
+            if ($current_time >= "11:45" && $current_time < "11:50") {
+                logMessage("LID $user_lid: Checking CIBIL DROP ALERT. Time condition met.");
+                if ((($tday >= 25 && $tday <= 30) || $tday == 15 || $tday == 20)) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'cibil_drop_alert')) {
+                        logMessage("LID $user_lid: 'cibil_drop_alert' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['cibil_drop_alert'];
+                        $message = sprintf($tpl['template'], $first_name, $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_drop_alert'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'cibil_drop_alert' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for CIBIL DROP ALERT not met (Day: $tday)."); }
+            }
 
-            // 1. CIBIL DROP ALERT (11:45 AM)
-            if ($current_time == "11:45" && (($tday >= 25 && $tday <= 30) || $tday == 15 || $tday == 20)) {
-                $tpl = $sms_templates['cibil_drop_alert'];
-                $message = sprintf($tpl['template'], $first_name, $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 2. DPD 1-5 (Windows: 08:30-08:34 AM, 16:35-16:39 PM)
+            if (($current_time >= "08:30" && $current_time < "08:35") || ($current_time >= "16:35" && $current_time < "16:40")) {
+                logMessage("LID $user_lid: Checking DPD 1-5. Time condition met.");
+                if ($tday >= 31 && $tday <= 35) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'dpd_1_5')) {
+                        logMessage("LID $user_lid: 'dpd_1_5' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['dpd_1_5'];
+                        $message = sprintf($tpl['template'], $first_name, $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_1_5'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'dpd_1_5' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for DPD 1-5 not met (Day: $tday)."); }
             }
             
-            // 2. DPD 1-5 (8:30 AM, 4:35 PM)
-            if (($current_time == "08:30" || $current_time == "16:35") && ($tday >= 31 && $tday <= 35)) {
-                $tpl = $sms_templates['dpd_1_5'];
-                $message = sprintf($tpl['template'], $first_name, $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 3. DPD 6-10 (Windows: 08:30-08:34 AM, 18:00-18:04 PM)
+            if (($current_time >= "08:30" && $current_time < "08:35") || ($current_time >= "18:00" && $current_time < "18:05")) {
+                logMessage("LID $user_lid: Checking DPD 6-10. Time condition met.");
+                if ($tday >= 36 && $tday <= 40) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'dpd_6_10')) {
+                        logMessage("LID $user_lid: 'dpd_6_10' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['dpd_6_10'];
+                        $message = sprintf($tpl['template'], $first_name, $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_6_10'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'dpd_6_10' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for DPD 6-10 not met (Day: $tday)."); }
             }
             
-            // 3. DPD 6-10 (8:30 AM, 6:00 PM)
-            if (($current_time == "08:30" || $current_time == "18:00") && ($tday >= 36 && $tday <= 40)) {
-                $tpl = $sms_templates['dpd_6_10'];
-                $message = sprintf($tpl['template'], $first_name, $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 4. DPD 11-15 (Windows: 08:00-08:04 AM, 11:45-11:49 AM, 18:35-18:39 PM)
+            if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "11:45" && $current_time < "11:50") || ($current_time >= "18:35" && $current_time < "18:40")) {
+                logMessage("LID $user_lid: Checking DPD 11-15. Time condition met.");
+                if ($tday >= 40 && $tday <= 45) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'dpd_11_15')) {
+                        logMessage("LID $user_lid: 'dpd_11_15' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['dpd_11_15'];
+                        $message = sprintf($tpl['template'], $first_name);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_11_15'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'dpd_11_15' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for DPD 11-15 not met (Day: $tday)."); }
+            }
+
+            // 5. Initial Reminder (Windows: 09:00-09:04 AM, 16:30-16:34 PM)
+            if (($current_time >= "09:00" && $current_time < "09:05") || ($current_time >= "16:30" && $current_time < "16:35")) {
+                logMessage("LID $user_lid: Checking Initial Reminder. Time condition met.");
+                if ($tday >= 25 && $tday <= 30) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'initial_reminder')) {
+                        logMessage("LID $user_lid: 'initial_reminder' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['initial_reminder'];
+                        $message = sprintf($tpl['template'], $tday);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'initial_reminder'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'initial_reminder' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Initial Reminder not met (Day: $tday)."); }
+            }
+
+            // 6. Pre-close Reminder (Windows: 08:00-08:04 AM, 16:00-16:04 PM)
+            if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "16:00" && $current_time < "16:05")) {
+                logMessage("LID $user_lid: Checking Pre-close Reminder. Time condition met.");
+                if (in_array($tday, [10, 15, 20, 25])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'preclose_day_'.$tday)) { // Unique key per day
+                        logMessage("LID $user_lid: 'preclose_day_$tday' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['preclose'];
+                        $interest_amount = 0;
+                        switch ($tday) {
+                            case 10: $interest_amount = $processed_amount * 0.02; break;
+                            case 15: $interest_amount = $processed_amount * 0.015; break;
+                            case 20: $interest_amount = $processed_amount * 0.01; break;
+                            case 25: $interest_amount = $processed_amount * 0.005; break;
+                        }
+                        $message = sprintf($tpl['template'], $tday, number_format($interest_amount, 2), $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'preclose_day_'.$tday); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'preclose_day_$tday' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Pre-close Reminder not met (Day: $tday)."); }
+            }
+
+            // 7. Salary Day Reminder (Active Loans) (Windows: 14:00-14:04, 18:30-18:34, 20:00-20:04)
+            if (($current_time >= "14:00" && $current_time < "14:05") || ($current_time >= "18:30" && $current_time < "18:35") || ($current_time >= "20:00" && $current_time < "20:05")) {
+                logMessage("LID $user_lid: Checking Salary Day (Active). Time condition met.");
+                if ($tday < 30 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
+                     if (!hasBeenSentToday($user_lid, 'salary_day_active')) {
+                        logMessage("LID $user_lid: 'salary_day_active' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['salary_day'];
+                        $message = sprintf($tpl['template'], $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_day_active'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'salary_day_active' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Active) not met (Day: $tday, Salary Day: $salary_date)."); }
+            }
+
+            // 8. 45th Day Reminder (Window: 15:00-15:04 PM)
+            if ($current_time >= "15:00" && $current_time < "15:05") {
+                logMessage("LID $user_lid: Checking 45th Day Reminder. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, '45th_day_reminder')) {
+                        logMessage("LID $user_lid: '45th_day_reminder' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['45th_day_reminder'];
+                        $message = sprintf($tpl['template'], $first_name);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, '45th_day_reminder'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent '45th_day_reminder' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for 45th Day Reminder not met (Day: $tday)."); }
+            }
+
+            // 9. Field Recovery (Window: 14:35-14:39 PM)
+            if ($current_time >= "14:35" && $current_time < "14:40") {
+                logMessage("LID $user_lid: Checking Field Recovery. Time condition met.");
+                if ($tday >= 65 && $tday <= 70) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'field_recovery')) {
+                        logMessage("LID $user_lid: 'field_recovery' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['field_recovery'];
+                        $message = sprintf($tpl['template'], $first_name, $user_lid, 'support@creditlab.in');
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'field_recovery'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'field_recovery' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Field Recovery not met (Day: $tday)."); }
             }
             
-            // 4. DPD 11-15 (8:00 AM, 11:45 AM, 6:35 PM)
-            if (($current_time == "08:00" || $current_time == "11:45" || $current_time == "18:35") && ($tday >= 40 && $tday <= 45)) {
-                $tpl = $sms_templates['dpd_11_15'];
-                $message = sprintf($tpl['template'], $first_name);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 10. Legal Notice (Window: 19:35-19:39 PM)
+            if ($current_time >= "19:35" && $current_time < "19:40") {
+                logMessage("LID $user_lid: Checking Legal Notice. Time condition met.");
+                if ($tday >= 46 && $tday <= 60) {
+                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'legal_notice')) {
+                        logMessage("LID $user_lid: 'legal_notice' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['legal_notice'];
+                        $message = $tpl['template'];
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_notice'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'legal_notice' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Notice not met (Day: $tday)."); }
+            }
+
+            // 11. Final Alert (Window: 14:35-14:39 PM)
+            if ($current_time >= "14:35" && $current_time < "14:40") {
+                logMessage("LID $user_lid: Checking Final Alert. Time condition met.");
+                if ($tday >= 46 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'final_alert')) {
+                         logMessage("LID $user_lid: 'final_alert' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['final_alert'];
+                        $message = sprintf($tpl['template'], $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'final_alert'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'final_alert' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Final Alert not met (Day: $tday)."); }
+            }
+
+            // 12. CIBIL Dip (Window: 15:00-15:04 PM)
+            if ($current_time >= "15:00" && $current_time < "15:05") {
+                logMessage("LID $user_lid: Checking CIBIL Dip. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'cibil_dip')) {
+                        logMessage("LID $user_lid: 'cibil_dip' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['cibil_dip'];
+                        $message = sprintf($tpl['template'], $first_name, $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_dip'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'cibil_dip' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for CIBIL Dip not met (Day: $tday)."); }
+            }
+
+            // 13. Legal Suit (Window: 16:00-16:04 PM)
+            if ($current_time >= "16:00" && $current_time < "16:05") {
+                logMessage("LID $user_lid: Checking Legal Suit. Time condition met.");
+                if ($tday >= 61 && $tday <= 74) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'legal_suit')) {
+                        logMessage("LID $user_lid: 'legal_suit' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['legal_suit'];
+                        $message = sprintf($tpl['template'], $first_name, $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_suit'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'legal_suit' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Suit not met (Day: $tday)."); }
             }
             
-            // 5. Initial Reminder (9:00 AM, 4:30 PM)
-            if (($current_time == "09:00" || $current_time == "16:30") && ($tday >= 25 && $tday <= 30)) {
-                $tpl = $sms_templates['initial_reminder'];
-                $message = sprintf($tpl['template'], $tday);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 14. Written Off (Window: 19:30-19:34 PM)
+            if ($current_time >= "19:30" && $current_time < "19:35") {
+                logMessage("LID $user_lid: Checking Written Off. Time condition met.");
+                if (in_array($tday, [76, 89, 99, 119])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'written_off')) {
+                        logMessage("LID $user_lid: 'written_off' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['written_off'];
+                        $message = sprintf($tpl['template'], $first_name);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'written_off'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'written_off' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Written Off not met (Day: $tday)."); }
+            }
+
+            // 15. Waive Off (Window: 14:10-14:14 PM)
+            if ($current_time >= "14:10" && $current_time < "14:15") {
+                 logMessage("LID $user_lid: Checking Waive Off. Time condition met.");
+                if (in_array($tday, [76, 80, 89])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'waive_off')) {
+                        logMessage("LID $user_lid: 'waive_off' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['waive_off'];
+                        $message = $tpl['template'];
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'waive_off'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'waive_off' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Waive Off not met (Day: $tday)."); }
+            }
+
+            // 16. Attention (Window: 14:45-14:49 PM)
+            if ($current_time >= "14:45" && $current_time < "14:50") {
+                logMessage("LID $user_lid: Checking Attention. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'attention')) {
+                        logMessage("LID $user_lid: 'attention' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['attention'];
+                        $message = sprintf($tpl['template'], $first_name);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'attention'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'attention' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Attention not met (Day: $tday)."); }
+            }
+
+            // 17. Were to Pay (Window: 13:30-13:34 PM)
+            if ($current_time >= "13:30" && $current_time < "13:35") {
+                logMessage("LID $user_lid: Checking Were to Pay. Time condition met.");
+                if ($tday >= 36 && $tday <= 45) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'were_to_pay')) {
+                        logMessage("LID $user_lid: 'were_to_pay' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['were_to_pay'];
+                        $message = sprintf($tpl['template'], number_format($outstanding_amount, 2), $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'were_to_pay'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'were_to_pay' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Were to Pay not met (Day: $tday)."); }
+            }
+
+            // 18. Due Date Missed (Window: 13:45-13:49 PM)
+            if ($current_time >= "13:45" && $current_time < "13:50") {
+                logMessage("LID $user_lid: Checking Due Date Missed. Time condition met.");
+                if ($tday >= 31 && $tday <= 35) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                     if (!hasBeenSentToday($user_lid, 'due_date_missed')) {
+                        logMessage("LID $user_lid: 'due_date_missed' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['due_date_missed'];
+                        $message = sprintf($tpl['template'], $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'due_date_missed'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'due_date_missed' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Due Date Missed not met (Day: $tday)."); }
             }
             
-            // 6. Pre-close Reminder (8:00 AM, 4:00 PM)
-            if (($current_time == "08:00" || $current_time == "16:00") && in_array($tday, [10, 15, 20, 25])) {
-                $tpl = $sms_templates['preclose'];
-                $interest_amount = 0;
-                switch ($tday) {
-                    case 10: $interest_amount = $processed_amount * 0.02; break;
-                    case 15: $interest_amount = $processed_amount * 0.015; break;
-                    case 20: $interest_amount = $processed_amount * 0.01; break;
-                    case 25: $interest_amount = $processed_amount * 0.005; break;
-                }
-                $message = sprintf($tpl['template'], $tday, number_format($interest_amount, 2), $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+            // 19. E-NACH Will Not Happen (Window: 14:00-14:04 PM)
+            if ($current_time >= "14:00" && $current_time < "14:05") {
+                logMessage("LID $user_lid: Checking E-NACH Will Not Happen. Time condition met.");
+                if ($tday == 30 || $tday == 31) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'enach_will_not_happen')) {
+                        logMessage("LID $user_lid: 'enach_will_not_happen' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['enach_will_not_happen'];
+                        $message = sprintf($tpl['template'], $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'enach_will_not_happen'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'enach_will_not_happen' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for E-NACH Will Not Happen not met (Day: $tday)."); }
             }
-            
-            // 7. Salary Day Reminder (2:00 PM, 6:30 PM, 8:00 PM) - This is for ACTIVE loans, not overdue ones
-            if (($current_time == "14:00" || $current_time == "18:30" || $current_time == "20:00") && ($tday < 30) && ($salary_date == $current_date)) {
-                $tpl = $sms_templates['salary_day'];
-                $message = sprintf($tpl['template'], $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+
+            // 20. Salary Date Reminder for OVERDUE loans (Window: 16:00-16:04 PM)
+            if ($current_time >= "16:00" && $current_time < "16:05") {
+                logMessage("LID $user_lid: Checking Salary Day (Overdue). Time condition met.");
+                if ($tday >= 30 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
+                    if (!hasBeenSentToday($user_lid, 'salary_date_overdue')) {
+                        logMessage("LID $user_lid: 'salary_date_overdue' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['salary_date_reminder'];
+                        $message = sprintf($tpl['template'], $first_name);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_date_overdue'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'salary_date_overdue' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Overdue) not met (Day: $tday, Salary Day: $salary_date)."); }
             }
-            
-            // 8. 45th Day Reminder (3:00 PM)
-            if ($current_time == "15:00" && ($tday >= 45 && $tday <= 60)) {
-                $tpl = $sms_templates['45th_day_reminder'];
-                $message = sprintf($tpl['template'], $first_name);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
+
+            // 21. Limit Increase (Windows: 08:00-08:04, 12:50-12:54, 16:00-16:04)
+            if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
+                logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
+                if ($loan_limit > $processed_amount) {
+                    logMessage("LID $user_lid: Loan limit condition met.");
+                    if (!hasBeenSentToday($user_lid, 'limit_increase')) {
+                        logMessage("LID $user_lid: 'limit_increase' not sent today. Proceeding to send.");
+                        $tpl = $sms_templates['limit_increase'];
+                        $message = sprintf($tpl['template'], number_format($loan_limit, 2), $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'limit_increase'); }
+                        $sms_sent += $result['sent']; $errors += $result['errors'];
+                    } else { logMessage("LID $user_lid: Already sent 'limit_increase' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Loan limit condition not met."); }
             }
-            
-            // 9. Field Recovery (2:35 PM)
-            if ($current_time == "14:35" && ($tday >= 65 && $tday <= 70)) {
-                $tpl = $sms_templates['field_recovery'];
-                $message = sprintf($tpl['template'], $first_name, $user_lid, 'support@creditlab.in');
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 10. Legal Notice (7:35 PM)
-            if ($current_time == "19:35" && ($tday >= 46 && $tday <= 60)) {
-                $tpl = $sms_templates['legal_notice'];
-                $message = $tpl['template'];
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 11. Final Alert (2:35 PM)
-            if ($current_time == "14:35" && ($tday >= 46 && $tday <= 60)) {
-                $tpl = $sms_templates['final_alert'];
-                $message = sprintf($tpl['template'], $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 12. CIBIL Dip (3:00 PM)
-            if ($current_time == "15:00" && ($tday >= 45 && $tday <= 60)) {
-                $tpl = $sms_templates['cibil_dip'];
-                $message = sprintf($tpl['template'], $first_name, $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 13. Legal Suit (4:00 PM)
-            if ($current_time == "16:00" && ($tday >= 61 && $tday <= 74)) {
-                $tpl = $sms_templates['legal_suit'];
-                $message = sprintf($tpl['template'], $first_name, $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 14. Written Off (7:30 PM)
-            if ($current_time == "19:30" && in_array($tday, [76, 89, 99, 119])) {
-                $tpl = $sms_templates['written_off'];
-                $message = sprintf($tpl['template'], $first_name);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 15. Waive Off (2:10 PM)
-            if ($current_time == "14:10" && in_array($tday, [76, 80, 89])) {
-                $tpl = $sms_templates['waive_off'];
-                $message = $tpl['template'];
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 16. Attention (2:45 PM)
-            if ($current_time == "14:45" && ($tday >= 45 && $tday <= 60)) {
-                $tpl = $sms_templates['attention'];
-                $message = sprintf($tpl['template'], $first_name);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 17. Were to Pay (1:30 PM)
-            if ($current_time == "13:30" && ($tday >= 36 && $tday <= 45)) {
-                $tpl = $sms_templates['were_to_pay'];
-                $message = sprintf($tpl['template'], number_format($outstanding_amount, 2), $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 18. Due Date Missed (1:45 PM)
-            if ($current_time == "13:45" && ($tday >= 31 && $tday <= 35)) {
-                $tpl = $sms_templates['due_date_missed'];
-                $message = sprintf($tpl['template'], $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 19. E-NACH Will Not Happen (2:00 PM)
-            if ($current_time == "14:00" && ($tday == 30 || $tday == 31)) {
-                $tpl = $sms_templates['enach_will_not_happen'];
-                $message = sprintf($tpl['template'], $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 20. Salary Date Reminder for OVERDUE loans (4:00 PM)
-            if ($current_time == "16:00" && $tday >= 30 && $salary_date == $current_date) {
-                $tpl = $sms_templates['salary_date_reminder'];
-                $message = sprintf($tpl['template'], $first_name);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
-            
-            // 21. Limit Increase (8:00 AM, 12:50 PM, 4:00 PM)
-            if (($current_time == "08:00" || $current_time == "12:50" || $current_time == "16:00") && $loan_limit > $processed_amount) {
-                $tpl = $sms_templates['limit_increase'];
-                $message = sprintf($tpl['template'], number_format($loan_limit, 2), $url_link);
-                $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
-                $sms_sent += $result['sent']; $errors += $result['errors'];
-            }
+
         }
     }
     
@@ -455,7 +647,6 @@ try {
 } catch (Exception $e) {
     logMessage("Critical Error: " . $e->getMessage());
 } finally {
-    // Remove lock file
     if (file_exists($lock_file)) {
         unlink($lock_file);
     }
