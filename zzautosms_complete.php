@@ -338,10 +338,12 @@ try {
             $first_name = explode(' ', $loan_data['user_name'])[0];
             $primary_mobile = $loan_data['user_mobile'];
             $alt_mobile = $loan_data['user_altmobile'];
-            $processed_amount = $loan_data['processed_amount'];
-            $outstanding_amount = $loan_data['total_amount'] - $loan_data['advance_amount'];
+            // --- FIX: Cast amount fields from TEXT/string to float/int ---
+            $processed_amount = (float)$loan_data['processed_amount'];
+            $outstanding_amount = (float)$loan_data['total_amount'] - (float)$loan_data['advance_amount'];
+            $loan_limit = (int)$loan_data['loan_limit'];
+            // --- END FIX ---
             $salary_date = (int)$loan_data['salary_date'];
-            $loan_limit = $loan_data['loan_limit'];
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             $url_link = 'creditlab.in/user';
 
@@ -704,4 +706,3 @@ try {
     logMessage("Script execution finished");
 }
 ?>
-
