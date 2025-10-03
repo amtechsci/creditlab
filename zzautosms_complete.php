@@ -75,7 +75,7 @@ function townum($query) {
 
 function towfetch($query) {
     if (!$query) return null;
-    return mysqli_fetch_assoc($query); // Using assoc for named keys
+    return mysqli_fetch_assoc($query);
 }
 
 // --- DUPLICATE PREVENTION SYSTEM ---
@@ -233,6 +233,9 @@ try {
     logMessage("Starting complete automated SMS process - IST: " . date('Y-m-d H:i:s'));
     loadSentLog(); // Load the sent log at the beginning
     
+    // Array to track monitoring SMS sent during this specific script execution
+    $monitoring_sms_sent_this_run = [];
+
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
         $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
         
@@ -262,7 +265,7 @@ try {
         }
     }
     
-    function sendSMSDual($primary_mobile, $alt_mobile, $message, $template_id, $sender = "CREDLB"){
+    function sendSMSDual($primary_mobile, $alt_mobile, $message, $template_id, &$monitoring_sms_sent_this_run, $sender = "CREDLB"){
         $current_hour = (int)date('H');
         $sent_count = 0;
         $error_count = 0;
@@ -283,17 +286,21 @@ try {
             }
         }
 
-        $monitoring_number = '8328350247';
-        if ($target_mobile !== $monitoring_number) {
-            logMessage("Sending monitoring copy to $monitoring_number for message originally intended for $target_mobile");
-            sendSMS($monitoring_number, $message, $template_id, $sender);
+        // Check if a monitoring SMS for this template has NOT been sent during this script run
+        if (!isset($monitoring_sms_sent_this_run[$template_id])) {
+            $monitoring_number = '8328350247';
+            if ($target_mobile !== $monitoring_number) {
+                logMessage("Sending FIRST monitoring copy for template $template_id to $monitoring_number.");
+                sendSMS($monitoring_number, $message, $template_id, $sender);
+                // Mark this template as sent for this run to prevent duplicates
+                $monitoring_sms_sent_this_run[$template_id] = true;
+            }
         }
 
         return ['sent' => $sent_count, 'errors' => $error_count];
     }
     
     // Check for a manual time override for testing purposes
-    // Can be run like: php sms_cron_final.php "time=11:45"
     if (php_sapi_name() == "cli" && isset($argv[1])) {
         parse_str($argv[1], $_GET);
     }
@@ -308,6 +315,12 @@ try {
 
     $current_day_of_month = (int)date('j');
     
+    // Daily data cleanup task
+    if($current_time >= "00:00" && $current_time < "00:05"){
+        logMessage("Running daily data cleanup for '0000-00-00' dates.");
+        towquery("UPDATE `loan` SET `cleard_date`=NULL WHERE `cleard_date` = '0000-00-00'");
+    }
+
     $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
     $loan_query_sql = "SELECT 
@@ -338,11 +351,9 @@ try {
             $first_name = explode(' ', $loan_data['user_name'])[0];
             $primary_mobile = $loan_data['user_mobile'];
             $alt_mobile = $loan_data['user_altmobile'];
-            // --- FIX: Cast amount fields from TEXT/string to float/int ---
             $processed_amount = (float)$loan_data['processed_amount'];
             $outstanding_amount = (float)$loan_data['total_amount'] - (float)$loan_data['advance_amount'];
             $loan_limit = (int)$loan_data['loan_limit'];
-            // --- END FIX ---
             $salary_date = (int)$loan_data['salary_date'];
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             $url_link = 'creditlab.in/user';
@@ -358,7 +369,7 @@ try {
                         logMessage("LID $user_lid: 'cibil_drop_alert' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['cibil_drop_alert'];
                         $message = sprintf($tpl['template'], $first_name, $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_drop_alert'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'cibil_drop_alert' today. Skipping."); }
@@ -374,7 +385,7 @@ try {
                         logMessage("LID $user_lid: 'dpd_1_5' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['dpd_1_5'];
                         $message = sprintf($tpl['template'], $first_name, $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_1_5'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'dpd_1_5' today. Skipping."); }
@@ -390,7 +401,7 @@ try {
                         logMessage("LID $user_lid: 'dpd_6_10' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['dpd_6_10'];
                         $message = sprintf($tpl['template'], $first_name, $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_6_10'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'dpd_6_10' today. Skipping."); }
@@ -406,7 +417,7 @@ try {
                         logMessage("LID $user_lid: 'dpd_11_15' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['dpd_11_15'];
                         $message = sprintf($tpl['template'], $first_name);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'dpd_11_15'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'dpd_11_15' today. Skipping."); }
@@ -422,7 +433,7 @@ try {
                         logMessage("LID $user_lid: 'initial_reminder' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['initial_reminder'];
                         $message = sprintf($tpl['template'], $tday);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'initial_reminder'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'initial_reminder' today. Skipping."); }
@@ -445,7 +456,7 @@ try {
                             case 25: $interest_amount = $processed_amount * 0.005; break;
                         }
                         $message = sprintf($tpl['template'], $tday, number_format($interest_amount, 2), $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'preclose_day_'.$tday); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'preclose_day_$tday' today. Skipping."); }
@@ -461,7 +472,7 @@ try {
                         logMessage("LID $user_lid: 'salary_day_active' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_day'];
                         $message = sprintf($tpl['template'], $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_day_active'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_day_active' today. Skipping."); }
@@ -477,7 +488,7 @@ try {
                         logMessage("LID $user_lid: '45th_day_reminder' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['45th_day_reminder'];
                         $message = sprintf($tpl['template'], $first_name);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, '45th_day_reminder'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent '45th_day_reminder' today. Skipping."); }
@@ -493,7 +504,7 @@ try {
                         logMessage("LID $user_lid: 'field_recovery' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['field_recovery'];
                         $message = sprintf($tpl['template'], $first_name, $user_lid, 'support@creditlab.in');
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'field_recovery'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'field_recovery' today. Skipping."); }
@@ -509,7 +520,7 @@ try {
                         logMessage("LID $user_lid: 'legal_notice' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_notice'];
                         $message = $tpl['template'];
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_notice'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_notice' today. Skipping."); }
@@ -525,7 +536,7 @@ try {
                          logMessage("LID $user_lid: 'final_alert' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['final_alert'];
                         $message = sprintf($tpl['template'], $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'final_alert'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'final_alert' today. Skipping."); }
@@ -541,7 +552,7 @@ try {
                         logMessage("LID $user_lid: 'cibil_dip' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['cibil_dip'];
                         $message = sprintf($tpl['template'], $first_name, $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_dip'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'cibil_dip' today. Skipping."); }
@@ -557,7 +568,7 @@ try {
                         logMessage("LID $user_lid: 'legal_suit' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_suit'];
                         $message = sprintf($tpl['template'], $first_name, $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_suit'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_suit' today. Skipping."); }
@@ -573,7 +584,7 @@ try {
                         logMessage("LID $user_lid: 'written_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['written_off'];
                         $message = sprintf($tpl['template'], $first_name);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'written_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'written_off' today. Skipping."); }
@@ -589,7 +600,7 @@ try {
                         logMessage("LID $user_lid: 'waive_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['waive_off'];
                         $message = $tpl['template'];
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'waive_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'waive_off' today. Skipping."); }
@@ -605,7 +616,7 @@ try {
                         logMessage("LID $user_lid: 'attention' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['attention'];
                         $message = sprintf($tpl['template'], $first_name);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'attention'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'attention' today. Skipping."); }
@@ -621,7 +632,7 @@ try {
                         logMessage("LID $user_lid: 'were_to_pay' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['were_to_pay'];
                         $message = sprintf($tpl['template'], number_format($outstanding_amount, 2), $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'were_to_pay'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'were_to_pay' today. Skipping."); }
@@ -637,7 +648,7 @@ try {
                         logMessage("LID $user_lid: 'due_date_missed' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['due_date_missed'];
                         $message = sprintf($tpl['template'], $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'due_date_missed'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'due_date_missed' today. Skipping."); }
@@ -653,7 +664,7 @@ try {
                         logMessage("LID $user_lid: 'enach_will_not_happen' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['enach_will_not_happen'];
                         $message = sprintf($tpl['template'], $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'enach_will_not_happen'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'enach_will_not_happen' today. Skipping."); }
@@ -669,7 +680,7 @@ try {
                         logMessage("LID $user_lid: 'salary_date_overdue' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_date_reminder'];
                         $message = sprintf($tpl['template'], $first_name);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_date_overdue'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_date_overdue' today. Skipping."); }
@@ -685,7 +696,7 @@ try {
                         logMessage("LID $user_lid: 'limit_increase' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['limit_increase'];
                         $message = sprintf($tpl['template'], number_format($loan_limit, 2), $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'limit_increase'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' today. Skipping."); }
@@ -706,3 +717,4 @@ try {
     logMessage("Script execution finished");
 }
 ?>
+
