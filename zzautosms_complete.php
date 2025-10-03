@@ -1,13 +1,8 @@
 <?php
 /**
  * Complete CreditLab Automated SMS System - DLT COMPLIANT
- * Uses EXACT template text from the approved templates list.
+ * This is a self-contained file with the database connection included.
  * Run this via cron job for automated SMS.
- *
- * This version includes:
- * - Time window checks (e.g., 11:45-11:49) instead of exact minute checks.
- * - A sent-log system to prevent sending duplicate SMS per loan per day.
- * - Verbose logging for easier debugging of conditions.
  */
 
 // Set timezone to IST
@@ -33,6 +28,54 @@ function logMessage($message) {
     $timestamp = date('Y-m-d H:i:s');
     $log_entry = "[$timestamp] $message" . PHP_EOL;
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+}
+
+// =============================================================================
+// == DATABASE CONNECTION AND HELPERS (INTEGRATED) ==
+// =============================================================================
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+mysqli_set_charset($db,'utf8');
+mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+
+function ensure_db_connection() {
+    global $db;
+    if (!isset($db) || !@mysqli_ping($db)) {
+        logMessage("Database connection lost. Attempting to reconnect...");
+        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+        if (!$db) {
+            logMessage("FATAL: Database reconnection failed: " . mysqli_connect_error());
+            return false;
+        }
+        @mysqli_set_charset($db,'utf8');
+        @mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+        logMessage("Database reconnected successfully.");
+    }
+    return true;
+}
+
+function towquery($query) {
+    global $db;
+    if (!ensure_db_connection()) { return false; }
+    $re = mysqli_query($db, $query);
+    if (!$re) {
+        logMessage("SQL Error: " . mysqli_error($db) . " - Query: " . $query);
+        return false;
+    }
+    return $re;
+}
+
+function townum($query) {
+    if (!$query) return 0;
+    return mysqli_num_rows($query);
+}
+
+function towfetch($query) {
+    if (!$query) return null;
+    return mysqli_fetch_assoc($query); // Using assoc for named keys
 }
 
 // --- DUPLICATE PREVENTION SYSTEM ---
@@ -65,9 +108,6 @@ function markAsSent($loan_id, $template_name) {
         $sent_today_cache[$key] = true;
     }
 }
-
-// Include database
-include_once 'db.php';
 
 // Check if script is already running
 $lock_file = "sms_cron.lock";
@@ -252,11 +292,22 @@ try {
         return ['sent' => $sent_count, 'errors' => $error_count];
     }
     
-    $current_time = date('H:i');
+    // Check for a manual time override for testing purposes
+    // Can be run like: php sms_cron_final.php "time=11:45"
+    if (php_sapi_name() == "cli" && isset($argv[1])) {
+        parse_str($argv[1], $_GET);
+    }
+
+    if (isset($_GET['time']) && preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $_GET['time'])) {
+        $current_time = $_GET['time'];
+        logMessage("MANUAL TIME OVERRIDE: Using specified time: $current_time");
+    } else {
+        $current_time = date('H:i');
+        logMessage("Using current system time: $current_time");
+    }
+
     $current_day_of_month = (int)date('j');
     
-    logMessage("Current IST Time: $current_time");
-
     $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
     $loan_query_sql = "SELECT 
