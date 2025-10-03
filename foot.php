@@ -120,9 +120,10 @@
                 <li> <a href="/grievanceredressal.pdf" class="la" ><u>Grievance Redressal</u></a> </li>
                 <li> <a href="/terms.pdf" class="la" ><u>T&C</u></a> </li>
                 <li> <a href="/policy.pdf" class="la" ><u>Privacy Policy</u></a> </li>
-                <li> <a href="https://creditlab.in/fair_pra_code"><u>Fair Practice Code</u></a> </li>
-                <li> <a href="https://creditlab.in/it_policy"><u>IT Policy</u></a> </li>
-                <li> <a href="https://creditlab.in/fees_policy"><u>Fees Policy</u></a> </li>
+                <li> <a href="https://creditlab.in/FairPracticeCodeSMPL.pdf"><u>Fair Practice Code</u></a> </li>
+                <li> <a href="https://creditlab.in/it_policy.pdf"><u>IT Policy</u></a> </li>
+                <li> <a href="https://creditlab.in/fees_policy.pdf"><u>Fees Policy</u></a> </li>
+                <li> <a href="https://creditlab.in/RefundCancellationPolicy.pdf"><u>Refund and Cancellation Policy</u></a> </li>
                 <li> <a href="https://creditlab.in/lsp.php"><u>List of Partners</u></a> </li>
               </ul>
             </div>
