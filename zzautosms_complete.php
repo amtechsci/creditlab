@@ -325,7 +325,7 @@ try {
     
     $loan_query_sql = "SELECT 
                            user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
-                           user.altmobile as user_altmobile, user.salary_date, user.loan_limit,
+                           user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
                            loan.lid, loan.processed_date, loan.processed_amount, 
                            loan.total_amount, loan.advance_amount
                        FROM loan
@@ -351,9 +351,12 @@ try {
             $first_name = explode(' ', $loan_data['user_name'])[0];
             $primary_mobile = $loan_data['user_mobile'];
             $alt_mobile = $loan_data['user_altmobile'];
+            // --- FIX: Cast amount fields from TEXT/string to float/int ---
             $processed_amount = (float)$loan_data['processed_amount'];
             $outstanding_amount = (float)$loan_data['total_amount'] - (float)$loan_data['advance_amount'];
             $loan_limit = (int)$loan_data['loan_limit'];
+            $limit_inc_status = (int)$loan_data['limit_inc'];
+            // --- END FIX ---
             $salary_date = (int)$loan_data['salary_date'];
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             $url_link = 'creditlab.in/user';
@@ -690,17 +693,18 @@ try {
             // 21. Limit Increase (Windows: 08:00-08:04, 12:50-12:54, 16:00-16:04)
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
-                if ($loan_limit > $processed_amount) {
-                    logMessage("LID $user_lid: Loan limit condition met.");
+                // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
+                if ($limit_inc_status === 0 && $loan_limit > $processed_amount) {
+                    logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
                     if (!hasBeenSentToday($user_lid, 'limit_increase')) {
                         logMessage("LID $user_lid: 'limit_increase' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['limit_increase'];
-                        $message = sprintf($tpl['template'], number_format($loan_limit, 2), $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
+                        $message = sprintf($tpl['template'], number_format($loan_limit), $url_link);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'limit_increase'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Loan limit condition not met."); }
+                } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $processed_amount)."); }
             }
 
         }
