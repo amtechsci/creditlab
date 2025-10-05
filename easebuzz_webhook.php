@@ -344,6 +344,47 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
             http_response_code(400);
             die($error_msg);
         }
+    } elseif (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'failure') {
+        // Handle auto-debit failure
+        $merchant_debit_id = $data['merchant_debit_id'] ?? null;
+        $amount = $data['amount'] ?? 'N/A';
+        $error_message = $data['error_Message'] ?? 'Unknown reason';
+        $txnid = $data['txnid'] ?? 'N/A';
+
+        if ($merchant_debit_id && strpos($merchant_debit_id, 'CLL_AUTO_') === 0) {
+            $parts = explode('_', $merchant_debit_id);
+            $loan_lid = count($parts) >= 3 ? $parts[2] : substr($merchant_debit_id, 9);
+            
+            writeWebhookLog("Processing auto-debit FAILURE for loan CLL$loan_lid | Amount: ₹$amount | Reason: $error_message", $log_file);
+
+            $loan_lid_escaped = mysqli_real_escape_string($db, $loan_lid);
+            $loan_data = towquery($db, "SELECT * FROM loan WHERE lid='$loan_lid_escaped'");
+            if ($loan_data && townum($loan_data) > 0) {
+                $loan_details = towfetch($loan_data);
+                $uid = $loan_details['uid'];
+
+                $user_data = towquery($db, "SELECT * FROM user WHERE id='".mysqli_real_escape_string($db, $uid)."'");
+                if ($user_data && townum($user_data) > 0) {
+                    $user_details = towfetch($user_data);
+                    
+                    $template_id = '1407175016580415506'; // autodebit bounce template ID
+                    $mobile = $user_details['mobile'];
+                    $payment_link = 'https://creditlab.in/user';
+                    $message = "Auto-debit of Creditlab.in loan of Rs. {$amount} got bounced due to insufficient funds. Close it now {$payment_link} to avoid further debits/bounce charges & legal action";
+                    
+                    if (file_exists('send_sms.php')) {
+                        include 'send_sms.php';
+                    }
+                    writeWebhookLog("Autodebit bounce SMS sent for loan CLL$loan_lid to $mobile", $log_file);
+                } else {
+                    writeWebhookLog("ERROR: User not found for failed auto-debit on loan CLL$loan_lid", $log_file);
+                }
+            } else {
+                writeWebhookLog("ERROR: Loan not found for failed auto-debit with merchant_debit_id $merchant_debit_id", $log_file);
+            }
+        } else {
+            writeWebhookLog("ERROR: Invalid or missing merchant_debit_id for failed auto-debit.", $log_file);
+        }
     }
 }
 elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {

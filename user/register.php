@@ -2,14 +2,20 @@
 include '../db.php';
 if(isset($_POST['mobile'])){
     $mobile = towreal($_POST['mobile']);
+    $resend = isset($_POST['resend']) ?? 0;
     $result=towquery("SELECT * FROM user WHERE mobile ='$mobile'");
     $otp = rand(1000,9999);
     if (townum($result)==1) {
         if($mobile == '9573794121'){
             $otp = 1111;
         }else{
-            $message="$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
-            $template_id='1407174844163241940';
+            if($resend == 1){
+                $message=$otp.' is the OTP for your Mobile verification. This is usable once and valid for 2mins from the request. PLS DON"T SHARE WITH ANYONE -CREDITLAB';
+                $template_id='1407175016441663626';
+            }else{
+                $message="$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
+                $template_id='1407174844163241940';
+            }
             include '../send_sms.php';
         }
         towquery("UPDATE user SET otp='$otp' WHERE mobile ='$mobile'");

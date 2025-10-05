@@ -174,7 +174,7 @@ var distance = countDownDate - now;
   document.getElementById("demo").innerHTML = minutes + "m " + seconds + "s ";
   if (distance < 0) {
     clearInterval(x);
-    document.getElementById("demo2").innerHTML = '<form action="/user/register.php" method="post" id="resendaa"><input type="hidden" name="mobile" value="<?=$mobile?>" id="mobile"></form>';
+    document.getElementById("demo2").innerHTML = '<form action="/user/register.php" method="post" id="resendaa"><input type="hidden" name="mobile" value="<?=$mobile?>" id="mobile"><input type="hidden" name="resend" value="1" id="resend"></form>';
     document.getElementById("demo").innerHTML = '<a href="#" onClick="resend()">Resend ?</a>';
   }
 }, 1000);

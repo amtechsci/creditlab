@@ -266,37 +266,38 @@ try {
     }
     
     function sendSMSDual($primary_mobile, $alt_mobile, $message, $template_id, &$monitoring_sms_sent_this_run, $sender = "CREDLB"){
-        $current_hour = (int)date('H');
         $sent_count = 0;
         $error_count = 0;
-        $target_mobile = null;
-
-        if ($current_hour < 18) {
-            if (!empty($primary_mobile) && strlen($primary_mobile) >= 10) { $target_mobile = $primary_mobile; }
-        } else {
-            if (!empty($alt_mobile) && strlen($alt_mobile) >= 10 && $alt_mobile != $primary_mobile) { $target_mobile = $alt_mobile; }
-            elseif (!empty($primary_mobile) && strlen($primary_mobile) >= 10) { $target_mobile = $primary_mobile; }
+    
+        $numbers_to_send = [];
+        if (!empty($primary_mobile) && strlen($primary_mobile) >= 10) {
+            $numbers_to_send[$primary_mobile] = true; // Use keys for uniqueness
         }
-
-        if ($target_mobile) {
-            if (sendSMS($target_mobile, $message, $template_id, $sender)) {
+        if (!empty($alt_mobile) && strlen($alt_mobile) >= 10) {
+            $numbers_to_send[$alt_mobile] = true;
+        }
+        
+        $unique_numbers = array_keys($numbers_to_send);
+    
+        foreach ($unique_numbers as $number) {
+            if (sendSMS($number, $message, $template_id, $sender)) {
                 $sent_count++;
             } else {
                 $error_count++;
             }
         }
-
+    
         // Check if a monitoring SMS for this template has NOT been sent during this script run
-        if (!isset($monitoring_sms_sent_this_run[$template_id])) {
+        if ($sent_count > 0 && !isset($monitoring_sms_sent_this_run[$template_id])) {
             $monitoring_number = '8328350247';
-            if ($target_mobile !== $monitoring_number) {
+            if (!in_array($monitoring_number, $unique_numbers)) { // Don't send if already sent to this number
                 logMessage("Sending FIRST monitoring copy for template $template_id to $monitoring_number.");
                 sendSMS($monitoring_number, $message, $template_id, $sender);
-                // Mark this template as sent for this run to prevent duplicates
-                $monitoring_sms_sent_this_run[$template_id] = true;
             }
+            // Mark this template as sent for this run to prevent duplicates
+            $monitoring_sms_sent_this_run[$template_id] = true;
         }
-
+    
         return ['sent' => $sent_count, 'errors' => $error_count];
     }
     
@@ -326,7 +327,7 @@ try {
     $loan_query_sql = "SELECT 
                            user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
-                           loan.lid, loan.processed_date, loan.processed_amount, 
+                           loan.lid, loan_apply.amount AS processed_amount, loan.processed_amount, 
                            loan.total_amount, loan.advance_amount
                        FROM loan
                        INNER JOIN user ON loan.uid = user.id
@@ -700,7 +701,7 @@ try {
                         logMessage("LID $user_lid: 'limit_increase' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['limit_increase'];
                         $message = sprintf($tpl['template'], number_format($loan_limit), $url_link);
-                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id']);
+                        $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'limit_increase'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' today. Skipping."); }
