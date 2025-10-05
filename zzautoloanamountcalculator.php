@@ -86,7 +86,7 @@ $loan_data_query = "
         (loan.last_cal_date IS NULL OR loan.last_cal_date < '$date')
     ORDER BY
         loan.id DESC
-    LIMIT 50";
+    LIMIT 100";
 
 // Execute the main query using the single database connection.
 $loan_data = cron_query($loan_data_query);

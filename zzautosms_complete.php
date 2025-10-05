@@ -328,7 +328,7 @@ try {
                            user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
                            loan.lid, loan_apply.amount AS processed_amount, loan.processed_amount, 
-                           loan.total_amount, loan.advance_amount
+                           loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount
                        FROM loan
                        INNER JOIN user ON loan.uid = user.id
                        INNER JOIN loan_apply ON loan.lid = loan_apply.id
@@ -354,7 +354,8 @@ try {
             $alt_mobile = $loan_data['user_altmobile'];
             // --- FIX: Cast amount fields from TEXT/string to float/int ---
             $processed_amount = (float)$loan_data['processed_amount'];
-            $outstanding_amount = (float)$loan_data['total_amount'] - (float)$loan_data['advance_amount'];
+            $total_amount = (float)$loan_data['total_amount'] + (float)$loan_data['service_charge'] + (float)$loan_data['penality_charge'];
+            $outstanding_amount = $total_amount - (float)$loan_data['advance_amount'];
             $loan_limit = (int)$loan_data['loan_limit'];
             $limit_inc_status = (int)$loan_data['limit_inc'];
             // --- END FIX ---
