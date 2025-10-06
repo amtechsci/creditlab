@@ -327,7 +327,7 @@ try {
     $loan_query_sql = "SELECT 
                            user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
-                           loan.lid, loan_apply.amount AS processed_amount, loan.processed_amount, 
+                           loan.lid, loan_apply.amount AS processed_amount, loan.processed_date, 
                            loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount
                        FROM loan
                        INNER JOIN user ON loan.uid = user.id
@@ -347,8 +347,6 @@ try {
     if ($total_loans > 0) {
         while($loan_data = towfetch($loan_query)){
             $user_lid = $loan_data['lid'];
-            logMessage("--- Processing Loan LID: $user_lid ---");
-
             $first_name = explode(' ', $loan_data['user_name'])[0];
             $primary_mobile = $loan_data['user_mobile'];
             $alt_mobile = $loan_data['user_altmobile'];
