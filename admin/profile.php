@@ -41,7 +41,7 @@
                 $account_no_escaped = mysqli_real_escape_string($db, $account_no);
                 $access_key_escaped = mysqli_real_escape_string($db, $access_key);
                 
-                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE mand_account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
+                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
                 
                 towquery($update_query);
                 
@@ -991,7 +991,7 @@
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                             <div class="product-payment-inner-st">
                                 <ul id="myTabedu1" class="tab-review-design">
-                                    <li class="active" data-toggle="tab" style="margin-bottom:30px;"><a href="#Personal">Personal</a></li>
+                                    <li class="active" style="margin-bottom:30px;"><a href="#Personal" data-toggle="tab">Personal</a></li>
                                     <!--<li><a h data-toggle="tab"ref="#additional"> additional</a></li>-->
                                     <li><a href="#INFORMATION" data-toggle="tab">Documents</a></li>
                                     <li><a href="#Bank" data-toggle="tab">Bank Information</a></li>
@@ -1779,7 +1779,7 @@
                                     
                                     // Fetch auto_debit_access_key from easebuzz_adtd table
                                     $ac_no_escaped = mysqli_real_escape_string($db, $ub_ac_no);
-                                    $easebuzz_query = towquery("SELECT auto_debit_access_key FROM easebuzz_adtd WHERE mand_account_no = '$ac_no_escaped' LIMIT 1");
+                                    $easebuzz_query = towquery("SELECT auto_debit_access_key FROM easebuzz_adtd WHERE account_no = '$ac_no_escaped' LIMIT 1");
                                     $easebuzz_data = towfetch($easebuzz_query);
                                     $auto_debit_key = $easebuzz_data ? $easebuzz_data['auto_debit_access_key'] : null;
                                     ?>
