@@ -41,7 +41,7 @@
                 $account_no_escaped = mysqli_real_escape_string($db, $account_no);
                 $access_key_escaped = mysqli_real_escape_string($db, $access_key);
                 
-                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped', authorization_status = 'authorized' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
+                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped', authorization_status = 'authorized' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '' OR auto_debit_access_key = 'NA')";
                 
                 towquery($update_query);
                 
@@ -1811,10 +1811,10 @@
                                             <td>
                                                 <?php if (!$easebuzz_record_exists): ?>
                                                     <span style="color: #999;">Enach not active yet</span>
-                                                <?php elseif (empty($auto_debit_key)): ?>
+                                                <?php elseif (empty($auto_debit_key) || $auto_debit_key == 'NA'): ?>
                                                     <form method="post" style="display:flex;">
                                                         <input type="hidden" name="account_no" value="<?=$ub_ac_no?>">
-                                                        <input type="text" name="auto_debit_access_key" class="form-control" placeholder="Enter Key">
+                                                        <input type="text" name="auto_debit_access_key" class="form-control" placeholder="Enter Key" value="<?=($auto_debit_key == 'NA' ? '' : $auto_debit_key)?>">
                                                         <button type="submit" name="update_access_key" class="btn btn-primary">Save</button>
                                                     </form>
                                                 <?php else: ?>
