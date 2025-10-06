@@ -12,31 +12,6 @@
 
     include_once 'head.php';
 
-    // Logic to handle auto_debit_access_key update
-    if (isset($_POST['update_access_key'])) {
-        $account_no = $_POST['account_no'];
-        $access_key = $_POST['auto_debit_access_key'];
-        
-        if (!empty($access_key) && !empty($account_no)) {
-            $account_no_escaped = mysqli_real_escape_string($db, $account_no);
-            $access_key_escaped = mysqli_real_escape_string($db, $access_key);
-            
-            $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE mand_account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
-            
-            towquery($update_query);
-            
-            // Get the ID and tab from GET parameters for redirect
-            $id = isset($_GET['id']) ? $_GET['id'] : '';
-            $tab = isset($_GET['tab']) ? $_GET['tab'] : 'Bank';
-            
-            print_r("<script>alert('Auto Debit Access Key updated successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
-            exit;
-        } else {
-            print_r("<script>alert('Account number and access key cannot be empty'); window.history.back();</script>");
-            exit;
-        }
-    }
-
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
     if(isset($_GET['id'])){
@@ -56,6 +31,27 @@
         if (!isset($userpro_mobile)) $userpro_mobile = '';
         if (!isset($userpro_email)) $userpro_email = '';
         if (!isset($userpro_id)) $userpro_id = $id;
+        
+        // Logic to handle auto_debit_access_key update
+        if (isset($_POST['update_access_key'])) {
+            $account_no = $_POST['account_no'];
+            $access_key = $_POST['auto_debit_access_key'];
+            
+            if (!empty($access_key) && !empty($account_no)) {
+                $account_no_escaped = mysqli_real_escape_string($db, $account_no);
+                $access_key_escaped = mysqli_real_escape_string($db, $access_key);
+                
+                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE mand_account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
+                
+                towquery($update_query);
+                
+                print_r("<script>alert('Auto Debit Access Key updated successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+                exit;
+            } else {
+                print_r("<script>alert('Account number and access key cannot be empty'); window.history.back();</script>");
+                exit;
+            }
+        }
         
         // TRANSACTION PROCESSING
         if(isset($_POST['transaction'])){
