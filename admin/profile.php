@@ -12,6 +12,31 @@
 
     include_once 'head.php';
 
+    // Logic to handle auto_debit_access_key update
+    if (isset($_POST['update_access_key'])) {
+        $account_no = $_POST['account_no'];
+        $access_key = $_POST['auto_debit_access_key'];
+        
+        if (!empty($access_key) && !empty($account_no)) {
+            $account_no_escaped = mysqli_real_escape_string($db, $account_no);
+            $access_key_escaped = mysqli_real_escape_string($db, $access_key);
+            
+            $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE mand_account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
+            
+            towquery($update_query);
+            
+            // Get the ID and tab from GET parameters for redirect
+            $id = isset($_GET['id']) ? $_GET['id'] : '';
+            $tab = isset($_GET['tab']) ? $_GET['tab'] : 'Bank';
+            
+            print_r("<script>alert('Auto Debit Access Key updated successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+            exit;
+        } else {
+            print_r("<script>alert('Account number and access key cannot be empty'); window.history.back();</script>");
+            exit;
+        }
+    }
+
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
     if(isset($_GET['id'])){
@@ -1742,6 +1767,7 @@
                                             <th>Bank Statment</th>
                                             <th>Action</th>
                                             <th>Verify</th>  
+                                            <th>Auto Debit Key</th>
                                         </tr>
             </thead>
             <tbody>
@@ -1754,6 +1780,12 @@
                                     $ref_data = towquery("SELECT * FROM user_bank WHERE uid='$userpro_id' ORDER BY id DESC"); 
                                     while($bank_fetch = towfetch($ref_data)){
                                     extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
+                                    
+                                    // Fetch auto_debit_access_key from easebuzz_adtd table
+                                    $ac_no_escaped = mysqli_real_escape_string($db, $ub_ac_no);
+                                    $easebuzz_query = towquery("SELECT auto_debit_access_key FROM easebuzz_adtd WHERE mand_account_no = '$ac_no_escaped' LIMIT 1");
+                                    $easebuzz_data = towfetch($easebuzz_query);
+                                    $auto_debit_key = $easebuzz_data ? $easebuzz_data['auto_debit_access_key'] : null;
                                     ?>
                                         <tr>
                                             <form method="post">
@@ -1779,6 +1811,17 @@
                                             <?php }else{ ?>
                                             <a href="#" class="btn btn-success">verified</a>
                                             <?php }?></td>
+                                            <td>
+                                                <?php if (empty($auto_debit_key)): ?>
+                                                    <form method="post" style="display:flex;">
+                                                        <input type="hidden" name="account_no" value="<?=$ub_ac_no?>">
+                                                        <input type="text" name="auto_debit_access_key" class="form-control" placeholder="Enter Key">
+                                                        <button type="submit" name="update_access_key" class="btn btn-primary">Save</button>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <span><?=$auto_debit_key?></span>
+                                                <?php endif; ?>
+                                            </td>
                                             
                                         </tr>
                                         <?php } ?>
