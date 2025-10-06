@@ -41,7 +41,7 @@
                 $account_no_escaped = mysqli_real_escape_string($db, $account_no);
                 $access_key_escaped = mysqli_real_escape_string($db, $access_key);
                 
-                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
+                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped', authorization_status = 'authorized' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '')";
                 
                 towquery($update_query);
                 
@@ -1780,6 +1780,7 @@
                                     // Fetch auto_debit_access_key from easebuzz_adtd table
                                     $ac_no_escaped = mysqli_real_escape_string($db, $ub_ac_no);
                                     $easebuzz_query = towquery("SELECT auto_debit_access_key FROM easebuzz_adtd WHERE account_no = '$ac_no_escaped' LIMIT 1");
+                                    $easebuzz_record_exists = ($easebuzz_query && townum($easebuzz_query) > 0);
                                     $easebuzz_data = towfetch($easebuzz_query);
                                     $auto_debit_key = $easebuzz_data ? $easebuzz_data['auto_debit_access_key'] : null;
                                     ?>
@@ -1808,7 +1809,9 @@
                                             <a href="#" class="btn btn-success">verified</a>
                                             <?php }?></td>
                                             <td>
-                                                <?php if (empty($auto_debit_key)): ?>
+                                                <?php if (!$easebuzz_record_exists): ?>
+                                                    <span style="color: #999;">Enach not active yet</span>
+                                                <?php elseif (empty($auto_debit_key)): ?>
                                                     <form method="post" style="display:flex;">
                                                         <input type="hidden" name="account_no" value="<?=$ub_ac_no?>">
                                                         <input type="text" name="auto_debit_access_key" class="form-control" placeholder="Enter Key">
