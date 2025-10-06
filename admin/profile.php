@@ -938,7 +938,7 @@
     }
     ?>
 
-    <body onload="adddate('<?=date('Y-m-d')?>')">
+    <body>
         <!-- Start Left menu area -->
         <?php
         include_once 'Left_menu.php';
@@ -2408,8 +2408,6 @@
                                                     }
                                                     ?>
                                                 </select> &nbsp;
-                                                <!--Follow Up Date : <input type="date" name="follow_up_date" id="date">-->
-                                                <!--Check for after 25 days <input type="checkbox" style="height:11px;" onchange="adddate('<?=date('Y-m-d', strtotime($date. ' + 25 days'))?>')"><br><br>-->
                                                 <div class="row">
                                                 <div class="col-md-6">
                                                 <select onchange="select_folomess();" id="select_folomesss" class="form-control">
@@ -2766,6 +2764,7 @@
             // document.getElementById("date").innerHTML = date;
             $('#date').val(date);
         }
+        adddate('<?=date('Y-m-d')?>');
     </script>
             <script>
             $( "#panNumber" ).keyup(function() {
