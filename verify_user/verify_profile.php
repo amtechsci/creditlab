@@ -97,17 +97,23 @@ if(isset($_POST['mobile'])){
         print_r("<script>alert('please enter mobile number of any family person if you don't have alternate number');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
     }else{
     if(isset($_POST['pus'])){
+        // Set default values for optional fields
+        if(!isset($loan_limit) || $loan_limit == ''){
+            $loan_limit = $userpro_loan_limit;
+        }
         if($userpro_loan_limit != $loan_limit){
             towquery("UPDATE `user` SET `limit_inc`=0  WHERE id='$userpro_id'");
         }
-        if(!isset($loan_limit)){
-            $loan_limit = $userpro_loan_limit;
-        }
-        $fb_url = '';
+        $fb_url = isset($fb_url) ? $fb_url : '';
         $assign_recovery_officer = isset($assign_recovery_officer) ? $assign_recovery_officer : $userpro_assign_recovery_officer;
         $assign_account_manager = isset($assign_account_manager) ? $assign_account_manager : $userpro_assign_account_manager;
+        $member = isset($member) ? $member : $userpro_member;
+        $approvenew = isset($approvenew) ? $approvenew : $userpro_approvenew;
+        $auto_limit = isset($auto_limit) ? $auto_limit : $userpro_auto_limit;
+        $work_year = isset($work_year) ? $work_year : $userpro_work_year;
+        
         $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
-,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code' WHERE id='$userpro_id'";
+,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code',`work_year`='$work_year' WHERE id='$userpro_id'";
 $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$userpro_id." AND (status='pending' OR status='follow up' OR status='disbursal' ) ORDER BY id DESC");
 
 if($approvenew == 1){
@@ -136,14 +142,28 @@ towquery("UPDATE `loan_apply` SET `amount`=$amount,`processing_fees`='$processin
         $total_amount = $fee; 
         towquery("UPDATE `loan_apply` SET `service_charge`='$total_amount' WHERE id='".$validfetch['id']."'");
 }}
-(towquery($pqu) and
-    print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>")) or print_r("<script>alert('Phone No. already register');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+
+// Execute the update query
+$update_result = towquery($pqu);
+if($update_result){
+    ob_end_clean(); // Clear any previous output
+    print_r("<script>alert('Data updated successfully'); window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+    exit;
+} else {
+    ob_end_clean(); // Clear any previous output
+    // Log the error for debugging
+    error_log("User update failed for user ID: $userpro_id. Query: $pqu");
+    print_r("<script>alert('Error: Update failed. Please check if phone number is already registered or contact administrator.');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+    exit;
+}
     }elseif(($salary < 20000) and ($salarystatus == "Salaried")){
-        towquery("UPDATE `user` SET `verify`=3 WHERE id='$userpro_id'") and
-    print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+        towquery("UPDATE `user` SET `verify`=3 WHERE id='$userpro_id'");
+        print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        exit;
     }else{
-        towquery("UPDATE `user` SET `verify`=4 WHERE id='$userpro_id'") and
-    print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+        towquery("UPDATE `user` SET `verify`=4 WHERE id='$userpro_id'");
+        print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");
+        exit;
     }
 }}
 
