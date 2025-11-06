@@ -189,8 +189,9 @@
                 $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
                 $validfetch = towfetch($valid);
                 towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
-                towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$date', `apply_date`='$date' WHERE uid=".$id." AND id=".$cllid."");
-                towquery("UPDATE `loan` SET `processed_date`='$date' WHERE uid=".$id." AND lid=".$cllid."");
+                $tdate = date('Y-m-d', strtotime($transaction_date));
+                towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$tdate', `apply_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
+                towquery("UPDATE `loan` SET `processed_date`='$tdate' WHERE uid=".$id." AND lid=".$cllid."");
                 towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
             }elseif($transaction_flow == "part"){
                 $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
@@ -205,6 +206,14 @@
             }elseif($transaction_flow == "creditlab To Customer"){
                 $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
                 $validfetch = towfetch($valid);
+                
+                // Check if loan already exists for this CLL ID
+                $existing_loan = towquery("SELECT * FROM loan WHERE lid=$cllid");
+                if(townum($existing_loan) > 0){
+                    echo "<script>alert('Error: Loan already exists for CLL{$cllid}. Cannot create duplicate loan entry.'); window.history.back();</script>";
+                    exit;
+                }
+                
                 towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
                 $tdate = date('Y-m-d', strtotime($transaction_date));
                 towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
@@ -246,6 +255,22 @@
     }else{
         print_r("<script>window.location.replace('index.php');</script>");
     }
+    
+    // Update Processed Date Handler
+    if(isset($_POST['update_processed_date'])){
+        $extract = towrealarray($_POST);
+        extract($extract);
+        
+        if(empty($loan_lid) || empty($new_processed_date)){
+            echo "<script>alert('Error: Loan ID and Processed Date are required.');</script>";
+        } else {
+            $new_date = date('Y-m-d', strtotime($new_processed_date));
+            towquery("UPDATE `loan` SET `processed_date`='$new_date' WHERE lid=$loan_lid");
+            echo "<script>alert('Processed Date updated successfully for CLL{$loan_lid}!'); window.location.replace('profile.php?id=".$id."&tab=oldloan');</script>";
+            exit;
+        }
+    }
+    
     if(isset($_POST['validation'])){
         $extract = towrealarray($_POST);
         extract($extract);
@@ -2264,7 +2289,11 @@
     ?>
                                         <form action="" method="post"><tr>
                                             <td>CLL<?=$usersd_lid?></td>
-                                            <td><?=$usersd_processed_date?></td>
+                                            <td>
+                                                <input type="date" name="new_processed_date" value="<?=$usersd_processed_date?>" class="form-control" style="width:150px; display:inline-block;">
+                                                <input type="hidden" name="loan_lid" value="<?=$usersd_lid?>">
+                                                <button type="submit" name="update_processed_date" class="btn btn-sm btn-primary" title="Update Processed Date">💾</button>
+                                            </td>
                                             <td>
                                             <?php $papay = ((float)$usersd_processed_amount + (float)$usersd_p_fee + ((float)$usersd_p_fee*0.18));
                                             $azxs = (0.12*$papay)/1.18;

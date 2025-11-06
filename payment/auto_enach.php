@@ -407,7 +407,7 @@ writeLog("Reset $reset_temporary_count temporary skipped E-Nach requests (past s
 $eligible_loans = [];
 
 // Condition 1: Daily run for exhausted_period = 31
-$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
+$sql1 = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
 $loans1 = towquery($db, $sql1);
 $condition1_count = 0;
 while ($loan = towfetch($loans1)) {
@@ -439,7 +439,7 @@ $last_day_of_month = date('t'); // Returns the number of days in the current mon
 
 // Condition 2: On 3rd, 10th, and last day of month (30th/31st) for exhausted_period > 30
 if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
-    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
+    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
     $loans2 = towquery($db, $sql2);
     $condition2_count = 0;
     $duplicates_count = 0;
@@ -477,6 +477,7 @@ $sql3 = "SELECT l.* FROM `loan` l
          INNER JOIN `user` u ON l.uid = u.id 
          WHERE l.`exhausted_period` > 30 
          AND l.`status_log` = 'account manager' 
+         AND l.`action` != 'cleared' 
          AND l.`enach_request` = 0 
          AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
          AND DAY(u.salary_date) = $current_day";
@@ -532,6 +533,16 @@ foreach ($eligible_loans as $loan) {
     $processed_count++;
 
     writeLog("Processing Loan ID: CLL$lid | User ID: $uid | Progress: $processed_count/$total_eligible", $log_file);
+
+    // Check if loan is already cleared to prevent duplicate autopay deduction
+    if ($loan['status_log'] == 'cleared' || $loan['action'] == 'cleared') {
+        writeLog("SKIPPED: Loan CLL$lid is already cleared. Preventing duplicate autopay deduction.", $log_file);
+        $skipped_loans[] = "CLL$lid (Already Cleared)";
+        if ($dry_run) {
+            echo "SKIPPED: Loan CLL$lid is already cleared\n";
+        }
+        continue;
+    }
 
     // Get user details
     $userdata = towquery($db, "SELECT * FROM `user` WHERE id='$uid'");

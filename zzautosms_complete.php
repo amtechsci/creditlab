@@ -696,14 +696,25 @@ try {
                 // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
                 if ($limit_inc_status === 0 && $loan_limit > $processed_amount) {
                     logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
-                    if (!hasBeenSentToday($user_lid, 'limit_increase')) {
-                        logMessage("LID $user_lid: 'limit_increase' not sent today. Proceeding to send.");
+                    // Determine which time window we're in for unique tracking
+                    $time_slot = '';
+                    if ($current_time >= "08:00" && $current_time < "08:05") {
+                        $time_slot = '08am';
+                    } elseif ($current_time >= "12:50" && $current_time < "12:55") {
+                        $time_slot = '1250pm';
+                    } elseif ($current_time >= "16:00" && $current_time < "16:05") {
+                        $time_slot = '4pm';
+                    }
+                    $unique_key = 'limit_increase_' . $time_slot;
+                    
+                    if (!hasBeenSentToday($user_lid, $unique_key)) {
+                        logMessage("LID $user_lid: 'limit_increase' not sent for time slot $time_slot. Proceeding to send.");
                         $tpl = $sms_templates['limit_increase'];
                         $message = sprintf($tpl['template'], number_format($loan_limit), $url_link);
                         $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
-                        if ($result['sent'] > 0) { markAsSent($user_lid, 'limit_increase'); }
+                        if ($result['sent'] > 0) { markAsSent($user_lid, $unique_key); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
-                    } else { logMessage("LID $user_lid: Already sent 'limit_increase' today. Skipping."); }
+                    } else { logMessage("LID $user_lid: Already sent 'limit_increase' for time slot $time_slot today. Skipping."); }
                 } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $processed_amount)."); }
             }
 

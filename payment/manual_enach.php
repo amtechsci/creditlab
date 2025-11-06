@@ -55,10 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
 
     if ($option == '31') {
         echo "Selected option: <b>Exactly 31 Days</b>. Building query...\n";
-        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `enach_request` = 0";
+        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0";
     } elseif ($option == '30') {
         echo "Selected option: <b>More than 30 Days</b>. Building query...\n";
-        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 0";
+        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0";
     } else {
         die("Invalid option selected."); // Exit if the form value is manipulated
     }
@@ -289,6 +289,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
 
             echo "---------------------------------\n";
             echo "Processing Loan ID (lid): $lid for User ID (uid): $uid\n";
+
+            // Check if loan is already cleared to prevent duplicate autopay deduction
+            if ($loan['status_log'] == 'cleared' || $loan['action'] == 'cleared') {
+                echo "SKIPPED: Loan CLL$lid is already cleared. No payment needed.\n";
+                continue;
+            }
 
             // 3. Fetch associated user and E-Nach data.
             $userdata = towquery("SELECT * FROM `user` WHERE id='$uid'");

@@ -318,6 +318,13 @@ if (!$userdataff) {
     exit;
 }
 
+// Check if loan is already cleared to prevent duplicate autopay deduction
+if ($userdataff['status_log'] == 'cleared' || $userdataff['action'] == 'cleared') {
+    writeZzenachLog("SKIPPED: Loan CLL$lid is already cleared. Preventing duplicate autopay deduction.", $log_file);
+    echo "<script>alert('Loan CLL$lid is already cleared. No payment needed.');window.location.replace('/admin/profile.php?id=".$userdataff['uid']."&tab=oldloan');</script>";
+    exit;
+}
+
 $loan_data = towquery("SELECT * FROM loan_apply WHERE id='$lid'");
 $loan_fetch = towfetch($loan_data);
 
