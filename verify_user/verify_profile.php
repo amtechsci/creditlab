@@ -10,6 +10,19 @@ if(isset($_GET['id'])){
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
+
+    $limit_percentage = null;
+    $limit_percentage_display = 'N/A';
+    $limit_percentage_style_attr = '';
+    $salary_value = isset($userpro_salary) ? (float)$userpro_salary : 0.0;
+    $loan_limit_value = isset($userpro_loan_limit) ? (float)$userpro_loan_limit : 0.0;
+    if ($salary_value > 0) {
+        $limit_percentage = ($loan_limit_value / $salary_value) * 100;
+        $limit_percentage_display = number_format($limit_percentage, 2) . '%';
+        if ($limit_percentage > 15) {
+            $limit_percentage_style_attr = ' style="color:red;font-weight:bold;"';
+        }
+    }
 }else{
     print_r("<script>window.location.replace('index.php');</script>");
 }
@@ -524,6 +537,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                    <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
                    <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
                    <p>Mobile : <?=$userpro_mobile;?></p>
+                   <p<?=$limit_percentage_style_attr?>>Limit vs Salary: <?=$limit_percentage_display?></p>
                 </div>
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                     <?php $account_manager = towquery("SELECT * FROM `account_manager` WHERE id=$userpro_assign_account_manager");

@@ -72,6 +72,7 @@ if (isset($_GET['pageno'])) {
                                         <th>Name</th>         
                                         <th>Mobile</th>    
                                         <th>Alt Mobile</th>    
+                                        <th>Total Loans</th>
                                         <th>principal loan Amt</th>    
                                         <th>loan exhausted days</th>    
                                         <th>outstanding Amount</th>    
@@ -168,6 +169,7 @@ switch ((int)$user_member) {
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"><?=$user_altmobile?></td>
+                                        <td data-title="Total Loans"><?=$loan_count_markup?></td>
                                         <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)?></td>
                                         <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
                                         <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge?></td>
@@ -227,6 +229,7 @@ switch ((int)$user_member) {
                                         <th>Name</th>         
                                         <th>Mobile</th>    
                                         <th>city</th>    
+                                        <th>Total Loans</th>
                                         <th>principal loan Amt</th>    
                                         <th>loan exhausted days</th>    
                                         <th>outstanding Amount</th>    
@@ -318,6 +321,7 @@ switch ((int)$user_member) {
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"></td>
+                                        <td data-title="Total Loans"><?=$loan_count_markup?></td>
                                         <td data-title="Mobile"><?=$user_processed_amount?></td>
                                         <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
                                         <td data-title="Mobile"><?=$user_total_amount?></td>

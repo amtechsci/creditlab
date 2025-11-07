@@ -18,7 +18,7 @@ header('Content-Disposition: attachment; filename="Account_manager_data.csv"');
 
 $output = fopen('php://output', 'w');
 fputcsv($output, [
-    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "outstanding amount"
+    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "outstanding amount", "total loans"
 ]);
 
 foreach($reseauserid as $value){
@@ -27,6 +27,10 @@ if(townum($a) > 0){
 $b = towfetch($a);
 extract($b,EXTR_PREFIX_ALL,"user");
     
+    $loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
+    $loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
+    $loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
+
     $row = [
         $user_name,
         $user_mobile,
@@ -36,7 +40,8 @@ extract($b,EXTR_PREFIX_ALL,"user");
         (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18),
         $user_processed_amount,
         ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24)),
-        (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge
+        (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge,
+        $loan_count
     ];
 
     // Write the row to the output
