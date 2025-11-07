@@ -26,6 +26,19 @@
         $date = date('Y-m-d H:i:s');
         $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
         
+        $limit_percentage = null;
+        $limit_percentage_display = 'N/A';
+        $limit_percentage_style_attr = '';
+        $salary_value = isset($userpro_salary) ? (float)$userpro_salary : 0.0;
+        $loan_limit_value = isset($userpro_loan_limit) ? (float)$userpro_loan_limit : 0.0;
+        if ($salary_value > 0) {
+            $limit_percentage = ($loan_limit_value / $salary_value) * 100;
+            $limit_percentage_display = number_format($limit_percentage, 2) . '%';
+            if ($limit_percentage > 15) {
+                $limit_percentage_style_attr = ' style="color:red;font-weight:bold;"';
+            }
+        }
+
         // Initialize common variables to prevent undefined warnings
         if (!isset($userpro_name)) $userpro_name = '';
         if (!isset($userpro_mobile)) $userpro_mobile = '';
@@ -977,6 +990,7 @@
                     <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
                     <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
                     <p>Mobile : <?=$userpro_mobile;?></p>
+                    <p<?=$limit_percentage_style_attr?>>Limit vs Salary: <?=$limit_percentage_display?></p>
                     </div>
                                         <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                         <?php $account_manager = towquery("SELECT * FROM `account_manager` WHERE id=$userpro_assign_account_manager");
@@ -2290,9 +2304,7 @@
                                         <form action="" method="post"><tr>
                                             <td>CLL<?=$usersd_lid?></td>
                                             <td>
-                                                <input type="date" name="new_processed_date" value="<?=$usersd_processed_date?>" class="form-control" style="width:150px; display:inline-block;">
-                                                <input type="hidden" name="loan_lid" value="<?=$usersd_lid?>">
-                                                <button type="submit" name="update_processed_date" class="btn btn-sm btn-primary" title="Update Processed Date">💾</button>
+                                                <?=$usersd_processed_date?>
                                             </td>
                                             <td>
                                             <?php $papay = ((float)$usersd_processed_amount + (float)$usersd_p_fee + ((float)$usersd_p_fee*0.18));

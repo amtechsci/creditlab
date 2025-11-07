@@ -125,15 +125,47 @@ while ($row = towfetch($query_result)) {
 $concatenated_responses = implode("<br><br>", $responses);
 $concatenated_dates = implode("<br><br>", $commit_dates);
 $concatenated_updates = implode("<br><br>", $updated_ats);
+
+$loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
+$loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
+$loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
+$loan_count_style = $loan_count === 1 ? 'font-weight:bold;color:red;' : '';
+$loan_count_markup = '<span style="'.$loan_count_style.'">No. of Loans: '.$loan_count.'</span>';
+
+$user_salary_amount = isset($user_salary) ? (float)$user_salary : 0.0;
+$user_loan_limit_amount = isset($user_loan_limit) ? (float)$user_loan_limit : 0.0;
+$limit_percentage = $user_salary_amount > 0 ? (($user_loan_limit_amount / $user_salary_amount) * 100) : null;
+$limit_percentage_formatted = $limit_percentage !== null ? number_format($limit_percentage, 2) : null;
+$limit_percentage_style = ($limit_percentage !== null && $limit_percentage > 15) ? 'font-weight:bold;color:red;' : '';
+$limit_percentage_markup = $limit_percentage !== null
+    ? '<span style="'.$limit_percentage_style.'">Limit vs Salary: '.$limit_percentage_formatted.'%</span>'
+    : '<span>Limit vs Salary: N/A</span>';
+
+$membership_label = '';
+switch ((int)$user_member) {
+    case 0:
+        $membership_label = 'silver';
+        break;
+    case 1:
+        $membership_label = 'gold';
+        break;
+    case 2:
+        $membership_label = 'diamond';
+        break;
+    case 3:
+        $membership_label = 'Platinum';
+        break;
+    case 4:
+        $membership_label = '<b style="color:red; font-size:22px;">RISKY</b>';
+        break;
+}
 ?>
                                    <tr>
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
-                                        <?php if($user_member == 0){echo 'silver';} if($user_member == 1){echo 'gold';} if($user_member == 2){echo 'diamond';} if($user_member == 3){echo 'Platinum';}
-                                                     if($user_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
-                                        </td>
+                                        <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"><?=$user_altmobile?></td>
                                         <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)?></td>
@@ -243,12 +275,47 @@ while ($row = towfetch($query_result)) {
 $concatenated_responses = implode("<br><br>", $responses);
 $concatenated_dates = implode("<br><br>", $commit_dates);
 $concatenated_updates = implode("<br><br>", $updated_ats);
+
+$loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
+$loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
+$loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
+$loan_count_style = $loan_count === 1 ? 'font-weight:bold;color:red;' : '';
+$loan_count_markup = '<span style="'.$loan_count_style.'">No. of Loans: '.$loan_count.'</span>';
+
+$user_salary_amount = isset($user_salary) ? (float)$user_salary : 0.0;
+$user_loan_limit_amount = isset($user_loan_limit) ? (float)$user_loan_limit : 0.0;
+$limit_percentage = $user_salary_amount > 0 ? (($user_loan_limit_amount / $user_salary_amount) * 100) : null;
+$limit_percentage_formatted = $limit_percentage !== null ? number_format($limit_percentage, 2) : null;
+$limit_percentage_style = ($limit_percentage !== null && $limit_percentage > 15) ? 'font-weight:bold;color:red;' : '';
+$limit_percentage_markup = $limit_percentage !== null
+    ? '<span style="'.$limit_percentage_style.'">Limit vs Salary: '.$limit_percentage_formatted.'%</span>'
+    : '<span>Limit vs Salary: N/A</span>';
+
+$membership_label = '';
+switch ((int)$user_member) {
+    case 0:
+        $membership_label = 'silver';
+        break;
+    case 1:
+        $membership_label = 'gold';
+        break;
+    case 2:
+        $membership_label = 'diamond';
+        break;
+    case 3:
+        $membership_label = 'Platinum';
+        break;
+    case 4:
+        $membership_label = '<b style="color:red; font-size:22px;">RISKY</b>';
+        break;
+}
 ?>
                                     <tr>
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
+                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
+                                        <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"></td>
                                         <td data-title="Mobile"><?=$user_processed_amount?></td>
