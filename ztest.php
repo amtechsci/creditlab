@@ -2,7 +2,7 @@
 
 // Database connection function
 function towquery($query) {
-    $db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+    $db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
     mysqli_set_charset($db, 'utf8');
     $re = mysqli_query($db, $query);
     return $re;

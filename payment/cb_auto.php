@@ -16,7 +16,7 @@ $logData .= $rawBody . "\n";
 file_put_contents($filename, $logData, FILE_APPEND);
 
 // --- DATABASE CONNECTION ---
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
 
 if (mysqli_connect_errno()) {
     error_log("Database connection failed: " . mysqli_connect_error());

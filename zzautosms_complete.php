@@ -37,7 +37,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
 mysqli_set_charset($db,'utf8');
 mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
 
@@ -45,7 +45,7 @@ function ensure_db_connection() {
     global $db;
     if (!isset($db) || !@mysqli_ping($db)) {
         logMessage("Database connection lost. Attempting to reconnect...");
-        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
         if (!$db) {
             logMessage("FATAL: Database reconnection failed: " . mysqli_connect_error());
             return false;
