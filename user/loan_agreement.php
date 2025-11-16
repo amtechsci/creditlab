@@ -29,7 +29,9 @@ if($b['days'] > 30){
                 //  $femi_date = $sal_day;
                 //  $semi_date = date('Y-m-d', strtotime( $femi_date . " +1 month"));
             //  }else{
-                 $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
+                 // Use days from loan_apply (new loans have calculated days, old loans have days=30)
+                 $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+                 $femi_date = date('Y-m-d', strtotime( $dis_date . " +".$loan_days." day"));
                  $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
             //  $di = strtotime($dis_date);
             //  $sa = strtotime($femi_date);

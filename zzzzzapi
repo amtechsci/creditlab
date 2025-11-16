@@ -239,6 +239,14 @@ if(isset($reason)){
          $origination_fee = 0;
          $pf_qr = ($p_f);
         }
+        
+        // Calculate days based on salary_date and applied_date
+        if (!isset($days) || empty($days)) {
+            $apply_date = date('Y-m-d');
+            $salary_date_value = isset($user['salary_date']) ? $user['salary_date'] : null;
+            $days = calculateLoanDays($apply_date, $salary_date_value);
+        }
+        
         if($user['sloan'] > 0){
             towquery("INSERT INTO loan_apply (`uid`, `amount`,`processing_fees`, `origination_fee`, `service_charge`, `days`, `apply_date`, `status`, `status_date`, `created_by`,`reason`) VALUES ($user_id,$amount-$pf_qr,$p_f,$origination_fee,'$fee',$days,'$date','disbursal','$date','user','$reason')");
         towquery("UPDATE `user` SET `status`='disbursal' WHERE id=$user_id");

@@ -19,6 +19,12 @@ if($amount < $user_loan_limit){
 
  $t = $newloan;
     $day =  30;
+    
+    // Calculate days based on salary_date and applied_date
+    $apply_date = date('Y-m-d');
+    $salary_date_value = isset($user_salary_date) ? $user_salary_date : null;
+    $day = calculateLoanDays($apply_date, $salary_date_value);
+    
     if(($day) <= 5 ){
         $fee = $t * $day / 100 * 0.6;
         $interest = "0.6%";

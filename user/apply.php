@@ -20,6 +20,11 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
     $day = $cday =  30;
     $service_charge = 0;
     
+    // Calculate days based on salary_date and applied_date
+    $apply_date = date('Y-m-d');
+    $salary_date_value = isset($user_salary_date) ? $user_salary_date : null;
+    $day = $cday = calculateLoanDays($apply_date, $salary_date_value);
+    
         $p_f_per = 14;
     if(isset($user_interest_percentage) && $user_interest_percentage == 1){
         $p_f = ($amount / 100)*14;
