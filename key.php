@@ -22,14 +22,9 @@ $b = $loanf;
              $datediff = $sa - $di;
              $day_gap = round($datediff / (60 * 60 * 24));
              
-             // Use days from loan_apply (already exists in database)
-             // For new loans: days is calculated based on salary_date
-             // For old loans: days = 30 (original value)
-             $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
-             
-             // Calculate femi_date from dis_date + days (this works for both new and old loans)
-             $femi_date = date('Y-m-d', strtotime( $dis_date . " +".$loan_days." day"));
-             $actual_days = $loan_days; // Use days from database
+             // EMI loans (days <= 30) always use 30 days (original logic)
+             // This file (key.php) is for EMI loans only, so always use 30 days
+             $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
              $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
              $fe = strtotime($femi_date);
              $se = strtotime($semi_date);
@@ -40,11 +35,9 @@ $b = $loanf;
              $seday_gap = round($sedatediff / (60 * 60 * 24));
              $semi_amount = ((($loan_amountc/100) * 30) + $loan_amountc * 0.001 * $seday_gap) + (($loan_amountc/100) * 2);
              $preclose = (($loan_amountc) + ($loan_amountc / 100) * 4) + (($loan_amountc/100) * 2);
-             // Use actual days instead of hardcoded 30
-             $dint = ($actual_days > 0) ? (($loan_amountc*0.03)/$actual_days) : (($loan_amountc*0.03)/30);
-             // Calculate total interest based on actual days (roughly 65 days for total tenure, use actual_days + 35 for second EMI)
-             $total_days_for_interest = $actual_days + 35; // First EMI days + Second EMI period
-             $tint = $dint * $total_days_for_interest;
+             // EMI loans always use 30 days for interest calculation (original logic)
+             $dint = (($loan_amountc*0.03)/30);
+             $tint = $dint*65;
                 //  print_r($tint);exit;
 
 }

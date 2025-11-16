@@ -363,8 +363,11 @@ try {
             // Calculate tday (days since processed_date)
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             
-            // Get days from loan_apply (new loans have calculated days, old loans have days=30)
-            $loan_days = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
+            // Get days from loan_apply
+            // For one-time loans (days > 30): Use calculated days
+            // For EMI loans (days <= 30): Always use 30 days (original logic)
+            $loan_days_raw = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
+            $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
             
             // Calculate DPD (Days Past Due) = tday - days
             // If tday < days: we're before due date (DPD is negative)

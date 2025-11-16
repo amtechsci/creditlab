@@ -65,14 +65,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
 
     // Add the same calculation functions as auto_enach.php
     function calculateTotalAmount($loan, $loan_apply) {
-        // Get current date and calculate days since processed_date
+        // Get current date and calculate tday (days since processed_date)
         $stop_date = date_create($loan['processed_date']);
         $sa = date_create(date('Y-m-d 23:59:59'));
         $aa = date_diff($stop_date, $sa);
-        $days = $aa->format("%a");
+        $tday = (int)$aa->format("%a");
         
-        // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
-        $days++;
+        // Get days from loan_apply
+        // For one-time loans (days > 30): Use calculated days
+        // For EMI loans (days <= 30): Always use 30 days (original logic)
+        $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
+        $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+        
+        // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
+        $days = $tday; // Use tday for service charge calculation
         
         // Calculate base amount with GST on processing fee (18% GST)
         $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -122,13 +128,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
             $service_charge += $fee;
         }
         
-        // Calculate penalty for days > 30
-        if ($days > 30) {
-            $penalitydays = $days - 30;
-            $penalitydays--;
-            $penality = (($t) / 100) * 4;
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays;
-            $penality = $penality + $atnp;
+        // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
+        // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
+        $dpd = $tday - $loan_days; // DPD = Days Past Due
+        if ($dpd > 0) {
+            $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
+            $penality = (($t) / 100) * 4; // First day penalty (4%)
+            if ($penalitydays > 0) {
+                $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days (0.2%)
+                $penality = $penality + $atnp;
+            }
         } else {
             $penality = 0;
         }
@@ -144,14 +153,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
     }
 
     function calculateAmountBreakdown($loan, $loan_apply) {
-        // Get current date and calculate days since processed_date
+        // Get current date and calculate tday (days since processed_date)
         $stop_date = date_create($loan['processed_date']);
         $sa = date_create(date('Y-m-d 23:59:59'));
         $aa = date_diff($stop_date, $sa);
-        $days = $aa->format("%a");
+        $tday = (int)$aa->format("%a");
         
-        // Add +1 day as requested (if exhausted_period is 30, calculate for 31)
-        $days++;
+        // Get days from loan_apply
+        // For one-time loans (days > 30): Use calculated days
+        // For EMI loans (days <= 30): Always use 30 days (original logic)
+        $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
+        $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+        
+        // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
+        $days = $tday; // Use tday for service charge calculation
         
         // Calculate base amount with GST on processing fee (18% GST)
         $p_fee_gst = $loan['p_fee'] * 0.18;
@@ -202,13 +217,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
             $service_charge += $fee;
         }
         
-        // Calculate penalty for days > 30
-        if ($days > 30) {
-            $penalitydays = $days - 30;
-            $penalitydays--;
-            $penality = (($t) / 100) * 4;
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays;
-            $penality = $penality + $atnp;
+        // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
+        // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
+        $dpd = $tday - $loan_days; // DPD = Days Past Due
+        if ($dpd > 0) {
+            $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
+            $penality = (($t) / 100) * 4; // First day penalty (4%)
+            if ($penalitydays > 0) {
+                $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days (0.2%)
+                $penality = $penality + $atnp;
+            }
         } else {
             $penality = 0;
         }
