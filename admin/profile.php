@@ -14,6 +14,10 @@
 
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
+    
+    // Get base URL from database
+    $base_url = getAppUrl();
+    
     if(isset($_GET['id'])){
         $id = towreal($_GET['id']);
         $aaid = towreal($_GET['id']);
@@ -105,7 +109,7 @@
                             towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                             towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
                             towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
-                            $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                            $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                         }
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid' AND `payment_type`='First EMI'");
                     }
@@ -116,9 +120,9 @@
                             towquery("UPDATE `user` SET `sloan`=`sloan`+1 WHERE id=".$id.""); 
                             towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                             towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                            file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
+                            file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
                             towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
-                            $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                            $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                         }
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid' AND `payment_type`='Second EMI'");
                     }
@@ -128,10 +132,10 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1 WHERE id=".$id.""); 
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
+                        file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
-                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                     }
                     
                     if($transaction_flow == "full"){
@@ -155,10 +159,10 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$id."");
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
+                        file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
-                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                     }
                     
                     if($transaction_flow == "settlement"){
@@ -182,10 +186,10 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$id."");
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
+                        file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$cllid."&email=$userpro_email");
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
-                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                        $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                     }
                     
                     // INSERT TRANSACTION DETAILS AFTER PROCESSING
@@ -240,11 +244,11 @@
                 
                 // Send loan agreement email using your old system
                 if($userpro_approvenew == 0){
-                    if(file_get_contents("https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=$cllid&url2=https://creditlab.in/key2.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
+                    if(file_get_contents($base_url . "/zxc/?url=" . $base_url . "/admin/loan_agreement2.php?id=$cllid&url2=" . $base_url . "/key2.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
                         towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
                     }
                 }else{
-                    if(file_get_contents("https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement.php?id=$cllid&url2=https://creditlab.in/key.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
+                    if(file_get_contents($base_url . "/zxc/?url=" . $base_url . "/admin/loan_agreement.php?id=$cllid&url2=" . $base_url . "/key.php?id=$cllid&email=$userpro_email&pid=$userpro_id")){
                         towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
                     }
                 }
@@ -339,7 +343,7 @@
             
             // Send Accept Agreement SMS when moving to disbursal
             $template_id = '1407175015930870248'; // Accept Agreement template ID from CSV
-            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes.';
+            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to ' . $base_url . '/user & accept the agreement and get the money in minutes.';
             $sender = 'CREDLB';
             
             // Send to primary mobile
@@ -416,7 +420,7 @@
     $message=" Dear $userpro_name , we are waiting to disburse your loan. Please send your pending documents to docs@creditlab.in for quick disbursal <br>
     $validation
     <br>
-    Thanks - Team creditlab.in";
+    Thanks - Team " . $base_url;
     mail($to,$subject,$message,$headers);
     }
         echo "<h3 style='color: green;'>SUCCESS: Your data is successfully updated!</h3>";
@@ -2188,15 +2192,15 @@
                                             <td>
                                             <input type="submit" class="btn btn-primary" name="loandata" value="save">
                                             <?php if($userpro_approvenew == 0){?>
-                                            <br><a target="_blank" href="https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>&url2=https://creditlab.in/key2.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
+                                            <br><a target="_blank" href="<?=$base_url?>/zxc/?url=<?=$base_url?>/admin/loan_agreement2.php?id=<?=$users_id?>&url2=<?=$base_url?>/key2.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
                                             <?php if($users_status == "account manager" or $users_status == "cleared"){?>
-                                            <br><a href="/user/file.php?f=<?=hash('md5',"https://creditlab.in/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
-                                            <br><a href="/user/file.php?f=<?=hash('md5',"https://creditlab.in/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
+                                            <br><a href="/user/file.php?f=<?=hash('md5',$base_url."/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
+                                            <br><a href="/user/file.php?f=<?=hash('md5',$base_url."/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
                                             <?php }else{?>
-                                            <br><a href="https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>" class="btn btn-success">View</a>
-                                            <br><a href="https://creditlab.in/key2.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
+                                            <br><a href="<?=$base_url?>/admin/loan_agreement2.php?id=<?=$users_id?>" class="btn btn-success">View</a>
+                                            <br><a href="<?=$base_url?>/key2.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
                                             <?php }}else{?>
-                                            <br><a target="_blank" href="https://creditlab.in/zxc/?url=https://creditlab.in/admin/sloan_agreement.php?id=<?=$users_id?>&url2=https://creditlab.in/key.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
+                                            <br><a target="_blank" href="<?=$base_url?>/zxc/?url=<?=$base_url?>/admin/sloan_agreement.php?id=<?=$users_id?>&url2=<?=$base_url?>/key.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
                                             <br><a href="sloan_agreement.php?id=<?=$users_id?>" class="btn btn-success">View</a>
                                             <br><a href="/key.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
                                             <?php }?>
@@ -2735,7 +2739,7 @@
                         <td><?=$ub_id;?></td>
                         <td><?=$ub_loan_id;?></td>
                         <td><?=$ub_utr_ref;?></td>
-                        <td><a href="https://creditlab.in/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
+                        <td><a href="<?=$base_url?>/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
                         <td><?=$ub_payment_type;?></td>
                     </tr>
                     <?php } ?>
