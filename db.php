@@ -390,7 +390,61 @@ function calculateLoanDays($applied_date, $salary_date = null) {
 //     }
 // }
 // exit;
-$app_url = "https://creditlab.in";
+
+/**
+ * Get base URL from database configuration
+ * Falls back to current server URL if not set in database
+ * @return string Base URL (e.g., https://creditlab.in or https://testing.creditlab.in)
+ */
+function getAppUrl() {
+    global $db;
+    static $cached_url = null;
+    
+    // Return cached value if available
+    if ($cached_url !== null) {
+        return $cached_url;
+    }
+    
+    // Try to get from database
+    try {
+        // Check if config table exists, if not create it
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
+        if (mysqli_num_rows($table_check) == 0) {
+            // Create config table
+            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `config_key` varchar(100) NOT NULL,
+                `config_value` text NOT NULL,
+                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `config_key` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            
+            // Insert default value
+            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
+        }
+        
+        // Get base URL from database
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_url = rtrim($row['config_value'], '/');
+            return $cached_url;
+        }
+    } catch (Exception $e) {
+        // If database query fails, fall back to auto-detection
+    }
+    
+    // Fallback: Auto-detect from current request
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
+    $cached_url = $protocol . $host;
+    
+    return $cached_url;
+}
+
+// Set app_url for backward compatibility
+$app_url = getAppUrl();
 ?>
 <?php
 // CSRF helpers

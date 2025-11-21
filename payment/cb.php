@@ -36,6 +36,47 @@ function towfetch($query_result) {
     return mysqli_fetch_array($query_result);
 }
 
+/**
+ * Get base URL from database configuration
+ */
+function getAppUrl() {
+    global $db;
+    static $cached_url = null;
+    
+    if ($cached_url !== null) {
+        return $cached_url;
+    }
+    
+    try {
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
+        if (mysqli_num_rows($table_check) == 0) {
+            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `config_key` varchar(100) NOT NULL,
+                `config_value` text NOT NULL,
+                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `config_key` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
+        }
+        
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_url = rtrim($row['config_value'], '/');
+            return $cached_url;
+        }
+    } catch (Exception $e) {
+    }
+    
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
+    $cached_url = $protocol . $host;
+    
+    return $cached_url;
+}
+
 // --- MAIN PROCESSING LOGIC ---
 $data = $_POST;
 
@@ -104,7 +145,8 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
             towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
             
             // Generate no-due certificate
-            file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+            $base_url = getAppUrl();
+            file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
             
             // Send SMS notification
             $template_id = '1107165683325768963';

@@ -58,6 +58,47 @@ function towrealarray($db, $query) {
     }
     return $re;
 }
+/**
+ * Get base URL from database configuration
+ */
+function getAppUrl() {
+    global $db;
+    static $cached_url = null;
+    
+    if ($cached_url !== null) {
+        return $cached_url;
+    }
+    
+    try {
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
+        if (mysqli_num_rows($table_check) == 0) {
+            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `config_key` varchar(100) NOT NULL,
+                `config_value` text NOT NULL,
+                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `config_key` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
+        }
+        
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_url = rtrim($row['config_value'], '/');
+            return $cached_url;
+        }
+    } catch (Exception $e) {
+    }
+    
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
+    $cached_url = $protocol . $host;
+    
+    return $cached_url;
+}
+
 function towrealarray2($db, $query) {
     $re = array();
     if (!is_array($query) || $query === null) {
@@ -159,7 +200,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         error_log("Customer not found for customer_authentication_id: $customer_authentication_id");
         $message = "Customer not found";
     }
-    $redirect_url = "https://creditlab.in/user/index.php";
+    $base_url = getAppUrl();
+    $redirect_url = $base_url . "/user/index.php";
 
     // Display success or failure message and then redirect after 2 seconds
     echo "

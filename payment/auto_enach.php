@@ -35,6 +35,49 @@ function towreal($db, $query) {
     $re = mysqli_real_escape_string($db, $re);
     return $re;
 }
+
+/**
+ * Get base URL from database configuration
+ * Falls back to current server URL if not set in database
+ */
+function getAppUrl() {
+    global $db;
+    static $cached_url = null;
+    
+    if ($cached_url !== null) {
+        return $cached_url;
+    }
+    
+    try {
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
+        if (mysqli_num_rows($table_check) == 0) {
+            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `config_key` varchar(100) NOT NULL,
+                `config_value` text NOT NULL,
+                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `config_key` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
+        }
+        
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_url = rtrim($row['config_value'], '/');
+            return $cached_url;
+        }
+    } catch (Exception $e) {
+    }
+    
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
+    $cached_url = $protocol . $host;
+    
+    return $cached_url;
+}
+
 function initiateEasebuzzDirectDebit(array $postParams): string
 {
     // --- Credentials ---
@@ -45,8 +88,9 @@ function initiateEasebuzzDirectDebit(array $postParams): string
 
     // --- Static & Required Data ---
     $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request
-    $surl = "https://creditlab.in/payment/cb_auto.php"; // Your success URL
-    $furl = "https://creditlab.in/payment/cb_auto.php"; // Your failure URL
+    $base_url = getAppUrl();
+    $surl = $base_url . "/payment/cb_auto.php"; // Your success URL
+    $furl = $base_url . "/payment/cb_auto.php"; // Your failure URL
 
     // --- Map and Sanitize Input Parameters ---
     // This ensures that only expected keys are used and provides default empty values.

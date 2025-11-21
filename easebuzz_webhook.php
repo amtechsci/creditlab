@@ -86,6 +86,47 @@ function towfetch($query_result) {
 
 // --- 3. STANDARDIZED BUSINESS LOGIC FUNCTIONS ---
 /**
+ * Get base URL from database configuration
+ */
+function getAppUrl() {
+    global $db;
+    static $cached_url = null;
+    
+    if ($cached_url !== null) {
+        return $cached_url;
+    }
+    
+    try {
+        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
+        if (mysqli_num_rows($table_check) == 0) {
+            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `config_key` varchar(100) NOT NULL,
+                `config_value` text NOT NULL,
+                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `config_key` (`config_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
+        }
+        
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_url = rtrim($row['config_value'], '/');
+            return $cached_url;
+        }
+    } catch (Exception $e) {
+    }
+    
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
+    $cached_url = $protocol . $host;
+    
+    return $cached_url;
+}
+
+/**
  * Calculate credit score points based on DPD (Days Past Due)
  * @param int $dpd Days past due
  * @return int Credit score points
@@ -220,7 +261,8 @@ if (!filter_var($data['furl'], FILTER_VALIDATE_URL)) {
 }
 
 // Make sure the required fields are available in the callback
-if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
+$base_url = getAppUrl();
+if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
     // Handle auto-debit execution results
     if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'success') {
         // Validate required fields for auto-debit processing
@@ -309,7 +351,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                     $successful_transactions[] = "CLL$loan_lid - ₹$amount";
                     
                     // Generate no-due certificate
-                    $cert_result = file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+                    $cert_result = file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
                     if ($cert_result) {
                         writeWebhookLog("No-due certificate generated for CLL$loan_lid", $log_file);
                     } else {
@@ -319,7 +361,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                     // Send SMS notification
                     $template_id = '1107165683325768963';
                     $mobile = $user_details['mobile'];
-                    $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                    $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                     include 'send_sms.php';
                     writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
                     
@@ -369,7 +411,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
                     
                     $template_id = '1407175016580415506'; // autodebit bounce template ID
                     $mobile = $user_details['mobile'];
-                    $payment_link = 'https://creditlab.in/user';
+                    $payment_link = $base_url . '/user';
                     $message = "Auto-debit of Creditlab.in loan of Rs. {$amount} got bounced due to insufficient funds. Close it now {$payment_link} to avoid further debits/bounce charges & legal action";
                     
                     if (file_exists('send_sms.php')) {
@@ -387,7 +429,7 @@ if ($data['furl'] == 'https://creditlab.in/payment/cb_auto.php') {
         }
     }
 }
-elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
+elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     // Validate required fields for easebuzz_callback processing
     $required_fields = ['txnid', 'authorization_status', 'net_amount_debit', 'bank_ref_num', 'easepayid', 'addedon', 'cash_back_percentage', 'status', 'error_Message', 'auto_debit_access_key'];
     $missing_fields = [];
@@ -449,7 +491,7 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
         }
     }
 
-} elseif (isset($data['furl']) && $data['furl'] == 'https://creditlab.in/payeasebuzz/response.php') {
+} elseif (isset($data['furl']) && $data['furl'] == $base_url . '/payeasebuzz/response.php') {
     // Validate required fields for payment response processing
     $required_fields = ['txnid', 'status', 'amount', 'bank_ref_num'];
     $missing_fields = [];
@@ -536,12 +578,13 @@ elseif ($data['furl'] == 'https://creditlab.in/easebuzz_callback.php') {
             towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', 'full')");
 
             // FIX: $user_details is now defined and can be used here
-            file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);
+            $base_url = getAppUrl();
+            file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);
             
             $template_id='1107165683325768963';
             // FIX: $user_details is now defined and can be used here
             $mobile = $user_details['mobile'];
-            $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+            $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
             include '../send_sms.php';
 
             // FIX: The query now includes the defined $payment_method variable
