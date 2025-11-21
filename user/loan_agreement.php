@@ -578,8 +578,8 @@ $bankf = towfetch($bank);
 <P class="p78 ft2">(ii) on the business or financial or other conditions or operations of the Lender;</P>
 <P class="p79 ft27"><SPAN class="ft2">(b)</SPAN><SPAN class="ft26">The Borrower does not pay any amount payable pursuant this Agreement in accordance with the terms of this Agreement on the due date of such amount;</SPAN></P>
 <P class="p80 ft27"><SPAN class="ft2">(c)</SPAN><SPAN class="ft26">Any representation or statement made, or deemed to be made by the Borrower in this Agreement or any other document delivered by or on behalf of the Borrower under or in connection with the Agreement being incorrect or misleading when made or deemed to be made;</SPAN></P>
-<P class="p81 ft27"><SPAN class="ft2">(d)</SPAN><SPAN class="ft26">The Borrower is in breach of, or has omitted to observe, or defaulted in any of his obligations, covenants, warranties, undertakings and liabilities under (i) this Agreement; or (ii) the terms and conditions agreed with creditlab.in </SPAN><SPAN class="ft47">(https://creditlab.in/terms.php</SPAN> ,</P>
-<P class="p82 ft18">https://creditlab.in/privacy.php).</P>
+<P class="p81 ft27"><SPAN class="ft2">(d)</SPAN><SPAN class="ft26">The Borrower is in breach of, or has omitted to observe, or defaulted in any of his obligations, covenants, warranties, undertakings and liabilities under (i) this Agreement; or (ii) the terms and conditions agreed with creditlab.in </SPAN><SPAN class="ft47">(<?=getAppUrl()?>/terms.php</SPAN> ,</P>
+<P class="p82 ft18"><?=getAppUrl()?>/privacy.php).</P>
 <P class="p83 ft17"><SPAN class="ft1">3.2</SPAN><SPAN class="ft30">The occurrence of such Events of Default shall be considered to be a default under this Agreement ("</SPAN><SPAN class="ft21">Default</SPAN>"). The Lender shall communicate the Default status to the Borrower either by itself or through any third parties engaged by the Lender for this purpose (“<SPAN class="ft21">Default Notice</SPAN>”).</P>
 <P class="p84 ft17"><SPAN class="ft1">3.3</SPAN><SPAN class="ft30">Consequence of an Event of Default Upon the occurrence of a Default, the Lender shall have the following rights:</SPAN></P>
 <div style="overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" width="150" style="float:right;" height="100"></div>
@@ -680,7 +680,7 @@ $bankf = towfetch($bank);
 <P class="p102 ft6">The Borrower hereby covenants and undertakes that, during the entire term of the Agreement, the Principal Amount disbursed by the Lender to the Borrower in accordance with the terms of this Agreement, shall be used by the Borrower for lawful purposes.</P>
 <P class="p74 ft1">8.2 creditlab.in Related Representations and Covenants:</P>
 <P class="p52 ft2">The Borrower represents, warrants and covenants that:</P>
-<P class="p130 ft27"><SPAN class="ft2">(a)</SPAN><SPAN class="ft28">He/she has read all the terms and conditions (https://creditlab.in/terms.php), privacy policy (https://creditlab.in/privacy.php), and other material available at the website of creditlab (https://creditlab.in/).</SPAN></P>
+<P class="p130 ft27"><SPAN class="ft2">(a)</SPAN><SPAN class="ft28">He/she has read all the terms and conditions (<?=getAppUrl()?>/terms.php), privacy policy (<?=getAppUrl()?>/privacy.php), and other material available at the website of creditlab (<?=getAppUrl()?>/).</SPAN></P>
 <P class="p131 ft3"><SPAN class="ft61">(b)</SPAN><SPAN class="ft62">The Borrower hereby unconditionally agrees to abide by the terms and conditions, privacy policy and other material contained on the website of the Lender and/or the creditlab.in and such terms and conditions, privacy policy and other material contained on the website of the Lender and/or the creditlab.in shall be incorporated herein by reference.</SPAN></P>
 <div style="overflow:hidden;"><img src="../user/file.php?f=<?=$loanf['signature']?>" width="150" style="float:right;" height="100"></div>
 </DIV>

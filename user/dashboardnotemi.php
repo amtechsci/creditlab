@@ -428,9 +428,9 @@ switch ($page_state) {
         <h4>Please read the complete Key fact statement & loan sanction letter</h4>
         <br>
         <?php if($user_approvenew == 1): ?>
-            <iframe src="https://creditlab.in/key.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
+            <iframe src="<?=getAppUrl()?>/key.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
         <?php else: ?>
-            <iframe src="https://creditlab.in/key2.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
+            <iframe src="<?=getAppUrl()?>/key2.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
         <?php endif; ?>
         <form action="agreement.php" style="padding: 20px;">
             <center>
@@ -450,9 +450,9 @@ switch ($page_state) {
             <h4>Please read the complete loan agreement carefully.</h4>
         </div><br>
         <?php if($user_approvenew == 1): ?>
-            <iframe src="https://creditlab.in/admin/loan_agreement.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
+            <iframe src="<?=getAppUrl()?>/admin/loan_agreement.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
         <?php else: ?>
-            <iframe src="https://creditlab.in/admin/loan_agreement2.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
+            <iframe src="<?=getAppUrl()?>/admin/loan_agreement2.php?id=<?=$loanfetch['id']?>" style="width:100%; height: 500px;"></iframe>
         <?php endif; ?>
         <form action="agreement.php" style="padding: 20px;">
             <center>

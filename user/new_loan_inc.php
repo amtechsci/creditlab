@@ -225,7 +225,7 @@ var downloadTimer = setInterval(function(){
 if($loanfetch['keyid'] == 0){ ?>
 <h4>Please read the complete Key fact statement & loan sanction letter</h4>
 <br>
-<iframe src="https://creditlab.in/key.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+<iframe src="<?=getAppUrl()?>/key.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
 <form action="agreement.php?from=newloan"><input type="hidden" name="from" value="new_loan">
 <center><input type="checkbox" name="id" value="<?=$loanfetch['id']?>" required> I understand & I agree to the loan sanction letter & Key fact statement.<br>
 I confirm that I have read, understood and agreed to the Creditlab Product Terms and Conditions and Related Policies. I grant my irrevocable consent to lender and/or any authorized party nominated by lender for making public, in case I commit wilful default. I hereby promise to pay Creditlab /lender or order on demand principal amount together with interest and delayed interest, if any, as prescribed in KFS from due date until repayment thereof.<br>
@@ -237,7 +237,7 @@ I confirm that I have read, understood and agreed to the Creditlab Product Terms
 <h4>Please read the complete loan agreement carefully which is attested with your <br>
 -ID proof &<br>
 -address proof.</h4></div><br>
-<iframe src="https://creditlab.in/admin/loan_agreement.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
+<iframe src="<?=getAppUrl()?>/admin/loan_agreement.php?id=<?=$loanfetch['id']?>" style="width:100%;"></iframe>
 <form action="agreement.php?from=newloan"><input type="hidden" name="from" value="new_loan">
 <center><input type="checkbox" name="id" value="<?=$loanfetch['id']?>" required> I understand & I accept that I have read the loan agreement with my knowledge.<br>
 <button type="submit" class="btn btn-primary">I agree</button></center>

@@ -83,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         "firstname" => $firstname,
         "phone" => $phone,
         "email" => $email,
-        "surl" => "https://creditlab.in/easebuzz_callback.php",
-        "furl" => "https://creditlab.in/easebuzz_callback.php",
+        "surl" => getAppUrl() . "/easebuzz_callback.php",
+        "furl" => getAppUrl() . "/easebuzz_callback.php",
         "udf1" => "", "udf2" => "", "udf3" => "", "udf4" => "", "udf5" => "$udf5.0", // Max debit amount
         "udf6" => "", "udf7" => "", "udf8" => "", "udf9" => "", "udf10" => "",
         "request_flow" => "SEAMLESS",

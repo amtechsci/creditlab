@@ -1,4 +1,9 @@
-<?php $app_url = "https://creditlab.in/"; ?><!DOCTYPE html>
+<?php 
+if (!function_exists('getAppUrl')) {
+    include_once 'db.php';
+}
+$app_url = getAppUrl() . "/"; 
+?><!DOCTYPE html>
 <html lang="zxx" class="theme-light">
   <head>
     <meta charset="UTF-8" />
@@ -138,7 +143,7 @@
         <div class="container-fluid">
           <div class="logo" style="width:100px;">
             <a href="index">
-               <img src="https://creditlab.in/logo.svg" class="black-logo" style="max-width:100px;" alt="Logo" />
+               <img src="<?=$app_url?>logo.svg" class="black-logo" style="max-width:100px;" alt="Logo" />
             </a>
           </div>
           <button

@@ -1,7 +1,7 @@
 <div class="left-sidebar-pro" style="background-color: #ddd !important;">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="../index.php"><img src="https://creditlab.in/assets/img/logo.jpeg" class="black-logo" style="width:160px;" alt="Logo"></a>
+                <a href="../index.php"><img src="<?=getAppUrl()?>/assets/img/logo.jpeg" class="black-logo" style="width:160px;" alt="Logo"></a>
                 <strong><a href="index.php"><img src="img/logo/logosnaa.png" alt="" /></a></strong>
             </div>
             <div class="left-custom-menu-adp-wrap comment-scrollbar" >

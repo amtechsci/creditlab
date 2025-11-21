@@ -297,7 +297,15 @@ function calculateLoanDays($applied_date, $salary_date = null) {
             $year = (int)date_format($due_date, 'Y');
             $month = (int)date_format($due_date, 'n');
             $last_day_of_month = (int)date_format($due_date, 't');
-            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            
+            // If salary day exceeds last day of month, use the gap as days directly
+            if ($salary_day > $last_day_of_month) {
+                // Use gap as days (e.g., Nov 19 to Nov 31 = 12 days, even though Nov 31 doesn't exist)
+                // This ensures we use the calculated gap directly
+                return $gap;
+            }
+            
+            $actual_salary_day = $salary_day;
             $due_date->setDate($year, $month, $actual_salary_day);
         } else {
             // Next month salary date

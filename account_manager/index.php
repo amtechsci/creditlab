@@ -53,7 +53,7 @@ if (isset($_GET['pageno'])) {
                                 <li class="active"><a href="#description">Daily follow ups (less than 65 days)</a></li>
                                 <li><a href="#INFORMATION">Default (greater than 65 days)</a></li>
                             </ul>
-                            <a href="https://creditlab.in/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
+                            <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade active in" id="description">
                                     <div class="row">

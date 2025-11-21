@@ -2,6 +2,10 @@
 ob_start(); // Start output buffering to prevent header issues
 include_once 'head.php';
 require_once '../lib/s3_upload_helper.php';
+
+// Get base URL from database
+$base_url = getAppUrl();
+
 if(isset($_GET['id'])){
     $id = towreal($_GET['id']);
     $aaid = towreal($_GET['id']);
@@ -76,7 +80,8 @@ if(isset($_POST['validation'])){
             towquery("UPDATE `user` SET `status`='disbursal' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='disbursal', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
         $template_id = '1107165683293779914';
-        $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to https://creditlab.in & accept the agreement and get the money in minutes.';
+        $base_url = getAppUrl();
+        $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to ' . $base_url . ' & accept the agreement and get the money in minutes.';
         $mobile = $userpro_mobile;
         include '../send_sms.php';
         }
@@ -1597,15 +1602,15 @@ document.querySelectorAll('.remove-row').forEach(button => {
                                         <td>
                                         <input type="submit" class="btn btn-primary" name="loandata" value="save">
                                         <?php if($userpro_approvenew == 0){?>
-                                        <br><a target="_blank" href="https://creditlab.in/zxc/?url=https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>&url2=https://creditlab.in/key2.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
+                                        <br><a target="_blank" href="<?=$base_url?>/zxc/?url=<?=$base_url?>/admin/loan_agreement2.php?id=<?=$users_id?>&url2=<?=$base_url?>/key2.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
                                         <?php if($users_status == "account manager" or $users_status == "cleared"){?>
-                                        <br><a href="/zxc/uploads/<?=hash('md5',"https://creditlab.in/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
-                                        <br><a href="/zxc/uploads/<?=hash('md5',"https://creditlab.in/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
+                                        <br><a href="/zxc/uploads/<?=hash('md5',$base_url."/admin/loan_agreement2.php?id=$users_id").".pdf"?>" class="btn btn-success">View</a>
+                                        <br><a href="/zxc/uploads/<?=hash('md5',$base_url."/key2.php?id=$users_id").".pdf"?>" class="btn btn-success">View kfs</a>
                                         <?php }else{?>
-                                        <br><a href="https://creditlab.in/admin/loan_agreement2.php?id=<?=$users_id?>" class="btn btn-success">View</a>
-                                        <br><a href="https://creditlab.in/key2.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
+                                        <br><a href="<?=$base_url?>/admin/loan_agreement2.php?id=<?=$users_id?>" class="btn btn-success">View</a>
+                                        <br><a href="<?=$base_url?>/key2.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
                                         <?php }}else{?>
-                                        <br><a target="_blank" href="https://creditlab.in/zxc/?url=https://creditlab.in/admin/sloan_agreement.php?id=<?=$users_id?>&url2=https://creditlab.in/key.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
+                                        <br><a target="_blank" href="<?=$base_url?>/zxc/?url=<?=$base_url?>/admin/sloan_agreement.php?id=<?=$users_id?>&url2=<?=$base_url?>/key.php?id=<?=$users_id?>&email=<?=$userpro_email?>&pid=<?=$userpro_id?>" class="btn btn-success">Send</a>
                                         <br><a href="sloan_agreement.php?id=<?=$users_id?>" class="btn btn-success">View</a>
                                         <br><a href="/key.php?id=<?=$users_id?>" class="btn btn-success">View kfs</a>
                                         <?php }?>
@@ -2094,7 +2099,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td><?=$ub_id;?></td>
                                         <td><?=$ub_loan_id;?></td>
                                         <td><?=$ub_utr_ref;?></td>
-                                        <td><a href="https://creditlab.in/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
+                                        <td><a href="<?=$base_url?>/user/uploads/<?=$ub_payment_screenshot;?>" target="_blank" class="btn btn-submit">View</a></td>
                                         <td><?=$ub_payment_type;?></td>
                                     </tr>
                                     <?php } ?>

@@ -79,7 +79,7 @@ function convertImageToBase64($imageUrl, $altText = 'Image') {
     // Check if it's a local file path and convert to S3 proxy URL
     if (strpos($imageUrl, 'user/uploads/') !== false) {
         $filename = basename($imageUrl);
-        $imageUrl = "https://creditlab.in/user/file.php?f=" . $filename;
+        $imageUrl = getAppUrl() . "/user/file.php?f=" . $filename;
     }
     
     // Get the image content
@@ -103,7 +103,7 @@ function convertImageToBase64($imageUrl, $altText = 'Image') {
     // Return the HTML img tag with the Base64 encoded image
     return '<img src="' . $base64Image . '" alt="' . htmlspecialchars($altText) . '" style="width:100%;">';
 }
-$imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
+$imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
 ?>
 
 <!DOCTYPE html>
@@ -379,7 +379,7 @@ $imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
         <p>Borrower hereto indemnifies and agrees to defend and hold the Lender harmless from and against all liabilities, obligations, losses, expenses, costs, claims and damages (including all legal costs), whether direct or indirect, asserted against, imposed upon or incurred by such party by reason of or resulting from any breach or inaccuracy of any representation, warranty or covenant of either party set forth in this Agreement and/or any breach of any provisions of this Agreement by the Borrower. The indemnification rights of each party under this clause are independent of, and in addition to, such rights and remedies that Lender may have at law or in equity or otherwise, including the right to seek specific performance, rescission, restitution or other injunctive relief, none of which rights or remedies shall be affected or diminished thereby.</p>
 
         <h2>12. GRIEVANCE REDRESSAL</h2>
-        <p>The Lender has established an adequate grievance redressal policy to address any complaints or grievances from the Borrower with relation to the credit facility, which the Borrower may refer to on the Lender's  <a href="https://creditlab.in/grievanceredressal.pdf" target="_blank">website.</a></p>
+        <p>The Lender has established an adequate grievance redressal policy to address any complaints or grievances from the Borrower with relation to the credit facility, which the Borrower may refer to on the Lender's  <a href="<?=getAppUrl()?>/grievanceredressal.pdf" target="_blank">website.</a></p>
     </div>
     
     <div class="page">
@@ -424,7 +424,7 @@ $imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
         <div class="signature-block">
             <p><strong>For and on behalf of Lender (Sonu Marketing Private Limited)</strong></p>
             <div class="digital-signature" style="width:200px;">
-                <?=convertImageToBase64('https://creditlab.in/zzesign.jpg')?>
+                <?=convertImageToBase64(getAppUrl() . '/zzesign.jpg')?>
             </div>
             <p>Reason: Loan Agreement</p>
             <br><br>
@@ -748,7 +748,7 @@ $imageUrl = 'https://creditlab.in/Sonuletterhead-pdf.jpg';
             <tr>
                 <td></td>
                 <td>(ii) Details of LSP acting as recovery agent and authorized to approach the borrower</td>
-                <td>Refer to : <a href="https://creditlab.in/lsp.php" target="_blank">List of LSPs</a></td>
+                <td>Refer to : <a href="<?=getAppUrl()?>/lsp.php" target="_blank">List of LSPs</a></td>
             </tr>
         </table>
         

@@ -20,7 +20,8 @@ if($status == "cleared"){
 }
 towquery("UPDATE `loan` SET `action`='$status',`status_log`='$status',`cleard_date`='".date('Y-m-d')."' WHERE `id`=".$a['id']."");
 towquery("UPDATE `user` SET `status`='$status' WHERE id=".$a['uid']."");
-file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$a['lid']."&email=$email");
+$base_url = getAppUrl();
+file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$a['lid']."&email=$email");
 // towquery("DELETE FROM `loan_apply` WHERE id=".$a['lid']."");
 header('location: profile.php?id='.$a['uid'].'');
 ?>

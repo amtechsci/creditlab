@@ -36,7 +36,7 @@
                                     </div>
                                     <div class="col-lg-5 col-md-5 col-sm-12 col-xs-12">
                                         <div class="header-right-info">
-                                            <a href="https://creditlab.in/" class="btn btn-success" target="_blank" style="margin-top:12px">view site</a>
+                                            <a href="<?=getAppUrl()?>/" class="btn btn-success" target="_blank" style="margin-top:12px">view site</a>
                                             <ul class="nav navbar-nav mai-top-nav header-right-menu">
                                                
                                                 <li class="nav-item">
