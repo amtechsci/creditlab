@@ -1,8 +1,8 @@
 <?php
 include '../db.php';
-function calculateEMI($loan_amount,$pro_fee_per = 13,$interest_percentage = 1) {
+function calculateEMI($loan_amount,$pro_fee_per = 13,$interest_percentage = 1, $days = 30) {
     $t = $loan_amount;
-    $day = $cday =  30;
+    $day = $cday = $days; // Use actual days from loan_apply
     $service_charge = 0;
         if($interest_percentage == 1){
                 if($cday >= 3 ){
@@ -40,7 +40,7 @@ function calculateEMI($loan_amount,$pro_fee_per = 13,$interest_percentage = 1) {
     
     $processing_fee_rate = $pro_fee_per / 100; // 13%
     $interest_rate_per_month = 0.03; // 3%
-    $days = 30;
+    // $days is already set from parameter
     $processing_fee = $loan_amount * $processing_fee_rate;
     $upfront_charges = $processing_fee; // Define upfront_charges
     $total_interest = $service_charge;
@@ -65,7 +65,9 @@ $b = $loanf;
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'] + ($b['processing_fees']*0.18);
-$result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage']);
+             // Get days from loan_apply (new loans have calculated days, old loans have days=30)
+             $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+$result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage'], $loan_days);
 }
 if (isset($loanf['uid']) && $loanf['uid'] != '') {
     $us_bankq = towquery("SELECT * FROM user_bank WHERE verify=1 AND uid='".$loanf['uid']."' ORDER BY id DESC");
@@ -518,7 +520,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td>4</td>
                 <td>Loan term (year/months/days)</td>
-                <td colspan="3">30 days</td>
+                <td colspan="3"><?=$loan_days?> days</td>
             </tr>
             <tr>
                 <td>5</td>
@@ -537,7 +539,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
                 <td>N/A</td>
                 <td>N/A</td>
                 <td>N/A</td>
-                <td><?= date('d/m/Y', strtotime('+29 days')); ?></td>
+                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
             </tr>
             <tr>
                 <td>6</td>
@@ -641,7 +643,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td style="width: 5%;">9</td>
                 <td style="width: 30%;">Annual Percentage Rate (APR) (%)</td>
-                <td style="width: 65%;"><?php echo round((((($b['processing_fees'] + $b['processing_fees']*0.18 + $result['total_interest']) / $result['loan_amount'])  / 30) * 36500),2) ?></td>
+                <td style="width: 65%;"><?php echo round((((($b['processing_fees'] + $b['processing_fees']*0.18 + $result['total_interest']) / $result['loan_amount'])  / $loan_days) * 36500),2) ?></td>
             </tr>
         </table>
     </div>
@@ -772,7 +774,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td>2</td>
                 <td>Loan Term (in years/ months/ days)</td>
-                <td>30 days</td>
+                <td><?=$loan_days?> days</td>
             </tr>
             <tr>
                 <td></td>
@@ -792,7 +794,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td></td>
                 <td>d) Commencement of repayment, post sanction</td>
-                <td><?= date('Y-m-d', strtotime('+29 days')); ?></td>
+                <td><?= date('Y-m-d', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
             </tr>
             <tr>
                 <td>3</td>
@@ -837,7 +839,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td>9</td>
                 <td>Annual Percentage rate- Effective annualized interest rate (in percentage)</td>
-                <td><?php echo round((((($b['processing_fees'] + $b['processing_fees']*0.18 + $result['total_interest']) / $result['loan_amount'])  / 30) * 36500),2) ?></td>
+                <td><?php echo round((((($b['processing_fees'] + $b['processing_fees']*0.18 + $result['total_interest']) / $result['loan_amount'])  / $loan_days) * 36500),2) ?></td>
             </tr>
             <tr>
                 <td>10</td>
@@ -847,7 +849,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td>11</td>
                 <td>Due date of payment of instalment and interest</td>
-                <td><?= date('d/m/Y', strtotime('+29 days')); ?></td>
+                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
             </tr>
         </table>
         
