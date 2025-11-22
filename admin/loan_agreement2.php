@@ -345,7 +345,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
         <h2>8. EVENT OF DEFAULT</h2>
         <h3>8.1 Each of the following events or circumstances would constitute events of default under the terms of the Facility Documents ("Event of Default")::</h3>
         <ol type="i">
-            <li>Default shall have occurred in the performance of any of the covenants, conditions or agreements on the part of the Borrower under this Agreement in respect of the Loan and such default shall have continued over a period of 30 days after notice thereof shall have been given by the Lender to the Borrower, or if the Borrower fails to inform the Lender of the happening of event of default.</li>
+            <li>Default shall have occurred in the performance of any of the covenants, conditions or agreements on the part of the Borrower under this Agreement in respect of the Loan and such default shall have continued over a period of <?=$loan_days?> days after notice thereof shall have been given by the Lender to the Borrower, or if the Borrower fails to inform the Lender of the happening of event of default.</li>
         </ol>
     </div>
     
