@@ -27,38 +27,67 @@ include '../db.php';
 <body>
     <div class="container">
         <h1>Process Loan Repayments</h1>
-        <p>Select the loan group to process for E-Nach auto-debit.</p>
+        <p>Select loans based on DPD (Days Past Due) relative to repayment date for E-Nach auto-debit.</p>
         <form action="" method="POST">
-            <label for="exhausted_period_option">Exhausted Period:</label>
-            <select name="exhausted_period_option" id="exhausted_period_option" required>
+            <label for="dpd_option">DPD (Days Past Due):</label>
+            <select name="dpd_option" id="dpd_option" required>
                 <option value="">-- Select an Option --</option>
-                <option value="31">Exactly 31 Days</option>
-                <option value="30">More than 30 Days</option>
+                <option value="1">DPD = 1 (Repayment Day + 1)</option>
+                <option value="custom">Custom DPD Range</option>
             </select>
-            <button type="submit">Process Loans</button>
+            <div id="custom_dpd_range" style="display: none; margin-top: 10px;">
+                <label for="min_dpd">Min DPD:</label>
+                <input type="number" name="min_dpd" id="min_dpd" min="0" style="width: 80px; padding: 5px;">
+                <label for="max_dpd" style="margin-left: 10px;">Max DPD:</label>
+                <input type="number" name="max_dpd" id="max_dpd" min="0" style="width: 80px; padding: 5px;">
+            </div>
+            <button type="submit" style="margin-top: 10px;">Process Loans</button>
         </form>
+        <script>
+            document.getElementById('dpd_option').addEventListener('change', function() {
+                var customRange = document.getElementById('custom_dpd_range');
+                if (this.value === 'custom') {
+                    customRange.style.display = 'block';
+                } else {
+                    customRange.style.display = 'none';
+                }
+            });
+        </script>
         <hr>
 
 <?php
 // --- Processing Logic ---
 // This entire block will only run after the form has been submitted.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_option'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
 
     echo '<div class="results">'; // Start a container for the output
     
     // Set a longer execution time limit, essential for processing many records.
     set_time_limit(0);
 
-    // --- Dynamic SQL Query ---
-    $option = $_POST['exhausted_period_option'];
-    $sql = ""; // Initialize SQL variable
-
-    if ($option == '31') {
-        echo "Selected option: <b>Exactly 31 Days</b>. Building query...\n";
-        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` = 31 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0";
-    } elseif ($option == '30') {
-        echo "Selected option: <b>More than 30 Days</b>. Building query...\n";
-        $sql = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0";
+    // Get current date for DPD calculation
+    $current_date = date('Y-m-d');
+    
+    // --- Select all eligible loans (we'll filter by DPD in PHP) ---
+    // Select loans with loan_apply.days to calculate DPD dynamically
+    $base_sql = "SELECT l.*, la.days, la.apply_date 
+                 FROM `loan` l 
+                 INNER JOIN `loan_apply` la ON l.lid = la.id 
+                 WHERE l.`status_log` = 'account manager' 
+                 AND l.`action` != 'cleared' 
+                 AND l.`enach_request` = 0 
+                 AND la.`status` = 'account manager'";
+    
+    $option = $_POST['dpd_option'];
+    
+    if ($option == '1') {
+        echo "Selected option: <b>DPD = 1 (Repayment Day + 1)</b>. Building query...\n";
+        // We'll filter by DPD = 1 in the loop
+    } elseif ($option == 'custom') {
+        $min_dpd = isset($_POST['min_dpd']) ? (int)$_POST['min_dpd'] : 0;
+        $max_dpd = isset($_POST['max_dpd']) ? (int)$_POST['max_dpd'] : 999;
+        echo "Selected option: <b>Custom DPD Range: $min_dpd to $max_dpd</b>. Building query...\n";
+        // We'll filter by DPD range in the loop
     } else {
         die("Invalid option selected."); // Exit if the form value is manipulated
     }
@@ -293,21 +322,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['exhausted_period_opti
 
     echo "Job Started: " . date('Y-m-d H:i:s') . "\n\n";
 
-    // 1. Select loans based on the dynamically built query.
-    $eligible_loans = towquery($sql);
+    // 1. Select all eligible loans (we'll filter by DPD dynamically)
+    $all_loans = towquery($base_sql);
+    $eligible_loans = [];
 
-    if (townum($eligible_loans) == 0) {
+    if (townum($all_loans) == 0) {
         echo "No eligible loans found for E-Nach processing.\n";
     } else {
-        echo "Found " . townum($eligible_loans) . " loans to process.\n";
+        echo "Found " . townum($all_loans) . " total eligible loans. Filtering by DPD...\n\n";
+        
+        // Filter loans by DPD-based logic
+        while ($loan = towfetch($all_loans)) {
+            // Calculate tday (days since processed_date)
+            $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
+            $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
+            
+            // Get days from loan_apply
+            // For one-time loans (days > 30): Use calculated days
+            // For EMI loans (days <= 30): Always use 30 days (original logic)
+            $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
+            $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+            
+            // Calculate DPD (Days Past Due) = tday - loan_days
+            $dpd = $tday - $loan_days;
+            
+            // Filter by selected DPD option
+            $is_eligible = false;
+            if ($option == '1') {
+                // DPD = 1 (Repayment Day + 1)
+                $is_eligible = ($dpd == 1);
+            } elseif ($option == 'custom') {
+                // Custom DPD range
+                $min_dpd = isset($_POST['min_dpd']) ? (int)$_POST['min_dpd'] : 0;
+                $max_dpd = isset($_POST['max_dpd']) ? (int)$_POST['max_dpd'] : 999;
+                $is_eligible = ($dpd >= $min_dpd && $dpd <= $max_dpd);
+            }
+            
+            if ($is_eligible) {
+                $loan['calculated_tday'] = $tday;
+                $loan['calculated_dpd'] = $dpd;
+                $loan['calculated_loan_days'] = $loan_days;
+                $eligible_loans[] = $loan;
+            }
+        }
+        
+        echo "Found " . count($eligible_loans) . " loans matching DPD criteria.\n\n";
 
         // 2. Loop through each eligible loan.
-        while ($loan = towfetch($eligible_loans)) {
+        foreach ($eligible_loans as $loan) {
             $lid = $loan['lid'];
             $uid = $loan['uid'];
 
             echo "---------------------------------\n";
             echo "Processing Loan ID (lid): $lid for User ID (uid): $uid\n";
+            echo "  Loan Days: {$loan['calculated_loan_days']}, tday: {$loan['calculated_tday']}, DPD: {$loan['calculated_dpd']}\n";
 
             // Check if loan is already cleared to prevent duplicate autopay deduction
             if ($loan['status_log'] == 'cleared' || $loan['action'] == 'cleared') {

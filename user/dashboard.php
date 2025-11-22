@@ -112,7 +112,9 @@
              $sa = strtotime($sal_day);
              $datediff = $sa - $di;
              $day_gap = round($datediff / (60 * 60 * 24)) + 1;
-             $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
+             // Get days from loan_apply (new loans have calculated days, old loans have days=30)
+             $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+             $femi_date = date('Y-m-d', strtotime( $sal_day . " +".$loan_days." day"));
              $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
              $fe = strtotime($femi_date);
              $se = strtotime($semi_date);

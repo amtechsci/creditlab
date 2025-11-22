@@ -489,7 +489,14 @@ switch ($page_state) {
                 <div class="loan-info-content">
                     <span class="loan-id">Loan ID: CLL<?=$userloanfetch['lid'];?></span>
                     <span class="loan-availed">Loan availed -- Rs<span> <?=(float)$userloanfetch['processed_amount']+(float)$userloanfetch['p_fee']+((float)$userloanfetch['p_fee']*0.18);?></span></span>
-                    <span class="exhausted-days">Exhausted days -- <span> <?=$day_gap;?></span><br>Due Date - (<?=date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +29 day'))?>)</span>
+                    <?php
+                    // Get days from loan_apply (new loans have calculated days, old loans have days=30)
+                    $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id={$userloanfetch['lid']}"));
+                    $loan_days = isset($loan_apply_data['days']) ? (int)$loan_apply_data['days'] : 30;
+                    // Due date is processed_date + loan_days (display as days-1 since processed_date is already -1 day adjusted)
+                    $due_date = date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +' . ($loan_days - 1) . ' day'));
+                    ?>
+                    <span class="exhausted-days">Exhausted days -- <span> <?=$day_gap;?></span><br>Due Date - (<?=$due_date?>)</span>
                 </div>
             </div>
             <div class="col-12 outstanding-amount-card">

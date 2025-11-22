@@ -1,4 +1,4 @@
-<?php $ca = towquery("SELECT SUM(`origination_fee` + `processing_fees` + `amount`) AS total,id FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='follow up' OR status='disbursal' OR status='account manager') GROUP BY id");
+<?php $ca = towquery("SELECT SUM(`origination_fee` + `processing_fees` + `amount`) AS total,id,days FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='follow up' OR status='disbursal' OR status='account manager') GROUP BY id,days");
 $tl = townum($ca);
 if($tl == 0){}else{
     $tamt = 0;
@@ -14,7 +14,9 @@ while($caf = towfetch($ca)){
              $dis_date = date_format($processed_date,"Y-m-d");
              $dis_date = date('Y-m-d', strtotime( $dis_date . " -1 day"));
              $sal_day = $dis_date;
-             $femi_date = date('Y-m-d', strtotime( $sal_day . " +30 day"));
+             // Get days from loan_apply (new loans have calculated days, old loans have days=30)
+             $loan_days = isset($caf['days']) ? (int)$caf['days'] : 30;
+             $femi_date = date('Y-m-d', strtotime( $sal_day . " +".$loan_days." day"));
              $today = date('Y-m-d');
                     $today = date_create($today);
              $today = date_format($today,"Y-m-d");
