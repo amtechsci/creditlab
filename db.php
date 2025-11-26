@@ -245,8 +245,8 @@ function getDateTimeDiff($date){
 /**
  * Calculate loan days based on salary date and applied date
  * Business rules:
- * - If gap between applied date and salary date < 8 days: due date = next month's salary date
- * - If gap >= 8 days: due date = next salary date (same month if possible, else next month)
+ * - If gap between applied date and salary date < 16 days: due date = next month's salary date
+ * - If gap >= 16 days: due date = next salary date (same month if possible, else next month)
  * - If salary date is missing: default to 30 days from applied date
  * 
  * @param string $applied_date Applied date in 'Y-m-d' format
@@ -280,8 +280,8 @@ function calculateLoanDays($applied_date, $salary_date = null) {
     // Calculate due date first (to get actual date), then calculate days
     $due_date = clone $applied;
     
-    if ($gap < 8) {
-        // Gap < 8 days: due date = next month's salary date
+    if ($gap < 16) {
+        // Gap < 16 days: due date = next month's salary date
         $due_date->modify('+1 month');
         $year = (int)date_format($due_date, 'Y');
         $month = (int)date_format($due_date, 'n');
@@ -292,7 +292,7 @@ function calculateLoanDays($applied_date, $salary_date = null) {
         
         $due_date->setDate($year, $month, $actual_salary_day);
     } else {
-        // Gap >= 8 days: due date = next salary date (same month if possible, else next month)
+        // Gap >= 16 days: due date = next salary date (same month if possible, else next month)
         if ($salary_day >= $applied_day) {
             // Same month salary date
             $year = (int)date_format($due_date, 'Y');
@@ -358,8 +358,8 @@ function calculateLoanDueDate($applied_date, $salary_date = null) {
     // Calculate due date
     $due_date = clone $applied;
     
-    if ($gap < 8) {
-        // Gap < 8 days: due date = next month's salary date
+    if ($gap < 16) {
+        // Gap < 16 days: due date = next month's salary date
         $due_date->modify('+1 month');
         $year = (int)date_format($due_date, 'Y');
         $month = (int)date_format($due_date, 'n');
@@ -370,7 +370,7 @@ function calculateLoanDueDate($applied_date, $salary_date = null) {
         
         $due_date->setDate($year, $month, $actual_salary_day);
     } else {
-        // Gap >= 8 days: due date = next salary date (same month if possible, else next month)
+        // Gap >= 16 days: due date = next salary date (same month if possible, else next month)
         if ($salary_day >= $applied_day) {
             // Same month salary date
             $year = (int)date_format($due_date, 'Y');
