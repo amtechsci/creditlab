@@ -773,7 +773,19 @@
             $t = $principal_amount;
         // Recalculate days based on salary date each time admin clicks save
         $apply_date = date('Y-m-d');
-        $salary_date_value = isset($userpro_salary_date) ? $userpro_salary_date : null;
+        // Get salary_date from user table - ensure it's properly retrieved
+        if (isset($userpro_salary_date) && is_numeric($userpro_salary_date) && (int)$userpro_salary_date >= 1 && (int)$userpro_salary_date <= 31) {
+            $salary_date_value = (int)$userpro_salary_date;
+        } else {
+            // If not set or invalid, try to get it directly from database
+            $salary_query = towquery("SELECT salary_date FROM user WHERE id=$userpro_id");
+            $salary_data = towfetch($salary_query);
+            if ($salary_data && isset($salary_data['salary_date']) && is_numeric($salary_data['salary_date']) && (int)$salary_data['salary_date'] >= 1 && (int)$salary_data['salary_date'] <= 31) {
+                $salary_date_value = (int)$salary_data['salary_date'];
+            } else {
+                $salary_date_value = null;
+            }
+        }
         $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
 
         if ((int)$userpro_approvenew === 0) {

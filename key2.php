@@ -67,21 +67,25 @@ $b = $loanf;
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'] + ($b['processing_fees']*0.18);
              $loan_is_emi = isset($lof['is_emi']) ? (int)$lof['is_emi'] : 0;
              
-             if ($loan_is_emi === 0) {
-                 // Get user's salary date
-                 $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$b['uid']."'");
-                 $user_salary_data = towfetch($user_salary_query);
-                 $salary_date_value = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : null;
-                 
-                 // Recalculate days from TODAY (when KFS is generated), not original apply_date
-                 $today_date = date('Y-m-d');
-                 $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
-                 
-                 $loan_days = $recalculated_days;
-             } else {
-                 // EMI loans always use stored days (default 30)
-                 $loan_days = 30;
-             }
+            if ($loan_is_emi === 0) {
+                // Get user's salary date
+                $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$b['uid']."'");
+                $user_salary_data = towfetch($user_salary_query);
+                $salary_date_value = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : null;
+                
+                // Recalculate from TODAY (when KFS is generated), not original apply_date
+                $today_date = date('Y-m-d');
+                $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
+                $loan_days = $recalculated_days;
+                
+                // Calculate actual due date directly (more accurate than adding days)
+                $due_date_display = calculateLoanDueDate($today_date, $salary_date_value);
+            } else {
+                // EMI loans always use stored days (default 30)
+                $loan_days = 30;
+                $today_date = date('Y-m-d');
+                $due_date_display = date('Y-m-d', strtotime($today_date . " +30 days"));
+            }
              
 $result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage'], $loan_days);
 }
@@ -357,7 +361,7 @@ table th {
                 <td>N/A</td>
                 <td>N/A</td>
                 <td>N/A</td>
-                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? date('d/m/Y', strtotime($due_date_display)) : date('d/m/Y'); ?></td>
             </tr>
             <tr>
                 <td>6</td>
@@ -644,7 +648,7 @@ table th {
             <tr>
                 <td></td>
                 <td>d) Commencement of repayment, post sanction</td>
-                <td><?= date('Y-m-d', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? $due_date_display : date('Y-m-d'); ?></td>
             </tr>
             <tr>
                 <td>3</td>
@@ -699,7 +703,7 @@ table th {
             <tr>
                 <td>11</td>
                 <td>Due date of payment of instalment and interest</td>
-                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? date('d/m/Y', strtotime($due_date_display)) : date('d/m/Y'); ?></td>
             </tr>
         </table>
 

@@ -260,7 +260,8 @@ function calculateLoanDays($applied_date, $salary_date = null) {
     $applied_month = (int)date_format($applied, 'n');
     
     // If salary date is missing or invalid, default to 30 days
-    if (empty($salary_date) || !is_numeric($salary_date) || $salary_date < 1 || $salary_date > 31) {
+    // Check for empty, null, 0, or non-numeric values
+    if (empty($salary_date) || $salary_date === null || $salary_date === '' || !is_numeric($salary_date) || (int)$salary_date < 1 || (int)$salary_date > 31) {
         return 30; // Default 30 days
     }
     
@@ -321,6 +322,84 @@ function calculateLoanDays($applied_date, $salary_date = null) {
     // Calculate number of days between applied_date and due_date
     $days_diff = date_diff($applied, $due_date);
     return (int)$days_diff->format('%a');
+}
+
+/**
+ * Calculate loan due date based on salary date and applied date
+ * Returns the actual due date (Y-m-d format) instead of just days
+ * 
+ * @param string $applied_date Applied date in 'Y-m-d' format
+ * @param int|null $salary_date Day of month (1-31) or null if not set
+ * @return string Due date in 'Y-m-d' format, or null if invalid
+ */
+function calculateLoanDueDate($applied_date, $salary_date = null) {
+    $applied = date_create($applied_date);
+    $applied_day = (int)date_format($applied, 'j'); // Day of month (1-31)
+    
+    // If salary date is missing or invalid, default to 30 days from applied date
+    if (empty($salary_date) || $salary_date === null || $salary_date === '' || !is_numeric($salary_date) || (int)$salary_date < 1 || (int)$salary_date > 31) {
+        $due_date = clone $applied;
+        $due_date->modify('+30 days');
+        return date_format($due_date, 'Y-m-d');
+    }
+    
+    $salary_day = (int)$salary_date;
+    
+    // Calculate gap between applied date and salary date in same month
+    $gap = $salary_day - $applied_day;
+    
+    // If salary date has already passed this month, calculate gap to next month's salary date
+    if ($gap < 0) {
+        // Get last day of current month
+        $last_day_of_month = (int)date_format($applied, 't');
+        $gap = ($last_day_of_month - $applied_day) + $salary_day;
+    }
+    
+    // Calculate due date
+    $due_date = clone $applied;
+    
+    if ($gap < 8) {
+        // Gap < 8 days: due date = next month's salary date
+        $due_date->modify('+1 month');
+        $year = (int)date_format($due_date, 'Y');
+        $month = (int)date_format($due_date, 'n');
+        
+        // Handle months with fewer days (e.g., Feb 31 -> Feb 28/29)
+        $last_day_of_month = (int)date_format($due_date, 't');
+        $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+        
+        $due_date->setDate($year, $month, $actual_salary_day);
+    } else {
+        // Gap >= 8 days: due date = next salary date (same month if possible, else next month)
+        if ($salary_day >= $applied_day) {
+            // Same month salary date
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            $last_day_of_month = (int)date_format($due_date, 't');
+            
+            // If salary day exceeds last day of month, use next month
+            if ($salary_day > $last_day_of_month) {
+                $due_date->modify('+1 month');
+                $year = (int)date_format($due_date, 'Y');
+                $month = (int)date_format($due_date, 'n');
+                $last_day_of_month = (int)date_format($due_date, 't');
+                $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            } else {
+                $actual_salary_day = $salary_day;
+            }
+            $due_date->setDate($year, $month, $actual_salary_day);
+        } else {
+            // Next month salary date
+            $due_date->modify('+1 month');
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            $last_day_of_month = (int)date_format($due_date, 't');
+            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            $due_date->setDate($year, $month, $actual_salary_day);
+        }
+    }
+    
+    return date_format($due_date, 'Y-m-d');
 }
 ?>
 <?php

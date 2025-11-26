@@ -73,14 +73,19 @@ $b = $loanf;
                  $user_salary_data = towfetch($user_salary_query);
                  $salary_date_value = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : null;
                  
-                 // Recalculate days from TODAY (when agreement is generated), not original apply_date
+                 // Recalculate from TODAY (when agreement is generated), not original apply_date
                  $today_date = date('Y-m-d');
                  $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
                  
                 $loan_days = $recalculated_days;
+                
+                // Calculate actual due date directly (more accurate than adding days)
+                $due_date_display = calculateLoanDueDate($today_date, $salary_date_value);
              } else {
                 // EMI loans always use stored days (30 days)
                 $loan_days = 30;
+                $today_date = date('Y-m-d');
+                $due_date_display = date('Y-m-d', strtotime($today_date . " +30 days"));
              }
              
 $result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage'], $loan_days);
@@ -555,7 +560,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
                 <td>N/A</td>
                 <td>N/A</td>
                 <td>N/A</td>
-                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? date('d/m/Y', strtotime($due_date_display)) : date('d/m/Y'); ?></td>
             </tr>
             <tr>
                 <td>6</td>
@@ -810,7 +815,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td></td>
                 <td>d) Commencement of repayment, post sanction</td>
-                <td><?= date('Y-m-d', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? $due_date_display : date('Y-m-d'); ?></td>
             </tr>
             <tr>
                 <td>3</td>
@@ -865,7 +870,7 @@ $imageUrl = getAppUrl() . '/Sonuletterhead-pdf.jpg';
             <tr>
                 <td>11</td>
                 <td>Due date of payment of instalment and interest</td>
-                <td><?= date('d/m/Y', strtotime('+' . ($loan_days - 1) . ' days')); ?></td>
+                <td><?= isset($due_date_display) ? date('d/m/Y', strtotime($due_date_display)) : date('d/m/Y'); ?></td>
             </tr>
         </table>
         

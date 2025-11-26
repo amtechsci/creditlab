@@ -21,7 +21,19 @@ if($amount < $user_loan_limit){
     $day =  30;
     
     $apply_date = date('Y-m-d');
-    $salary_date_value = isset($user_salary_date) ? $user_salary_date : null;
+    // Get salary_date from user table - ensure it's properly retrieved
+    if (isset($user_salary_date) && is_numeric($user_salary_date) && (int)$user_salary_date >= 1 && (int)$user_salary_date <= 31) {
+        $salary_date_value = (int)$user_salary_date;
+    } else {
+        // If not set or invalid, try to get it directly from database
+        $salary_query = towquery("SELECT salary_date FROM user WHERE id=$user_id");
+        $salary_data = towfetch($salary_query);
+        if ($salary_data && isset($salary_data['salary_date']) && is_numeric($salary_data['salary_date']) && (int)$salary_data['salary_date'] >= 1 && (int)$salary_data['salary_date'] <= 31) {
+            $salary_date_value = (int)$salary_data['salary_date'];
+        } else {
+            $salary_date_value = null;
+        }
+    }
     $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
     
     if ((int)$user_approvenew === 0) {
