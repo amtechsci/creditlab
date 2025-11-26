@@ -453,6 +453,52 @@ function getAppUrl() {
 
 // Set app_url for backward compatibility
 $app_url = getAppUrl();
+
+/**
+ * Get PDF URL from site_config table
+ * @param string $pdf_type - Type of PDF (grievanceredressal, policy, fair_practice_code, it_policy, fees_policy, refund_cancellation)
+ * @return string PDF URL
+ */
+function getPdfUrl($pdf_type) {
+    global $db;
+    static $cached_urls = [];
+    
+    // Return cached value if available
+    if (isset($cached_urls[$pdf_type])) {
+        return $cached_urls[$pdf_type];
+    }
+    
+    // Allowed PDF types and their default filenames
+    $allowed_pdfs = [
+        'grievanceredressal' => 'grievanceredressal.pdf',
+        'policy' => 'policy.pdf',
+        'fair_practice_code' => 'FairPracticeCodeSMPL.pdf',
+        'it_policy' => 'it_policy.pdf',
+        'fees_policy' => 'fees_policy.pdf',
+        'refund_cancellation' => 'RefundCancellationPolicy.pdf'
+    ];
+    
+    if (!isset($allowed_pdfs[$pdf_type])) {
+        return '';
+    }
+    
+    // Try to get from database
+    try {
+        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'pdf_{$pdf_type}' LIMIT 1");
+        if ($result && mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            $cached_urls[$pdf_type] = $row['config_value'];
+            return $cached_urls[$pdf_type];
+        }
+    } catch (Exception $e) {
+        // If database query fails, fall back to default
+    }
+    
+    // Fallback: Return default URL
+    $base_url = getAppUrl();
+    $cached_urls[$pdf_type] = $base_url . '/' . $allowed_pdfs[$pdf_type];
+    return $cached_urls[$pdf_type];
+}
 ?>
 <?php
 // CSRF helpers
