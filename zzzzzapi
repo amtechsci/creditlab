@@ -240,18 +240,17 @@ if(isset($reason)){
          $pf_qr = ($p_f);
         }
         
-        // Calculate days based on salary_date and applied_date ONLY for one-time loans (days > 30)
-        // EMI loans (days <= 30) always use 30 days
         if (!isset($days) || empty($days)) {
             $apply_date = date('Y-m-d');
             $salary_date_value = isset($user['salary_date']) ? $user['salary_date'] : null;
             $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
             
-            // Only use calculated days if it's > 30 (one-time loan), otherwise use 30 (EMI loan)
-            if ($calculated_days > 30) {
+            if (isset($user['approvenew']) && (int)$user['approvenew'] === 0) {
+                // Non-EMI (one-time) loans use calculated days
                 $days = $calculated_days;
             } else {
-                $days = 30; // EMI loans always use 30 days
+                // EMI loans always use 30 days
+                $days = 30;
             }
         }
         

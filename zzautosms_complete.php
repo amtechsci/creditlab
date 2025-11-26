@@ -324,10 +324,10 @@ try {
 
     $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
-    $loan_query_sql = "SELECT 
-                           user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
+$loan_query_sql = "SELECT 
+                          user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
-                           loan.lid, loan_apply.amount AS processed_amount, loan.processed_date, 
+                          loan.lid, loan.is_emi, loan_apply.amount AS processed_amount, loan.processed_date, 
                            loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
                            loan_apply.days, loan_apply.apply_date
                        FROM loan
@@ -364,10 +364,9 @@ try {
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             
             // Get days from loan_apply
-            // For one-time loans (days > 30): Use calculated days
-            // For EMI loans (days <= 30): Always use 30 days (original logic)
             $loan_days_raw = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
-            $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+            $is_emi = isset($loan_data['is_emi']) ? (int)$loan_data['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
+            $loan_days = ($is_emi === 1) ? 30 : $loan_days_raw;
             
             // Calculate DPD (Days Past Due) = tday - days
             // If tday < days: we're before due date (DPD is negative)

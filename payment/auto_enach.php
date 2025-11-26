@@ -189,10 +189,9 @@ function calculateTotalAmount($loan, $loan_apply) {
     $tday = (int)$aa->format("%a");
     
     // Get days from loan_apply
-    // For one-time loans (days > 30): Use calculated days
-    // For EMI loans (days <= 30): Always use 30 days (original logic)
     $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
+    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
     // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
     $days = $tday; // Use tday for service charge calculation
@@ -282,11 +281,9 @@ function calculateAmountBreakdown($loan, $loan_apply) {
     $aa = date_diff($stop_date, $sa);
     $tday = (int)$aa->format("%a");
     
-    // Get days from loan_apply
-    // For one-time loans (days > 30): Use calculated days
-    // For EMI loans (days <= 30): Always use 30 days (original logic)
     $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
+    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
     // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
     $days = $tday; // Use tday for service charge calculation
@@ -486,11 +483,9 @@ while ($loan = towfetch($loans1)) {
     $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
     $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
     
-    // Get days from loan_apply
-    // For one-time loans (days > 30): Use calculated days
-    // For EMI loans (days <= 30): Always use 30 days (original logic)
     $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
-    $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
+    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
     // Trigger E-Nach when tday = days + 1 (one day after due date)
     if ($tday == ($loan_days + 1)) {

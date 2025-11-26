@@ -7,9 +7,10 @@ $loan  = towquery("SELECT loan_apply.*,user.name,user.father_name,user.permanent
 $loanf = towfetch($loan);
 $a = towquery("SELECT * FROM user_login_details WHERE uid='".$loanf['uid']."' ORDER BY id DESC");
 $b = $loanf;
-if($b['days'] > 30){
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
+             $loan_is_emi = isset($lof['is_emi']) ? (int)$lof['is_emi'] : (($b['days'] <= 30) ? 1 : 0);
+if($loan_is_emi === 0){
              $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'];
              
              // For one-time loans: Recalculate days based on TODAY's date (when agreement is generated)
@@ -23,12 +24,7 @@ if($b['days'] > 30){
              $today_date = date('Y-m-d');
              $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
              
-             // Only use recalculated days if > 30 (one-time loan), otherwise use stored days
-             if ($recalculated_days > 30) {
-                 $loan_days = $recalculated_days;
-             } else {
-                 $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
-             }
+             $loan_days = $recalculated_days;
              
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");

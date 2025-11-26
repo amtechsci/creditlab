@@ -20,17 +20,16 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
     $day = $cday =  30;
     $service_charge = 0;
     
-    // Calculate days based on salary_date and applied_date ONLY for one-time loans (days > 30)
-    // EMI loans (days <= 30) always use 30 days
     $apply_date = date('Y-m-d');
     $salary_date_value = isset($user_salary_date) ? $user_salary_date : null;
     $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
     
-    // Only use calculated days if it's > 30 (one-time loan), otherwise use 30 (EMI loan)
-    if ($calculated_days > 30) {
+    if ((int)$user_approvenew === 0) {
+        // Non-EMI (one-time) loans always use the calculated days
         $day = $cday = $calculated_days;
     } else {
-        $day = $cday = 30; // EMI loans always use 30 days
+        // EMI loans always use 30 days
+        $day = $cday = 30;
     }
     
         $p_f_per = 14;

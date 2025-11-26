@@ -771,7 +771,18 @@
         $lidloan = towquery("SELECT * FROM `loan_apply` where id=$cllid");
             $lap = towfetch($lidloan);
             $t = $principal_amount;
-        $day = $cday =  30;
+        // Recalculate days based on salary date each time admin clicks save
+        $apply_date = date('Y-m-d');
+        $salary_date_value = isset($userpro_salary_date) ? $userpro_salary_date : null;
+        $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
+
+        if ((int)$userpro_approvenew === 0) {
+            // Non-EMI / one-time loan: always use the recalculated days (even if < 30)
+            $day = $cday = $calculated_days;
+        } else {
+            // EMI loan: always use 30 days
+            $day = $cday = 30;
+        }
         $service_charge = 0;
             if($interest_percentage == 1){
                     if($cday >= 3 ){
