@@ -2343,10 +2343,16 @@
                                             <td><?php if($usersd_is_emi==1){echo ceil((5*$azxs)/12);}else{echo $usersd_p_fee;}?></td>
                                             <td><?php if($usersd_is_emi==1){echo ceil(0.18*($azxs));}else{echo ceil(0.18*($usersd_p_fee));}?></td>
                                             <td><?php if($usersd_is_emi==1){echo ceil($azxs-((5*$azxs)/12));}else{echo $usersd_origination_fee;}?></td>
-                                            <?php if($usersd_is_emi==0){ ?>
+                                            <?php if($usersd_is_emi==0){ 
+                                                // Get loan tenure from total_time (stored when loan was processed)
+                                                $loan_tenure = isset($usersd_total_time) && (int)$usersd_total_time > 0 ? (int)$usersd_total_time : 30;
+                                                // Calculate due date: processed_date + (loan_tenure - 1) days
+                                                // (processed_date is already the disbursal date, so we add tenure-1 to get due date)
+                                                $due_date_calc = date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +' . ($loan_tenure - 1) . ' day'));
+                                            ?>
                                             <td><?=$usersd_service_charge;?></td>
                                                 <td><?=$usersd_penality_charge?></td>
-                                                <td><?=date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +29 day'))?></td>
+                                                <td><?=$due_date_calc?></td>
                                                 <td><?=ceil($papay+$usersd_service_charge+$usersd_penality_charge)?></td>
                                             <?php } if($usersd_is_emi==1){
                                             ?>
