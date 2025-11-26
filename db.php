@@ -3,7 +3,7 @@ session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 mysqli_set_charset($db,'utf8');
 
 // Disable SQL strict mode to prevent syntax errors
@@ -50,7 +50,7 @@ function ensure_db_connection() {
 		unset($db);
 		
 		// Create new connection
-		$db = @mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
+		$db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 		if (!$db) {
 			error_log("Database reconnection failed: " . mysqli_connect_error());
 			$checking = false;
