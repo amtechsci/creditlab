@@ -11,27 +11,38 @@ if($b['days'] > 30){
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
              $loan_amountc = (float)$b['amount'] + (float)$b['processing_fees'];
-             $salary_date = $userpro_salary_date;
+             
+             // For one-time loans: Recalculate days based on TODAY's date (when agreement is generated)
+             // This ensures repayment date is calculated from today, not original applied/processed date
+             // Get user's salary date
+             $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$b['uid']."'");
+             $user_salary_data = towfetch($user_salary_query);
+             $salary_date_value = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : null;
+             
+             // Recalculate days from TODAY (when agreement is generated), not original apply_date
+             $today_date = date('Y-m-d');
+             $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
+             
+             // Only use recalculated days if > 30 (one-time loan), otherwise use stored days
+             if ($recalculated_days > 30) {
+                 $loan_days = $recalculated_days;
+             } else {
+                 $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+             }
+             
              $processed_date = date_create($lof['processed_date']);
              $dis_datee = date_format($processed_date,"Y-m-d");
              $dis_date = date('Y-m-d', strtotime( $dis_datee . " -1 day"));
-             //  $dis_day = date_format($processed_date,"Y-m");
              
              $sal_day = $dis_date;
-            //  $sal_day = date_create($dis_day."-".$salary_date);
-            //  $sal_day = date_format($sal_day,"Y-m-d");
              $tax = $loan_amountc / 100 * 1.8;
              $di = strtotime($dis_date);
              $sa = strtotime($sal_day);
              $datediff = $sa - $di;
              $day_gap = round($datediff / (60 * 60 * 24));
-            //  if($day_gap > 15){
-                //  $femi_date = $sal_day;
-                //  $semi_date = date('Y-m-d', strtotime( $femi_date . " +1 month"));
-            //  }else{
-                 // Use days from loan_apply (new loans have calculated days, old loans have days=30)
-                 $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
-                 $femi_date = date('Y-m-d', strtotime( $dis_date . " +".$loan_days." day"));
+             
+             // Calculate femi_date from TODAY (when agreement is generated), not processed_date
+             $femi_date = date('Y-m-d', strtotime( $today_date . " +".$loan_days." day"));
                  $semi_date = date('Y-m-d', strtotime( $femi_date . " +35 day"));
             //  $di = strtotime($dis_date);
             //  $sa = strtotime($femi_date);

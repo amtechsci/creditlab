@@ -65,8 +65,30 @@ $b = $loanf;
              $lo = towquery("SELECT * FROM loan WHERE lid=".$b['id']);
              $lof = towfetch($lo);
              $loan_amountc = $b['amount'] + $b['processing_fees'] + $b['origination_fee'] + ($b['processing_fees']*0.18);
-             // Get days from loan_apply (new loans have calculated days, old loans have days=30)
-             $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+             
+             // For one-time loans (days > 30): Recalculate days based on TODAY's date (when agreement is generated)
+             // This ensures repayment date is calculated from today, not original applied date
+             if (isset($b['days']) && $b['days'] > 30) {
+                 // Get user's salary date
+                 $user_salary_query = towquery("SELECT salary_date FROM user WHERE id='".$b['uid']."'");
+                 $user_salary_data = towfetch($user_salary_query);
+                 $salary_date_value = isset($user_salary_data['salary_date']) ? $user_salary_data['salary_date'] : null;
+                 
+                 // Recalculate days from TODAY (when agreement is generated), not original apply_date
+                 $today_date = date('Y-m-d');
+                 $recalculated_days = calculateLoanDays($today_date, $salary_date_value);
+                 
+                 // Only use recalculated days if > 30 (one-time loan), otherwise use stored days
+                 if ($recalculated_days > 30) {
+                     $loan_days = $recalculated_days;
+                 } else {
+                     $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+                 }
+             } else {
+                 // EMI loans (days <= 30) always use stored days (30 days)
+                 $loan_days = isset($b['days']) ? (int)$b['days'] : 30;
+             }
+             
 $result = calculateEMI($loan_amountc,$b['pro_fee_per'],$b['interest_percentage'], $loan_days);
 }
 if (isset($loanf['uid']) && $loanf['uid'] != '') {
