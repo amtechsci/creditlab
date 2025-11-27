@@ -303,7 +303,8 @@ function calculateLoanDays($applied_date, $salary_date = null) {
             if ($salary_day > $last_day_of_month) {
                 // Use gap as days (e.g., Nov 19 to Nov 31 = 12 days, even though Nov 31 doesn't exist)
                 // This ensures we use the calculated gap directly
-                return $gap;
+                // Add 1 for inclusive counting (applied date = day 1)
+                return $gap + 1;
             }
             
             $actual_salary_day = $salary_day;
@@ -319,20 +320,29 @@ function calculateLoanDays($applied_date, $salary_date = null) {
         }
     }
     
-    // Ensure minimum tenure of 16 days
+    // Ensure minimum tenure of 16 days (inclusive)
+    // If the calculated tenure is less than 16 days inclusive, keep moving to next month's salary date
+    // 16 days inclusive = 15 days exclusive, so we check $days < 15
     $days_diff = date_diff($applied, $due_date);
     $days = (int)$days_diff->format('%a');
-    if ($days < 16) {
+    
+    while ($days < 15) {
+        // Move to next month's salary date
         $due_date->modify('+1 month');
         $year = (int)date_format($due_date, 'Y');
         $month = (int)date_format($due_date, 'n');
         $last_day_of_month = (int)date_format($due_date, 't');
         $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
         $due_date->setDate($year, $month, $actual_salary_day);
-        $days = (int)date_diff($applied, $due_date)->format('%a');
+        
+        // Recalculate days
+        $days_diff = date_diff($applied, $due_date);
+        $days = (int)$days_diff->format('%a');
     }
     
-    return $days;
+    // Return inclusive days (applied date = day 1, due date = day N)
+    // Example: Nov 27 to Jan 4 = 38 exclusive days, but we count as 39 days (Nov 27 is day 1, Jan 4 is day 39)
+    return $days + 1;
 }
 
 /**
@@ -410,14 +420,22 @@ function calculateLoanDueDate($applied_date, $salary_date = null) {
         }
     }
     
+    // Ensure minimum tenure of 16 days (inclusive)
+    // If the calculated tenure is less than 16 days inclusive, keep moving to next month's salary date
+    // 16 days inclusive = 15 days exclusive, so we check $days_diff < 15
     $days_diff = (int)date_diff($applied, $due_date)->format('%a');
-    if ($days_diff < 16) {
+    
+    while ($days_diff < 15) {
+        // Move to next month's salary date
         $due_date->modify('+1 month');
         $year = (int)date_format($due_date, 'Y');
         $month = (int)date_format($due_date, 'n');
         $last_day_of_month = (int)date_format($due_date, 't');
         $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
         $due_date->setDate($year, $month, $actual_salary_day);
+        
+        // Recalculate days
+        $days_diff = (int)date_diff($applied, $due_date)->format('%a');
     }
     
     return date_format($due_date, 'Y-m-d');

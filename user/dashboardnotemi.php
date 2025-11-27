@@ -493,7 +493,9 @@ switch ($page_state) {
                     // Get days from loan_apply (new loans have calculated days, old loans have days=30)
                     $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id={$userloanfetch['lid']}"));
                     $loan_days = isset($loan_apply_data['days']) ? (int)$loan_apply_data['days'] : 30;
-                    // Due date is processed_date + loan_days (display as days-1 since processed_date is already -1 day adjusted)
+                    // Due date is processed_date + (loan_days - 1) days
+                    // loan_days is inclusive (applied date = day 1), so we subtract 1 to get the actual due date
+                    // Example: 39 days inclusive means applied date + 38 days = due date
                     $due_date = date('Y-m-d', strtotime($userloanfetch['processed_date'] . ' +' . ($loan_days - 1) . ' day'));
                     ?>
                     <span class="exhausted-days">Exhausted days -- <span> <?=$day_gap;?></span><br>Due Date - (<?=$due_date?>)</span>

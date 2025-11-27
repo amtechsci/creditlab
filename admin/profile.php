@@ -2347,7 +2347,8 @@
                                                 // Get loan tenure from total_time (stored when loan was processed)
                                                 $loan_tenure = isset($usersd_total_time) && (int)$usersd_total_time > 0 ? (int)$usersd_total_time : 30;
                                                 // Calculate due date: processed_date + (loan_tenure - 1) days
-                                                // (processed_date is already the disbursal date, so we add tenure-1 to get due date)
+                                                // loan_tenure is inclusive (applied date = day 1), so we subtract 1 to get the actual due date
+                                                // Example: 39 days inclusive means applied date + 38 days = due date
                                                 $due_date_calc = date('Y-m-d', strtotime(($usersd_processed_date ?: date('Y-m-d')) . ' +' . ($loan_tenure - 1) . ' day'));
                                             ?>
                                             <td><?=$usersd_service_charge;?></td>
