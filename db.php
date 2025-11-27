@@ -319,9 +319,20 @@ function calculateLoanDays($applied_date, $salary_date = null) {
         }
     }
     
-    // Calculate number of days between applied_date and due_date
+    // Ensure minimum tenure of 16 days
     $days_diff = date_diff($applied, $due_date);
-    return (int)$days_diff->format('%a');
+    $days = (int)$days_diff->format('%a');
+    if ($days < 16) {
+        $due_date->modify('+1 month');
+        $year = (int)date_format($due_date, 'Y');
+        $month = (int)date_format($due_date, 'n');
+        $last_day_of_month = (int)date_format($due_date, 't');
+        $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+        $due_date->setDate($year, $month, $actual_salary_day);
+        $days = (int)date_diff($applied, $due_date)->format('%a');
+    }
+    
+    return $days;
 }
 
 /**
@@ -397,6 +408,16 @@ function calculateLoanDueDate($applied_date, $salary_date = null) {
             $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
             $due_date->setDate($year, $month, $actual_salary_day);
         }
+    }
+    
+    $days_diff = (int)date_diff($applied, $due_date)->format('%a');
+    if ($days_diff < 16) {
+        $due_date->modify('+1 month');
+        $year = (int)date_format($due_date, 'Y');
+        $month = (int)date_format($due_date, 'n');
+        $last_day_of_month = (int)date_format($due_date, 't');
+        $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+        $due_date->setDate($year, $month, $actual_salary_day);
     }
     
     return date_format($due_date, 'Y-m-d');
