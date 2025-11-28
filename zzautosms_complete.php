@@ -433,7 +433,7 @@ try {
             // 4. DPD 11-15 (Windows: 08:00-08:04 AM, 11:45-11:49 AM, 18:35-18:39 PM) - Use actual DPD: 11-15 days past due date
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "11:45" && $current_time < "11:50") || ($current_time >= "18:35" && $current_time < "18:40")) {
                 logMessage("LID $user_lid: Checking DPD 11-15. Time condition met. DPD: $dpd");
-                if ($dpd >= 11 && $dpd <= 15) {
+                if ($dpd >= 10 && $dpd <= 15) {
                     logMessage("LID $user_lid: Day condition met (DPD: $dpd).");
                     if (!hasBeenSentToday($user_lid, 'dpd_11_15')) {
                         logMessage("LID $user_lid: 'dpd_11_15' not sent today. Proceeding to send.");
@@ -501,11 +501,11 @@ try {
                 } else { logMessage("LID $user_lid: Day condition for Pre-close Reminder not met (Day: $tday)."); }
             }
 
-            // 8. Salary Day Reminder (Active Loans) (Windows: 14:00-14:04, 18:30-18:34, 20:00-20:04)
+            // 8. Salary Day Reminder (Active Loans) (Windows: 14:00-14:04, 18:30-18:34, 20:00-20:04) - Use days_to_due: before due date
             if (($current_time >= "14:00" && $current_time < "14:05") || ($current_time >= "18:30" && $current_time < "18:35") || ($current_time >= "20:00" && $current_time < "20:05")) {
-                logMessage("LID $user_lid: Checking Salary Day (Active). Time condition met.");
-                if ($tday < 30 && $salary_date == $current_day_of_month) {
-                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
+                logMessage("LID $user_lid: Checking Salary Day (Active). Time condition met. Days to Due: $days_to_due");
+                if ($days_to_due > 0 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (Days to Due: $days_to_due, Salary Day: $salary_date).");
                      if (!hasBeenSentToday($user_lid, 'salary_day_active')) {
                         logMessage("LID $user_lid: 'salary_day_active' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_day'];
@@ -514,14 +514,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_day_active'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_day_active' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Active) not met (Day: $tday, Salary Day: $salary_date)."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Active) not met (Days to Due: $days_to_due, Salary Day: $salary_date)."); }
             }
 
-            // 9. 45th Day Reminder (Window: 15:00-15:04 PM)
+            // 9. 15-30 Days Past Due Reminder (Window: 15:00-15:04 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
             if ($current_time >= "15:00" && $current_time < "15:05") {
-                logMessage("LID $user_lid: Checking 45th Day Reminder. Time condition met.");
-                if ($tday >= 45 && $tday <= 60) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking 15-30 Days Past Due Reminder. Time condition met. DPD: $dpd");
+                if ($dpd >= 15 && $dpd <= 30) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, '45th_day_reminder')) {
                         logMessage("LID $user_lid: '45th_day_reminder' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['45th_day_reminder'];
@@ -530,14 +530,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, '45th_day_reminder'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent '45th_day_reminder' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for 45th Day Reminder not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for 15-30 Days Past Due Reminder not met (DPD: $dpd)."); }
             }
 
-            // 10. Field Recovery (Window: 14:35-14:39 PM)
+            // 10. Field Recovery (Window: 14:35-14:39 PM) - Use DPD: 35-40 days past due date (Repayment Day + 35 to + 40)
             if ($current_time >= "14:35" && $current_time < "14:40") {
-                logMessage("LID $user_lid: Checking Field Recovery. Time condition met.");
-                if ($tday >= 65 && $tday <= 70) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Field Recovery. Time condition met. DPD: $dpd");
+                if ($dpd >= 35 && $dpd <= 40) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'field_recovery')) {
                         logMessage("LID $user_lid: 'field_recovery' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['field_recovery'];
@@ -546,14 +546,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'field_recovery'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'field_recovery' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Field Recovery not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Field Recovery not met (DPD: $dpd)."); }
             }
             
-            // 11. Legal Notice (Window: 19:35-19:39 PM)
+            // 11. Legal Notice (Window: 19:35-19:39 PM) - Use DPD: 16-30 days past due date (Repayment Day + 16 to + 30)
             if ($current_time >= "19:35" && $current_time < "19:40") {
-                logMessage("LID $user_lid: Checking Legal Notice. Time condition met.");
-                if ($tday >= 46 && $tday <= 60) {
-                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Legal Notice. Time condition met. DPD: $dpd");
+                if ($dpd >= 16 && $dpd <= 30) {
+                     logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'legal_notice')) {
                         logMessage("LID $user_lid: 'legal_notice' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_notice'];
@@ -562,14 +562,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_notice'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_notice' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Legal Notice not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Notice not met (DPD: $dpd)."); }
             }
 
-            // 12. Final Alert (Window: 14:35-14:39 PM)
+            // 12. Final Alert (Window: 14:35-14:39 PM) - Use DPD: 16-30 days past due date (Repayment Day + 16 to + 30)
             if ($current_time >= "14:35" && $current_time < "14:40") {
-                logMessage("LID $user_lid: Checking Final Alert. Time condition met.");
-                if ($tday >= 46 && $tday <= 60) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Final Alert. Time condition met. DPD: $dpd");
+                if ($dpd >= 16 && $dpd <= 30) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'final_alert')) {
                          logMessage("LID $user_lid: 'final_alert' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['final_alert'];
@@ -578,14 +578,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'final_alert'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'final_alert' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Final Alert not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Final Alert not met (DPD: $dpd)."); }
             }
 
-            // 13. CIBIL Dip (Window: 15:00-15:04 PM)
+            // 13. CIBIL Dip (Window: 15:00-15:04 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
             if ($current_time >= "15:00" && $current_time < "15:05") {
-                logMessage("LID $user_lid: Checking CIBIL Dip. Time condition met.");
-                if ($tday >= 45 && $tday <= 60) {
-                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking CIBIL Dip. Time condition met. DPD: $dpd");
+                if ($dpd >= 15 && $dpd <= 30) {
+                     logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'cibil_dip')) {
                         logMessage("LID $user_lid: 'cibil_dip' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['cibil_dip'];
@@ -594,14 +594,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_dip'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'cibil_dip' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for CIBIL Dip not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for CIBIL Dip not met (DPD: $dpd)."); }
             }
 
-            // 14. Legal Suit (Window: 16:00-16:04 PM)
+            // 14. Legal Suit (Window: 16:00-16:04 PM) - Use DPD: 31-44 days past due date (Repayment Day + 31 to + 44)
             if ($current_time >= "16:00" && $current_time < "16:05") {
-                logMessage("LID $user_lid: Checking Legal Suit. Time condition met.");
-                if ($tday >= 61 && $tday <= 74) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Legal Suit. Time condition met. DPD: $dpd");
+                if ($dpd >= 31 && $dpd <= 44) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'legal_suit')) {
                         logMessage("LID $user_lid: 'legal_suit' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_suit'];
@@ -610,14 +610,16 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_suit'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_suit' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Legal Suit not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Suit not met (DPD: $dpd)."); }
             }
             
-            // 15. Written Off (Window: 19:30-19:34 PM)
+            // 15. Written Off (Window: 19:30-19:34 PM) - Use DPD: 46, 59, 69, 89 days past due date (Repayment Day + 46, + 59, + 69, + 89)
             if ($current_time >= "19:30" && $current_time < "19:35") {
-                logMessage("LID $user_lid: Checking Written Off. Time condition met.");
-                if (in_array($tday, [76, 89, 99, 119])) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Written Off. Time condition met. DPD: $dpd");
+                // Convert fixed days to DPD: 76, 89, 99, 119 → DPD 46, 59, 69, 89 (for 30-day loans)
+                // But make it dynamic: Written Off at DPD 46, 59, 69, 89
+                if (in_array($dpd, [46, 59, 69, 89])) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'written_off')) {
                         logMessage("LID $user_lid: 'written_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['written_off'];
@@ -626,14 +628,16 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'written_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'written_off' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Written Off not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Written Off not met (DPD: $dpd)."); }
             }
 
-            // 16. Waive Off (Window: 14:10-14:14 PM)
+            // 16. Waive Off (Window: 14:10-14:14 PM) - Use DPD: 46, 50, 59 days past due date (Repayment Day + 46, + 50, + 59)
             if ($current_time >= "14:10" && $current_time < "14:15") {
-                 logMessage("LID $user_lid: Checking Waive Off. Time condition met.");
-                if (in_array($tday, [76, 80, 89])) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                 logMessage("LID $user_lid: Checking Waive Off. Time condition met. DPD: $dpd");
+                // Convert fixed days to DPD: 76, 80, 89 → DPD 46, 50, 59 (for 30-day loans)
+                // But make it dynamic: Waive Off at DPD 46, 50, 59
+                if (in_array($dpd, [46, 50, 59])) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'waive_off')) {
                         logMessage("LID $user_lid: 'waive_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['waive_off'];
@@ -642,14 +646,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'waive_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'waive_off' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Waive Off not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Waive Off not met (DPD: $dpd)."); }
             }
 
-            // 17. Attention (Window: 14:45-14:49 PM)
+            // 17. Attention (Window: 14:45-14:49 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
             if ($current_time >= "14:45" && $current_time < "14:50") {
-                logMessage("LID $user_lid: Checking Attention. Time condition met.");
-                if ($tday >= 45 && $tday <= 60) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Attention. Time condition met. DPD: $dpd");
+                if ($dpd >= 15 && $dpd <= 30) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'attention')) {
                         logMessage("LID $user_lid: 'attention' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['attention'];
@@ -658,14 +662,14 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'attention'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'attention' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Attention not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Attention not met (DPD: $dpd)."); }
             }
 
-            // 18. Were to Pay (Window: 13:30-13:34 PM)
+            // 18. Were to Pay (Window: 13:30-13:34 PM) - Use DPD: 6-15 days past due date (Repayment Day + 6 to + 15)
             if ($current_time >= "13:30" && $current_time < "13:35") {
-                logMessage("LID $user_lid: Checking Were to Pay. Time condition met.");
-                if ($tday >= 36 && $tday <= 45) {
-                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                logMessage("LID $user_lid: Checking Were to Pay. Time condition met. DPD: $dpd");
+                if ($dpd >= 6 && $dpd <= 15) {
+                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
                     if (!hasBeenSentToday($user_lid, 'were_to_pay')) {
                         logMessage("LID $user_lid: 'were_to_pay' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['were_to_pay'];
@@ -674,7 +678,7 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'were_to_pay'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'were_to_pay' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Were to Pay not met (Day: $tday)."); }
+                } else { logMessage("LID $user_lid: Day condition for Were to Pay not met (DPD: $dpd)."); }
             }
 
             // 19. Due Date Missed (Window: 13:45-13:49 PM) - Use DPD: 1-5 days past due date
@@ -709,11 +713,11 @@ try {
                 } else { logMessage("LID $user_lid: Day condition for E-NACH Will Not Happen not met (Day: $tday)."); }
             }
 
-            // 21. Salary Date Reminder for OVERDUE loans (Window: 16:00-16:04 PM)
+            // 21. Salary Date Reminder for OVERDUE loans (Window: 16:00-16:04 PM) - Use DPD: on or after due date (DPD >= 0)
             if ($current_time >= "16:00" && $current_time < "16:05") {
-                logMessage("LID $user_lid: Checking Salary Day (Overdue). Time condition met.");
-                if ($tday >= 30 && $salary_date == $current_day_of_month) {
-                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
+                logMessage("LID $user_lid: Checking Salary Day (Overdue). Time condition met. DPD: $dpd");
+                if ($dpd >= 0 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (DPD: $dpd, Salary Day: $salary_date).");
                     if (!hasBeenSentToday($user_lid, 'salary_date_overdue')) {
                         logMessage("LID $user_lid: 'salary_date_overdue' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_date_reminder'];
@@ -722,7 +726,7 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_date_overdue'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_date_overdue' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Overdue) not met (Day: $tday, Salary Day: $salary_date)."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Overdue) not met (DPD: $dpd, Salary Day: $salary_date)."); }
             }
 
             // 22. Limit Increase (Windows: 08:00-08:04, 12:50-12:54, 16:00-16:04)
@@ -767,3 +771,4 @@ try {
     logMessage("Script execution finished");
 }
 ?>
+
