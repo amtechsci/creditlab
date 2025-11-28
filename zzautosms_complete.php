@@ -745,9 +745,10 @@ $loan_query_sql = "SELECT
             // 22. Limit Increase (Windows: 08:00-08:04, 12:50-12:54, 16:00-16:04)
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
-                // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
-                if ($limit_inc_status === 0 && $loan_limit > $processed_amount) {
-                    logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
+                // Send SMS if user's loan limit is higher than their processed amount (regardless of limit_inc status)
+                // The hasBeenSentToday check prevents duplicates
+                if ($loan_limit > $processed_amount) {
+                    logMessage("LID $user_lid: Loan limit condition met (limit: $loan_limit > processed: $processed_amount).");
                     // Determine which time window we're in for unique tracking
                     $time_slot = '';
                     if ($current_time >= "08:00" && $current_time < "08:05") {
@@ -767,7 +768,7 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, $unique_key); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' for time slot $time_slot today. Skipping."); }
-                } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $processed_amount)."); }
+                } else { logMessage("LID $user_lid: Loan limit condition not met (limit: $loan_limit <= processed: $processed_amount)."); }
             }
 
         }
