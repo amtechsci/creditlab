@@ -327,18 +327,17 @@ try {
     
 $loan_query_sql = "SELECT 
                           user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
-                           user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
+                          user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
                           loan.lid, loan.is_emi, loan_apply.amount AS processed_amount, loan.processed_date, 
-                           loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
-                           loan_apply.days, loan_apply.apply_date
-                       FROM loan
-                       INNER JOIN user ON loan.uid = user.id
-                       INNER JOIN loan_apply ON loan.lid = loan_apply.id
-                       WHERE 
-                           (loan.status_log = 'account manager' OR loan.status_log = 'recovery officer') AND 
-                           (loan_apply.status = 'account manager' OR loan_apply.status = 'recovery officer') AND 
-                           (loan.action != 'cleared' OR loan.action IS NULL) AND
-                           loan.processed_date > '{$date_limit}'";
+                          loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
+                          loan_apply.days, loan_apply.apply_date, loan.status_log, loan.action, loan_apply.status AS loan_apply_status
+                      FROM loan
+                      INNER JOIN user ON loan.uid = user.id
+                      INNER JOIN loan_apply ON loan.lid = loan_apply.id
+                      WHERE 
+                          (loan.status_log IS NULL OR loan.status_log != 'cleared') AND
+                          (loan.action IS NULL OR loan.action != 'cleared') AND
+                          loan.processed_date > '{$date_limit}'";
                            
     $loan_query = towquery($loan_query_sql);
     
