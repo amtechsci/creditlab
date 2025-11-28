@@ -322,22 +322,20 @@ try {
         towquery("UPDATE `loan` SET `cleard_date`=NULL WHERE `cleard_date` = '0000-00-00'");
     }
 
-    // Extended date limit to include more loans (180 days instead of 120)
-    $date_limit = date('Y-m-d H:i:s', strtotime("-180 days"));
+    $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
-$loan_query_sql = "SELECT 
-                          user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
-                          user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
-                          loan.lid, loan.is_emi, loan_apply.amount AS processed_amount, loan.processed_date, 
-                          loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
-                          loan_apply.days, loan_apply.apply_date, loan.status_log, loan.action, loan_apply.status AS loan_apply_status
-                      FROM loan
-                      INNER JOIN user ON loan.uid = user.id
-                      INNER JOIN loan_apply ON loan.lid = loan_apply.id
-                      WHERE 
-                          (loan.status_log IS NULL OR loan.status_log != 'cleared') AND
-                          (loan.action IS NULL OR loan.action != 'cleared') AND
-                          loan.processed_date > '{$date_limit}'";
+    $loan_query_sql = "SELECT 
+                           user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
+                           user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
+                           loan.lid, loan_apply.amount AS processed_amount, loan.processed_date, 
+                           loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
+                           loan_apply.days, loan_apply.apply_date
+                       FROM loan
+                       INNER JOIN user ON loan.uid = user.id
+                       INNER JOIN loan_apply ON loan.lid = loan_apply.id
+                       WHERE 
+                           loan_apply.status = 'account manager' AND 
+                           loan_apply.status_date > '{$date_limit}'";
                            
     $loan_query = towquery($loan_query_sql);
     
@@ -366,23 +364,19 @@ $loan_query_sql = "SELECT
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             
             // Get days from loan_apply
+            // For one-time loans (days > 30): Use calculated days
+            // For EMI loans (days <= 30): Always use 30 days (original logic)
             $loan_days_raw = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
-            $is_emi = isset($loan_data['is_emi']) ? (int)$loan_data['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
-            $loan_days = ($is_emi === 1) ? 30 : $loan_days_raw;
+            $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
             
-            // loan_days is now INCLUSIVE (applied date = day 1, due date = day N)
-            // For DPD calculation, we need exclusive days (actual days between dates)
-            // Example: 39 days inclusive = 38 days exclusive (Nov 27 to Jan 4)
-            $loan_days_exclusive = $loan_days - 1;
-            
-            // Calculate DPD (Days Past Due) = tday - loan_days_exclusive
-            // If tday < loan_days_exclusive: we're before due date (DPD is negative)
-            // If tday >= loan_days_exclusive: we're past due date (DPD is positive)
-            $dpd = $tday - $loan_days_exclusive;
+            // Calculate DPD (Days Past Due) = tday - days
+            // If tday < days: we're before due date (DPD is negative)
+            // If tday >= days: we're past due date (DPD is positive)
+            $dpd = $tday - $loan_days;
             
             // Calculate days to due date (for reminders before due date)
-            if ($tday < $loan_days_exclusive) {
-                $days_to_due = $loan_days_exclusive - $tday; // Days remaining before due date
+            if ($tday < $loan_days) {
+                $days_to_due = $loan_days - $tday; // Days remaining before due date
             } else {
                 $days_to_due = 0; // Due date has passed
             }
@@ -442,7 +436,7 @@ $loan_query_sql = "SELECT
             // 4. DPD 11-15 (Windows: 08:00-08:04 AM, 11:45-11:49 AM, 18:35-18:39 PM) - Use actual DPD: 11-15 days past due date
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "11:45" && $current_time < "11:50") || ($current_time >= "18:35" && $current_time < "18:40")) {
                 logMessage("LID $user_lid: Checking DPD 11-15. Time condition met. DPD: $dpd");
-                if ($dpd >= 10 && $dpd <= 15) {
+                if ($dpd >= 11 && $dpd <= 15) {
                     logMessage("LID $user_lid: Day condition met (DPD: $dpd).");
                     if (!hasBeenSentToday($user_lid, 'dpd_11_15')) {
                         logMessage("LID $user_lid: 'dpd_11_15' not sent today. Proceeding to send.");
@@ -488,36 +482,33 @@ $loan_query_sql = "SELECT
             }
 
             // 7. Pre-close Reminder (Windows: 08:00-08:04 AM, 16:00-16:04 PM)
-            // Trigger based on days before due date (days_to_due), not days since processed
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "16:00" && $current_time < "16:05")) {
-                logMessage("LID $user_lid: Checking Pre-close Reminder. Time condition met. Days to Due: $days_to_due, tday: $tday");
-                // Use days_to_due if loan is not past due, otherwise use tday for past due loans
-                $preclose_day = ($days_to_due > 0) ? $days_to_due : $tday;
-                if (in_array($preclose_day, [10, 15, 20, 25])) {
-                    logMessage("LID $user_lid: Day condition met (Pre-close Day: $preclose_day, Days to Due: $days_to_due, tday: $tday).");
-                    if (!hasBeenSentToday($user_lid, 'preclose_day_'.$preclose_day)) { // Unique key per day
-                        logMessage("LID $user_lid: 'preclose_day_$preclose_day' not sent today. Proceeding to send.");
+                logMessage("LID $user_lid: Checking Pre-close Reminder. Time condition met.");
+                if (in_array($tday, [10, 15, 20, 25])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
+                    if (!hasBeenSentToday($user_lid, 'preclose_day_'.$tday)) { // Unique key per day
+                        logMessage("LID $user_lid: 'preclose_day_$tday' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['preclose'];
                         $interest_amount = 0;
-                        switch ($preclose_day) {
+                        switch ($tday) {
                             case 10: $interest_amount = $processed_amount * 0.02; break;
                             case 15: $interest_amount = $processed_amount * 0.015; break;
                             case 20: $interest_amount = $processed_amount * 0.01; break;
                             case 25: $interest_amount = $processed_amount * 0.005; break;
                         }
-                        $message = sprintf($tpl['template'], $preclose_day, number_format($interest_amount, 2), $url_link);
+                        $message = sprintf($tpl['template'], $tday, number_format($interest_amount, 2), $url_link);
                         $result = sendSMSDual($primary_mobile, $alt_mobile, $message, $tpl['id'], $monitoring_sms_sent_this_run);
-                        if ($result['sent'] > 0) { markAsSent($user_lid, 'preclose_day_'.$preclose_day); }
+                        if ($result['sent'] > 0) { markAsSent($user_lid, 'preclose_day_'.$tday); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
-                    } else { logMessage("LID $user_lid: Already sent 'preclose_day_$preclose_day' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Pre-close Reminder not met (Pre-close Day: $preclose_day, Days to Due: $days_to_due, tday: $tday)."); }
+                    } else { logMessage("LID $user_lid: Already sent 'preclose_day_$tday' today. Skipping."); }
+                } else { logMessage("LID $user_lid: Day condition for Pre-close Reminder not met (Day: $tday)."); }
             }
 
-            // 8. Salary Day Reminder (Active Loans) (Windows: 14:00-14:04, 18:30-18:34, 20:00-20:04) - Use days_to_due: before due date
+            // 8. Salary Day Reminder (Active Loans) (Windows: 14:00-14:04, 18:30-18:34, 20:00-20:04)
             if (($current_time >= "14:00" && $current_time < "14:05") || ($current_time >= "18:30" && $current_time < "18:35") || ($current_time >= "20:00" && $current_time < "20:05")) {
-                logMessage("LID $user_lid: Checking Salary Day (Active). Time condition met. Days to Due: $days_to_due");
-                if ($days_to_due > 0 && $salary_date == $current_day_of_month) {
-                    logMessage("LID $user_lid: Day/Salary condition met (Days to Due: $days_to_due, Salary Day: $salary_date).");
+                logMessage("LID $user_lid: Checking Salary Day (Active). Time condition met.");
+                if ($tday < 30 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
                      if (!hasBeenSentToday($user_lid, 'salary_day_active')) {
                         logMessage("LID $user_lid: 'salary_day_active' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_day'];
@@ -526,14 +517,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_day_active'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_day_active' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Active) not met (Days to Due: $days_to_due, Salary Day: $salary_date)."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Active) not met (Day: $tday, Salary Day: $salary_date)."); }
             }
 
-            // 9. 15-30 Days Past Due Reminder (Window: 15:00-15:04 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
+            // 9. 45th Day Reminder (Window: 15:00-15:04 PM)
             if ($current_time >= "15:00" && $current_time < "15:05") {
-                logMessage("LID $user_lid: Checking 15-30 Days Past Due Reminder. Time condition met. DPD: $dpd");
-                if ($dpd >= 15 && $dpd <= 30) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking 45th Day Reminder. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, '45th_day_reminder')) {
                         logMessage("LID $user_lid: '45th_day_reminder' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['45th_day_reminder'];
@@ -542,14 +533,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, '45th_day_reminder'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent '45th_day_reminder' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for 15-30 Days Past Due Reminder not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for 45th Day Reminder not met (Day: $tday)."); }
             }
 
-            // 10. Field Recovery (Window: 14:35-14:39 PM) - Use DPD: 35-40 days past due date (Repayment Day + 35 to + 40)
+            // 10. Field Recovery (Window: 14:35-14:39 PM)
             if ($current_time >= "14:35" && $current_time < "14:40") {
-                logMessage("LID $user_lid: Checking Field Recovery. Time condition met. DPD: $dpd");
-                if ($dpd >= 35 && $dpd <= 40) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Field Recovery. Time condition met.");
+                if ($tday >= 65 && $tday <= 70) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'field_recovery')) {
                         logMessage("LID $user_lid: 'field_recovery' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['field_recovery'];
@@ -558,14 +549,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'field_recovery'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'field_recovery' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Field Recovery not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Field Recovery not met (Day: $tday)."); }
             }
             
-            // 11. Legal Notice (Window: 19:35-19:39 PM) - Use DPD: 16-30 days past due date (Repayment Day + 16 to + 30)
+            // 11. Legal Notice (Window: 19:35-19:39 PM)
             if ($current_time >= "19:35" && $current_time < "19:40") {
-                logMessage("LID $user_lid: Checking Legal Notice. Time condition met. DPD: $dpd");
-                if ($dpd >= 16 && $dpd <= 30) {
-                     logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Legal Notice. Time condition met.");
+                if ($tday >= 46 && $tday <= 60) {
+                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'legal_notice')) {
                         logMessage("LID $user_lid: 'legal_notice' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_notice'];
@@ -574,14 +565,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_notice'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_notice' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Legal Notice not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Notice not met (Day: $tday)."); }
             }
 
-            // 12. Final Alert (Window: 14:35-14:39 PM) - Use DPD: 16-30 days past due date (Repayment Day + 16 to + 30)
+            // 12. Final Alert (Window: 14:35-14:39 PM)
             if ($current_time >= "14:35" && $current_time < "14:40") {
-                logMessage("LID $user_lid: Checking Final Alert. Time condition met. DPD: $dpd");
-                if ($dpd >= 16 && $dpd <= 30) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Final Alert. Time condition met.");
+                if ($tday >= 46 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'final_alert')) {
                          logMessage("LID $user_lid: 'final_alert' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['final_alert'];
@@ -590,14 +581,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'final_alert'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'final_alert' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Final Alert not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Final Alert not met (Day: $tday)."); }
             }
 
-            // 13. CIBIL Dip (Window: 15:00-15:04 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
+            // 13. CIBIL Dip (Window: 15:00-15:04 PM)
             if ($current_time >= "15:00" && $current_time < "15:05") {
-                logMessage("LID $user_lid: Checking CIBIL Dip. Time condition met. DPD: $dpd");
-                if ($dpd >= 15 && $dpd <= 30) {
-                     logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking CIBIL Dip. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                     logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'cibil_dip')) {
                         logMessage("LID $user_lid: 'cibil_dip' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['cibil_dip'];
@@ -606,14 +597,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'cibil_dip'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'cibil_dip' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for CIBIL Dip not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for CIBIL Dip not met (Day: $tday)."); }
             }
 
-            // 14. Legal Suit (Window: 16:00-16:04 PM) - Use DPD: 31-44 days past due date (Repayment Day + 31 to + 44)
+            // 14. Legal Suit (Window: 16:00-16:04 PM)
             if ($current_time >= "16:00" && $current_time < "16:05") {
-                logMessage("LID $user_lid: Checking Legal Suit. Time condition met. DPD: $dpd");
-                if ($dpd >= 31 && $dpd <= 44) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Legal Suit. Time condition met.");
+                if ($tday >= 61 && $tday <= 74) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'legal_suit')) {
                         logMessage("LID $user_lid: 'legal_suit' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['legal_suit'];
@@ -622,16 +613,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'legal_suit'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'legal_suit' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Legal Suit not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Legal Suit not met (Day: $tday)."); }
             }
             
-            // 15. Written Off (Window: 19:30-19:34 PM) - Use DPD: 46, 59, 69, 89 days past due date (Repayment Day + 46, + 59, + 69, + 89)
+            // 15. Written Off (Window: 19:30-19:34 PM)
             if ($current_time >= "19:30" && $current_time < "19:35") {
-                logMessage("LID $user_lid: Checking Written Off. Time condition met. DPD: $dpd");
-                // Convert fixed days to DPD: 76, 89, 99, 119 → DPD 46, 59, 69, 89 (for 30-day loans)
-                // But make it dynamic: Written Off at DPD 46, 59, 69, 89
-                if (in_array($dpd, [46, 59, 69, 89])) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Written Off. Time condition met.");
+                if (in_array($tday, [76, 89, 99, 119])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'written_off')) {
                         logMessage("LID $user_lid: 'written_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['written_off'];
@@ -640,16 +629,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'written_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'written_off' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Written Off not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Written Off not met (Day: $tday)."); }
             }
 
-            // 16. Waive Off (Window: 14:10-14:14 PM) - Use DPD: 46, 50, 59 days past due date (Repayment Day + 46, + 50, + 59)
+            // 16. Waive Off (Window: 14:10-14:14 PM)
             if ($current_time >= "14:10" && $current_time < "14:15") {
-                 logMessage("LID $user_lid: Checking Waive Off. Time condition met. DPD: $dpd");
-                // Convert fixed days to DPD: 76, 80, 89 → DPD 46, 50, 59 (for 30-day loans)
-                // But make it dynamic: Waive Off at DPD 46, 50, 59
-                if (in_array($dpd, [46, 50, 59])) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                 logMessage("LID $user_lid: Checking Waive Off. Time condition met.");
+                if (in_array($tday, [76, 80, 89])) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'waive_off')) {
                         logMessage("LID $user_lid: 'waive_off' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['waive_off'];
@@ -658,14 +645,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'waive_off'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'waive_off' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Waive Off not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Waive Off not met (Day: $tday)."); }
             }
 
-            // 17. Attention (Window: 14:45-14:49 PM) - Use DPD: 15-30 days past due date (Repayment Day + 15 to + 30)
+            // 17. Attention (Window: 14:45-14:49 PM)
             if ($current_time >= "14:45" && $current_time < "14:50") {
-                logMessage("LID $user_lid: Checking Attention. Time condition met. DPD: $dpd");
-                if ($dpd >= 15 && $dpd <= 30) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Attention. Time condition met.");
+                if ($tday >= 45 && $tday <= 60) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'attention')) {
                         logMessage("LID $user_lid: 'attention' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['attention'];
@@ -674,14 +661,14 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'attention'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'attention' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Attention not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Attention not met (Day: $tday)."); }
             }
 
-            // 18. Were to Pay (Window: 13:30-13:34 PM) - Use DPD: 6-15 days past due date (Repayment Day + 6 to + 15)
+            // 18. Were to Pay (Window: 13:30-13:34 PM)
             if ($current_time >= "13:30" && $current_time < "13:35") {
-                logMessage("LID $user_lid: Checking Were to Pay. Time condition met. DPD: $dpd");
-                if ($dpd >= 6 && $dpd <= 15) {
-                    logMessage("LID $user_lid: Day condition met (DPD: $dpd, Repayment Day + $dpd).");
+                logMessage("LID $user_lid: Checking Were to Pay. Time condition met.");
+                if ($tday >= 36 && $tday <= 45) {
+                    logMessage("LID $user_lid: Day condition met (Day: $tday).");
                     if (!hasBeenSentToday($user_lid, 'were_to_pay')) {
                         logMessage("LID $user_lid: 'were_to_pay' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['were_to_pay'];
@@ -690,7 +677,7 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'were_to_pay'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'were_to_pay' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day condition for Were to Pay not met (DPD: $dpd)."); }
+                } else { logMessage("LID $user_lid: Day condition for Were to Pay not met (Day: $tday)."); }
             }
 
             // 19. Due Date Missed (Window: 13:45-13:49 PM) - Use DPD: 1-5 days past due date
@@ -725,11 +712,11 @@ $loan_query_sql = "SELECT
                 } else { logMessage("LID $user_lid: Day condition for E-NACH Will Not Happen not met (Day: $tday)."); }
             }
 
-            // 21. Salary Date Reminder for OVERDUE loans (Window: 16:00-16:04 PM) - Use DPD: on or after due date (DPD >= 0)
+            // 21. Salary Date Reminder for OVERDUE loans (Window: 16:00-16:04 PM)
             if ($current_time >= "16:00" && $current_time < "16:05") {
-                logMessage("LID $user_lid: Checking Salary Day (Overdue). Time condition met. DPD: $dpd");
-                if ($dpd >= 0 && $salary_date == $current_day_of_month) {
-                    logMessage("LID $user_lid: Day/Salary condition met (DPD: $dpd, Salary Day: $salary_date).");
+                logMessage("LID $user_lid: Checking Salary Day (Overdue). Time condition met.");
+                if ($tday >= 30 && $salary_date == $current_day_of_month) {
+                    logMessage("LID $user_lid: Day/Salary condition met (Day: $tday, Salary Day: $salary_date).");
                     if (!hasBeenSentToday($user_lid, 'salary_date_overdue')) {
                         logMessage("LID $user_lid: 'salary_date_overdue' not sent today. Proceeding to send.");
                         $tpl = $sms_templates['salary_date_reminder'];
@@ -738,16 +725,15 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, 'salary_date_overdue'); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'salary_date_overdue' today. Skipping."); }
-                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Overdue) not met (DPD: $dpd, Salary Day: $salary_date)."); }
+                } else { logMessage("LID $user_lid: Day/Salary condition for Salary Day (Overdue) not met (Day: $tday, Salary Day: $salary_date)."); }
             }
 
             // 22. Limit Increase (Windows: 08:00-08:04, 12:50-12:54, 16:00-16:04)
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
-                // Send SMS if user's loan limit is higher than their processed amount (regardless of limit_inc status)
-                // The hasBeenSentToday check prevents duplicates
-                if ($loan_limit > $processed_amount) {
-                    logMessage("LID $user_lid: Loan limit condition met (limit: $loan_limit > processed: $processed_amount).");
+                // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
+                if ($limit_inc_status === 0 && $loan_limit > $processed_amount) {
+                    logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
                     // Determine which time window we're in for unique tracking
                     $time_slot = '';
                     if ($current_time >= "08:00" && $current_time < "08:05") {
@@ -767,7 +753,7 @@ $loan_query_sql = "SELECT
                         if ($result['sent'] > 0) { markAsSent($user_lid, $unique_key); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' for time slot $time_slot today. Skipping."); }
-                } else { logMessage("LID $user_lid: Loan limit condition not met (limit: $loan_limit <= processed: $processed_amount)."); }
+                } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $processed_amount)."); }
             }
 
         }
@@ -784,4 +770,3 @@ $loan_query_sql = "SELECT
     logMessage("Script execution finished");
 }
 ?>
-
