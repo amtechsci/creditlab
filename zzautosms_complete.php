@@ -37,7 +37,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
 mysqli_set_charset($db,'utf8');
 mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
 
@@ -45,7 +45,7 @@ function ensure_db_connection() {
     global $db;
     if (!isset($db) || !@mysqli_ping($db)) {
         logMessage("Database connection lost. Attempting to reconnect...");
-        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
+        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
         if (!$db) {
             logMessage("FATAL: Database reconnection failed: " . mysqli_connect_error());
             return false;
@@ -363,11 +363,8 @@ try {
             // Calculate tday (days since processed_date)
             $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($loan_data['processed_date']." -1 day")))) / (60 * 60 * 24));
             
-            // Get days from loan_apply
-            // For one-time loans (days > 30): Use calculated days
-            // For EMI loans (days <= 30): Always use 30 days (original logic)
-            $loan_days_raw = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
-            $loan_days = ($loan_days_raw > 30) ? $loan_days_raw : 30; // EMI loans always use 30
+            // Get days from loan_apply (new loans have calculated days, old loans have days=30)
+            $loan_days = isset($loan_data['days']) ? (int)$loan_data['days'] : 30;
             
             // Calculate DPD (Days Past Due) = tday - days
             // If tday < days: we're before due date (DPD is negative)
