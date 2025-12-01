@@ -1,10 +1,20 @@
 <?php
 
-// Database connection function
+// --- DATABASE CONNECTION (use main `credit` DB, like old code) ---
+$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+if (mysqli_connect_errno()) {
+    error_log("ztest.php DB connection failed: " . mysqli_connect_error());
+    die("Database connection failed.");
+}
+mysqli_set_charset($db, 'utf8');
+
+// Simple query helper using the shared connection
 function towquery($query) {
-    $db = mysqli_connect("localhost", "root", "Atul@1012#", "testing_credit");
-    mysqli_set_charset($db, 'utf8');
+    global $db;
     $re = mysqli_query($db, $query);
+    if (!$re) {
+        error_log("ztest.php SQL Error: " . mysqli_error($db) . " - Query: " . $query);
+    }
     return $re;
 }
 
