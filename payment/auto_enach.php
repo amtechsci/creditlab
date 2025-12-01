@@ -193,8 +193,9 @@ function calculateTotalAmount($loan, $loan_apply) {
     $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
-    // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
-    $days = $tday; // Use tday for service charge calculation
+    // For amount calculation we need to charge interest for one extra day (old logic had +1 day)
+    // Example: exhausted_period 30 → charge for 31 days
+    $days = $tday + 1;
     
     // Calculate base amount with GST on processing fee (18% GST)
     $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -285,8 +286,8 @@ function calculateAmountBreakdown($loan, $loan_apply) {
     $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
-    // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
-    $days = $tday; // Use tday for service charge calculation
+    // For detailed breakdown also include the extra interest day
+    $days = $tday + 1;
     
     // Calculate base amount with GST on processing fee (18% GST)
     $p_fee_gst = $loan['p_fee'] * 0.18;
