@@ -186,13 +186,34 @@ ksort($logsByDate);
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
+                        <!-- E-NACH Dry Run Section -->
+                        <div class="row">
+                            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                <div class="panel panel-primary">
+                                    <div class="panel-heading">
+                                        <h4><i class="fa fa-play-circle"></i> E-NACH Auto Debit Dry Run</h4>
+                                    </div>
+                                    <div class="panel-body">
+                                        <p>Run a dry run test of the E-NACH auto debit cron job to see how many loans would be processed without actually making API calls.</p>
+                                        <button type="button" class="btn btn-warning btn-lg" id="dryRunBtn" onclick="runDryRun()">
+                                            <i class="fa fa-play"></i> Run Dry Run Test
+                                        </button>
+                                        <div id="dryRunLoading" style="display: none; margin-top: 15px;">
+                                            <i class="fa fa-spinner fa-spin"></i> Running dry run test, please wait...
+                                        </div>
+                                        <div id="dryRunResults" style="display: none; margin-top: 20px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Debug Information -->
                         <div class="row">
                             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                 <div class="alert alert-info">
                                     <strong>Debug Info:</strong> 
                                     Cron logs directory (../payment/logs): <?= $cronDirExists ? '✅ Found' : '❌ Not found' ?> | 
-                                    Webhook logs directory (../logs): <?= $webhookDirExists ? '✅ Found' : '❌ Not found' ?> |
+                                    Webhook logs directory (../logs): <?= $webhookDirExists ? '✅ Found' : '❌ Not found' ?> | 
                                     Total log files found: <?= count($allLogs) ?>
                                 </div>
                             </div>
@@ -510,6 +531,110 @@ ksort($logsByDate);
             activeLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     });
+
+    // E-NACH Dry Run Function
+    function runDryRun() {
+        const btn = document.getElementById('dryRunBtn');
+        const loading = document.getElementById('dryRunLoading');
+        const results = document.getElementById('dryRunResults');
+        
+        // Disable button and show loading
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Running...';
+        loading.style.display = 'block';
+        results.style.display = 'none';
+        
+        // Make AJAX request to run dry run
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '../payment/dry_run_enach.php', true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-play"></i> Run Dry Run Test';
+                loading.style.display = 'none';
+                
+                if (xhr.status === 200) {
+                    // Parse the response
+                    const response = xhr.responseText;
+                    
+                    // Extract summary information
+                    let summaryHtml = '<div class="alert alert-info"><h4><i class="fa fa-info-circle"></i> Dry Run Results</h4>';
+                    
+                    // Try to extract key metrics from the output
+                    const lines = response.split('\n');
+                    let foundSummary = false;
+                    let summaryLines = [];
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.includes('=== SUMMARY ===') || line.includes('E-Nach DRY RUN Completed')) {
+                            foundSummary = true;
+                            // Collect next few lines for summary
+                            for (let j = i; j < Math.min(i + 10, lines.length); j++) {
+                                if (lines[j].trim()) {
+                                    summaryLines.push(lines[j]);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    
+                    // Extract loan counts
+                    const eligibleMatch = response.match(/Total eligible loans found: (\d+)/i);
+                    const processedMatch = response.match(/Processed Loans: (\d+)/i);
+                    const successMatch = response.match(/Would-be Success: (\d+)/i);
+                    const failedMatch = response.match(/Would-be Failed: (\d+)/i);
+                    const skippedMatch = response.match(/Skipped: (\d+)/i);
+                    
+                    summaryHtml += '<div class="row" style="margin-top: 15px;">';
+                    
+                    if (eligibleMatch) {
+                        summaryHtml += '<div class="col-md-3"><div class="alert alert-primary"><strong>Eligible Loans:</strong><br><h3>' + eligibleMatch[1] + '</h3></div></div>';
+                    }
+                    if (successMatch) {
+                        summaryHtml += '<div class="col-md-3"><div class="alert alert-success"><strong>Would Process:</strong><br><h3>' + successMatch[1] + '</h3></div></div>';
+                    }
+                    if (failedMatch) {
+                        summaryHtml += '<div class="col-md-3"><div class="alert alert-danger"><strong>Would Fail:</strong><br><h3>' + failedMatch[1] + '</h3></div></div>';
+                    }
+                    if (skippedMatch) {
+                        summaryHtml += '<div class="col-md-3"><div class="alert alert-warning"><strong>Skipped:</strong><br><h3>' + skippedMatch[1] + '</h3></div></div>';
+                    }
+                    
+                    summaryHtml += '</div>';
+                    
+                    // Add full output in a collapsible section
+                    summaryHtml += '<div style="margin-top: 20px;">';
+                    summaryHtml += '<button class="btn btn-sm btn-default" type="button" data-toggle="collapse" data-target="#fullOutput" aria-expanded="false" aria-controls="fullOutput">';
+                    summaryHtml += '<i class="fa fa-chevron-down"></i> View Full Output';
+                    summaryHtml += '</button>';
+                    summaryHtml += '<div class="collapse" id="fullOutput" style="margin-top: 15px;">';
+                    summaryHtml += '<div class="well" style="max-height: 500px; overflow-y: auto; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; font-family: \'Courier New\', monospace; font-size: 12px; line-height: 1.4;">';
+                    summaryHtml += '<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">' + htmlEscape(response) + '</pre>';
+                    summaryHtml += '</div></div></div>';
+                    
+                    summaryHtml += '</div>';
+                    
+                    results.innerHTML = summaryHtml;
+                    results.style.display = 'block';
+                    
+                    // Scroll to results
+                    results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    results.innerHTML = '<div class="alert alert-danger"><i class="fa fa-exclamation-triangle"></i> Error running dry run test. Status: ' + xhr.status + '</div>';
+                    results.style.display = 'block';
+                }
+            }
+        };
+        xhr.send();
+    }
+    
+    // Helper function to escape HTML
+    function htmlEscape(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
     </script>
 
     <style>
