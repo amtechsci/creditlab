@@ -503,7 +503,8 @@ if(isset($_POST['follow_up_mess'])){
 if(isset($_POST['loan_acc_man'])){
     $extract = towrealarray($_POST);
     extract($extract);
-    towquery("INSERT INTO `loan_acc_man`(`uid`, `lid`, `customer_response`, `commitment_date`, `commitment_text`, `default_type`) VALUES ('$id','$loan_id','$customer_response','$commitment_date','$commitment_text','$default_type')");
+    $updated_by_escaped = towreal($user_name);
+    towquery("INSERT INTO `loan_acc_man`(`uid`, `lid`, `customer_response`, `commitment_date`, `commitment_text`, `default_type`, `updated_by`) VALUES ('$id','$loan_id','$customer_response','$commitment_date','$commitment_text','$default_type','$updated_by_escaped')");
     print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }
 if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
@@ -1975,7 +1976,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <th>Commitment date</th>  
                                         <th>Commitment text </th>  
                                         <th>Updated date</th>  
-                                        <th>Account manger Name</th>   
+                                        <th>Updated By</th>   
                                     </tr>
             </thead>
             <tbody>
@@ -1993,7 +1994,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td><?=$ub_commitment_date;?></td>
                                         <td><?=$ub_commitment_text;?></td>
                                         <td><?=$ub_updated_at;?></td>
-                                        <td><?=$account_manager['name'];?></td>
+                                        <td><?=isset($ub_updated_by) && !empty($ub_updated_by) ? $ub_updated_by : 'N/A';?></td>
                                         </form>
                                     </tr>
                                     <?php } ?>
