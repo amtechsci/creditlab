@@ -465,7 +465,7 @@ writeLog("Reset $reset_temporary_count temporary skipped E-Nach requests (past s
 // 2. DETERMINE ELIGIBLE LOANS BASED ON CONDITIONS (NOW DPD-BASED)
 $eligible_loans = [];
 
-// Condition 1: Daily run for all active loans where DPD > 1 (overdue more than 1 day)
+// Condition 1: Daily run for all active loans where DPD == 1 (exactly 1 day past due)
 // tday = days since processed_date, loan_days from loan_apply / EMI logic, dpd = tday - loan_days
 $sql1 = "SELECT l.*, la.days, la.apply_date 
          FROM `loan` l 
@@ -490,13 +490,13 @@ while ($loan = towfetch($loans1)) {
     // DPD = Days Past Due
     $dpd = $tday - $loan_days;
     
-    // Trigger E-NACH when DPD > 1 (more than 1 day overdue)
-    if ($dpd > 1) {
+    // Trigger E-NACH when DPD == 1 (exactly 1 day past due)
+    if ($dpd == 1) {
         $eligible_loans[] = $loan;
         $condition1_count++;
     }
 }
-writeLog("Condition 1 (DPD > 1, calculated per loan): Found $condition1_count eligible loans", $log_file);
+writeLog("Condition 1 (DPD == 1, calculated per loan): Found $condition1_count eligible loans", $log_file);
 
 // Check for loans that are skipped due to E-NACH skip flag (for logging only)
 $skipped_enach_query = "SELECT COUNT(*) as skipped_count FROM `loan` l 
@@ -525,38 +525,64 @@ $temporary_result = towquery($db, $temporary_skip_query);
 $temporary_count = towfetch($temporary_result)['temporary_count'];
 
 if($skipped_count > 0) {
-    writeLog("Condition 1 (DPD > 1): $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2) - Permanent: $permanent_count, Temporary: $temporary_count", $log_file);
+    writeLog("Condition 1 (DPD == 1): $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2) - Permanent: $permanent_count, Temporary: $temporary_count", $log_file);
 }
 
 // Get last day of current month for last day processing
 $last_day_of_month = date('t'); // Returns the number of days in the current month
 
-// Condition 2: On 3rd, 10th, and last day of month (30th/31st) for exhausted_period > 30
+// Condition 2: On 3rd, 10th, and last day of month (30th/31st) for loans where DPD > 0
 if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
-    $sql2 = "SELECT * FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `action` != 'cleared' AND `enach_request` = 0 AND (`enach_request` != 2 OR (`enach_skip_type` = 'temporary' AND `enach_skip_until_date` <= '$current_date'))";
+    $sql2 = "SELECT l.*, la.days, la.apply_date 
+             FROM `loan` l 
+             INNER JOIN `loan_apply` la ON l.lid = la.id 
+             WHERE l.`status_log` = 'account manager' 
+             AND l.`action` != 'cleared' 
+             AND l.`enach_request` = 0 
+             AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
+             AND la.`status` = 'account manager'";
     $loans2 = towquery($db, $sql2);
     $condition2_count = 0;
     $duplicates_count = 0;
     while ($loan = towfetch($loans2)) {
-        // Avoid duplicates
-        $exists = false;
-        foreach ($eligible_loans as $existing_loan) {
-            if ($existing_loan['id'] == $loan['id']) {
-                $exists = true;
-                $duplicates_count++;
-                break;
+        // Calculate tday (days since processed_date, with -1 day alignment like other cron logic)
+        $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
+        $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
+        
+        // Derive loan_days using EMI flag strictly from DB
+        $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
+        $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
+        $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+        
+        // DPD = Days Past Due
+        $dpd = $tday - $loan_days;
+        
+        // Only add if DPD > 0 (any overdue days)
+        if ($dpd > 0) {
+            // Avoid duplicates
+            $exists = false;
+            foreach ($eligible_loans as $existing_loan) {
+                if ($existing_loan['id'] == $loan['id']) {
+                    $exists = true;
+                    $duplicates_count++;
+                    break;
+                }
             }
-        }
-        if (!$exists) {
-            $eligible_loans[] = $loan;
-            $condition2_count++;
+            if (!$exists) {
+                $eligible_loans[] = $loan;
+                $condition2_count++;
+            }
         }
     }
     $day_type = ($current_day == 3) ? "3rd" : (($current_day == 10) ? "10th" : "last day ($last_day_of_month)");
-    writeLog("Condition 2 (exhausted_period > 30, day $current_day - $day_type): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
+    writeLog("Condition 2 (DPD > 0, day $current_day - $day_type): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
     
     // Check for loans that are skipped due to E-NACH skip flag
-    $skipped_enach_query2 = "SELECT COUNT(*) as skipped_count FROM `loan` WHERE `exhausted_period` > 30 AND `status_log` = 'account manager' AND `enach_request` = 2";
+    $skipped_enach_query2 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
+                             INNER JOIN `loan_apply` la ON l.lid = la.id 
+                             WHERE l.`status_log` = 'account manager' 
+                             AND l.`enach_request` = 2
+                             AND la.`status` = 'account manager'";
     $skipped_result2 = towquery($db, $skipped_enach_query2);
     $skipped_count2 = towfetch($skipped_result2)['skipped_count'];
     if($skipped_count2 > 0) {
@@ -566,42 +592,60 @@ if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_mont
     writeLog("Condition 2: Skipped (not 3rd, 10th, or last day of month, current day: $current_day, last day: $last_day_of_month)", $log_file);
 }
 
-// Condition 3: Salary date processing
-$sql3 = "SELECT l.* FROM `loan` l 
+// Condition 3: Salary date processing - loans where DPD > 0 when salary_date day equals today
+$sql3 = "SELECT l.*, la.days, la.apply_date 
+         FROM `loan` l 
+         INNER JOIN `loan_apply` la ON l.lid = la.id 
          INNER JOIN `user` u ON l.uid = u.id 
-         WHERE l.`exhausted_period` > 30 
-         AND l.`status_log` = 'account manager' 
+         WHERE l.`status_log` = 'account manager' 
          AND l.`action` != 'cleared' 
          AND l.`enach_request` = 0 
          AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
+         AND la.`status` = 'account manager'
          AND DAY(u.salary_date) = $current_day";
 $loans3 = towquery($db, $sql3);
 $condition3_count = 0;
 $condition3_duplicates = 0;
 while ($loan = towfetch($loans3)) {
-    // Avoid duplicates
-    $exists = false;
-    foreach ($eligible_loans as $existing_loan) {
-        if ($existing_loan['id'] == $loan['id']) {
-            $exists = true;
-            $condition3_duplicates++;
-            break;
+    // Calculate tday (days since processed_date, with -1 day alignment like other cron logic)
+    $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
+    $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
+    
+    // Derive loan_days using EMI flag strictly from DB
+    $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
+    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
+    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+    
+    // DPD = Days Past Due
+    $dpd = $tday - $loan_days;
+    
+    // Only add if DPD > 0 (any overdue days)
+    if ($dpd > 0) {
+        // Avoid duplicates
+        $exists = false;
+        foreach ($eligible_loans as $existing_loan) {
+            if ($existing_loan['id'] == $loan['id']) {
+                $exists = true;
+                $condition3_duplicates++;
+                break;
+            }
+        }
+        if (!$exists) {
+            $eligible_loans[] = $loan;
+            $condition3_count++;
         }
     }
-    if (!$exists) {
-        $eligible_loans[] = $loan;
-        $condition3_count++;
-    }
 }
-writeLog("Condition 3 (salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
+writeLog("Condition 3 (DPD > 0, salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
 
 // Check for loans that are skipped due to E-NACH skip flag
 $skipped_enach_query3 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
-                        INNER JOIN `user` u ON l.uid = u.id 
-                        WHERE l.`exhausted_period` > 30 
-                        AND l.`status_log` = 'account manager' 
-                        AND l.`enach_request` = 2
-                        AND DAY(u.salary_date) = $current_day";
+                         INNER JOIN `loan_apply` la ON l.lid = la.id 
+                         INNER JOIN `user` u ON l.uid = u.id 
+                         WHERE l.`status_log` = 'account manager' 
+                         AND l.`enach_request` = 2
+                         AND la.`status` = 'account manager'
+                         AND DAY(u.salary_date) = $current_day";
 $skipped_result3 = towquery($db, $skipped_enach_query3);
 $skipped_count3 = towfetch($skipped_result3)['skipped_count'];
 if($skipped_count3 > 0) {
