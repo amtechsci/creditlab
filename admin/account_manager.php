@@ -541,7 +541,8 @@ switch ((int)$user_member) {
                                         <!--<td data-title="Status" style="color:white; background:<?php #if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php #$user_status?></td>-->
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
                                     </tr>
-                                <?php $ii++;}}}
+                                <?php $ii++;} ?>
+                                <?php } ?>
             </tbody>
     </table>
 							<nav aria-label="Page navigation example">
