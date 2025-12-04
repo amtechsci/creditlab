@@ -1,22 +1,99 @@
 <?php
-// Enable error reporting for debugging (remove in production)
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
 
-include_once 'head.php';
-if (isset($_GET['pageno'])) {
-            $pageno = $_GET['pageno'];
-        } else {
-            $pageno = 1;
-        }
-        $no_of_records_per_page = 50;
-        $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = mysqli_query($db,"SELECT uid FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
-        // Note: Filtering by DPD is now done in PHP after calculating DPD for each loan
-        $newloanquery =  mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
-        $renewloanquery =  mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
-        $total_rows = mysqli_num_rows($ress);
-        $total_pages = ceil($total_rows / $no_of_records_per_page);
+// Create logs directory if it doesn't exist
+$log_dir = __DIR__ . '/../logs';
+if (!is_dir($log_dir)) {
+    mkdir($log_dir, 0755, true);
+}
+
+// Custom error handler to log all errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $error_msg = "Error [$errno]: $errstr in $errfile on line $errline";
+    error_log($error_msg);
+    if (ini_get('display_errors')) {
+        echo "<div style='background: #ffebee; border: 2px solid #f44336; padding: 10px; margin: 10px; border-radius: 4px;'>";
+        echo "<strong style='color: #d32f2f;'>PHP Error:</strong><br>";
+        echo "<strong>File:</strong> $errfile<br>";
+        echo "<strong>Line:</strong> $errline<br>";
+        echo "<strong>Error:</strong> $errstr<br>";
+        echo "</div>";
+    }
+    return false; // Let PHP handle the error normally
+});
+
+// Custom exception handler
+set_exception_handler(function($exception) {
+    $error_msg = "Uncaught exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine();
+    error_log($error_msg);
+    if (ini_get('display_errors')) {
+        echo "<div style='background: #ffebee; border: 2px solid #f44336; padding: 10px; margin: 10px; border-radius: 4px;'>";
+        echo "<strong style='color: #d32f2f;'>Uncaught Exception:</strong><br>";
+        echo "<strong>File:</strong> " . $exception->getFile() . "<br>";
+        echo "<strong>Line:</strong> " . $exception->getLine() . "<br>";
+        echo "<strong>Message:</strong> " . $exception->getMessage() . "<br>";
+        echo "<strong>Stack Trace:</strong><pre>" . $exception->getTraceAsString() . "</pre>";
+        echo "</div>";
+    }
+});
+
+try {
+    include_once 'head.php';
+} catch (Exception $e) {
+    error_log("Error including head.php: " . $e->getMessage());
+    die("Error loading page header: " . $e->getMessage());
+}
+
+try {
+    if (isset($_GET['pageno'])) {
+        $pageno = $_GET['pageno'];
+    } else {
+        $pageno = 1;
+    }
+    $no_of_records_per_page = 50;
+    $offset = ($pageno-1) * $no_of_records_per_page;
+    
+    if (!isset($db) || !$db) {
+        throw new Exception("Database connection not available. \$db variable is not set.");
+    }
+    
+    $ress = mysqli_query($db,"SELECT uid FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
+    if ($ress === false) {
+        throw new Exception("Query failed: " . mysqli_error($db));
+    }
+    
+    // Note: Filtering by DPD is now done in PHP after calculating DPD for each loan
+    $newloanquery = mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
+    if ($newloanquery === false) {
+        throw new Exception("Query failed: " . mysqli_error($db));
+    }
+    
+    $renewloanquery = mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
+    if ($renewloanquery === false) {
+        throw new Exception("Query failed: " . mysqli_error($db));
+    }
+    
+    $total_rows = mysqli_num_rows($ress);
+    $total_pages = ceil($total_rows / $no_of_records_per_page);
+} catch (Exception $e) {
+    error_log("Error in account_manager.php initialization: " . $e->getMessage() . " | File: " . $e->getFile() . " | Line: " . $e->getLine());
+    if (ini_get('display_errors')) {
+        echo "<div style='background: #ffebee; border: 2px solid #f44336; padding: 15px; margin: 20px; border-radius: 4px;'>";
+        echo "<h3 style='color: #d32f2f; margin-top: 0;'>Error in account_manager.php</h3>";
+        echo "<p><strong>Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>";
+        echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>";
+        echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
+        echo "<p><strong>Stack Trace:</strong></p>";
+        echo "<pre style='background: #fff; padding: 10px; border: 1px solid #ddd; overflow-x: auto;'>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+        echo "</div>";
+    }
+    die("Fatal error occurred. Check error log for details.");
+}
 ?>
 <body>
     <?php
@@ -107,40 +184,59 @@ if (isset($_GET['pageno'])) {
                                    // Create array to store loans with DPD for sorting
                                    $loans_with_dpd = [];
                                    // Only run query if we have loan IDs
-                                   if (!empty($val)) {
-                                       $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val) LIMIT $offset, $no_of_records_per_page");
-                                       if ($a && townum($a) > 0) {
-                                           while($b = towfetch($a)){
-                                               if (!$b || !is_array($b)) {
-                                                   continue;
-                                               }
-                                               
-                                               // Skip if processed_date is empty or invalid
-                                               if (empty($b['processed_date'])) {
-                                                   continue;
-                                               }
-                                               
-                                               // Calculate tday (days since processed_date, with -1 day alignment)
-                                               $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                                               if ($processed_date_str === false) {
-                                                   continue;
-                                               }
-                                               $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                                               
-                                               // Derive loan_days using EMI flag strictly from DB
-                                               $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                                               $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                                               $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                                               
-                                               // DPD = Days Past Due
-                                               $dpd = $tday - $loan_days;
-                                               
-                                               // Filter by DPD < 35 for daily follow ups
-                                               if ($dpd < 35) {
-                                                   $b['calculated_dpd'] = $dpd;
-                                                   $loans_with_dpd[] = $b;
+                                   try {
+                                       if (!empty($val)) {
+                                           $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val) LIMIT $offset, $no_of_records_per_page");
+                                           if ($a === false) {
+                                               error_log("Query failed in account_manager.php - Query: SELECT ... WHERE loan.lid IN ($val)");
+                                               throw new Exception("Database query failed");
+                                           }
+                                           if ($a && townum($a) > 0) {
+                                               while($b = towfetch($a)){
+                                                   if (!$b || !is_array($b)) {
+                                                       continue;
+                                                   }
+                                                   
+                                                   // Skip if processed_date is empty or invalid
+                                                   if (empty($b['processed_date'])) {
+                                                       continue;
+                                                   }
+                                                   
+                                                   try {
+                                                       // Calculate tday (days since processed_date, with -1 day alignment)
+                                                       $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                                       if ($processed_date_str === false) {
+                                                           error_log("Invalid processed_date in account_manager.php: " . $b['processed_date']);
+                                                           continue;
+                                                       }
+                                                       $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                                                       
+                                                       // Derive loan_days using EMI flag strictly from DB
+                                                       $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                                                       $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                                                       $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                                                       
+                                                       // DPD = Days Past Due
+                                                       $dpd = $tday - $loan_days;
+                                                       
+                                                       // Filter by DPD < 35 for daily follow ups
+                                                       if ($dpd < 35) {
+                                                           $b['calculated_dpd'] = $dpd;
+                                                           $loans_with_dpd[] = $b;
+                                                       }
+                                                   } catch (Exception $e) {
+                                                       error_log("Error calculating DPD for loan lid " . (isset($b['lid']) ? $b['lid'] : 'unknown') . ": " . $e->getMessage());
+                                                       continue;
+                                                   }
                                                }
                                            }
+                                       }
+                                   } catch (Exception $e) {
+                                       error_log("Error in DPD calculation section: " . $e->getMessage() . " | File: " . __FILE__ . " | Line: " . __LINE__);
+                                       if (ini_get('display_errors')) {
+                                           echo "<div style='background: #fff3cd; border: 2px solid #ffc107; padding: 10px; margin: 10px; border-radius: 4px;'>";
+                                           echo "<strong>Warning:</strong> Error processing loans: " . htmlspecialchars($e->getMessage());
+                                           echo "</div>";
                                        }
                                    }
                                    // Sort by DPD DESC
@@ -304,44 +400,63 @@ switch ((int)$user_member) {
                                    $reseauserid = array_unique($reseauserid);
                                    foreach($reseauserid as $value){
                                    $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$value AND loan.status_log='account manager'");
-                                   if($a && townum($a) > 0){
-                                   // Create array to store loans with DPD for sorting
-                                   $loans_with_dpd = [];
-                                   while($b = towfetch($a)){
-                                       if (!$b || !is_array($b)) {
-                                           continue;
+                                   try {
+                                       if($a && townum($a) > 0){
+                                       // Create array to store loans with DPD for sorting
+                                       $loans_with_dpd = [];
+                                       while($b = towfetch($a)){
+                                           if (!$b || !is_array($b)) {
+                                               continue;
+                                           }
+                                           
+                                           // Skip if processed_date is empty or invalid
+                                           if (empty($b['processed_date'])) {
+                                               continue;
+                                           }
+                                           
+                                           try {
+                                               // Calculate tday (days since processed_date, with -1 day alignment)
+                                               $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                               if ($processed_date_str === false) {
+                                                   error_log("Invalid processed_date in account_manager.php (tab 2): " . $b['processed_date']);
+                                                   continue;
+                                               }
+                                               $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                                               
+                                               // Derive loan_days using EMI flag strictly from DB
+                                               $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                                               $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                                               $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                                               
+                                               // DPD = Days Past Due
+                                               $dpd = $tday - $loan_days;
+                                               
+                                               // Filter by DPD >= 35 for default tab
+                                               if ($dpd >= 35) {
+                                                   $b['calculated_dpd'] = $dpd;
+                                                   $loans_with_dpd[] = $b;
+                                               }
+                                           } catch (Exception $e) {
+                                               error_log("Error calculating DPD for loan lid " . (isset($b['lid']) ? $b['lid'] : 'unknown') . " (tab 2): " . $e->getMessage());
+                                               continue;
+                                           }
                                        }
-                                       
-                                       // Skip if processed_date is empty or invalid
-                                       if (empty($b['processed_date'])) {
-                                           continue;
-                                       }
-                                       
-                                       // Calculate tday (days since processed_date, with -1 day alignment)
-                                       $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                                       if ($processed_date_str === false) {
-                                           continue;
-                                       }
-                                       $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                                       
-                                       // Derive loan_days using EMI flag strictly from DB
-                                       $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                                       $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                                       $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                                       
-                                       // DPD = Days Past Due
-                                       $dpd = $tday - $loan_days;
-                                       
-                                       // Filter by DPD >= 35 for default tab
-                                       if ($dpd >= 35) {
-                                           $b['calculated_dpd'] = $dpd;
-                                           $loans_with_dpd[] = $b;
-                                       }
+                                       // Sort by DPD DESC
+                                       usort($loans_with_dpd, function($a, $b) {
+                                           return $b['calculated_dpd'] <=> $a['calculated_dpd'];
+                                       });
+                                   } else {
+                                       $loans_with_dpd = [];
                                    }
-                                   // Sort by DPD DESC
-                                   usort($loans_with_dpd, function($a, $b) {
-                                       return $b['calculated_dpd'] <=> $a['calculated_dpd'];
-                                   });
+                                   } catch (Exception $e) {
+                                       error_log("Error in DPD calculation section (tab 2): " . $e->getMessage() . " | File: " . __FILE__ . " | Line: " . __LINE__);
+                                       if (ini_get('display_errors')) {
+                                           echo "<div style='background: #fff3cd; border: 2px solid #ffc107; padding: 10px; margin: 10px; border-radius: 4px;'>";
+                                           echo "<strong>Warning:</strong> Error processing loans: " . htmlspecialchars($e->getMessage());
+                                           echo "</div>";
+                                       }
+                                       $loans_with_dpd = [];
+                                   }
                                    foreach($loans_with_dpd as $b){
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                 //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3"));
