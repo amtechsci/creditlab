@@ -1,4 +1,8 @@
 <?php
+// Enable error reporting for debugging (remove in production)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 include_once 'head.php';
 if (isset($_GET['pageno'])) {
             $pageno = $_GET['pageno'];
@@ -100,26 +104,43 @@ if (isset($_GET['pageno'])) {
                                        $zz[] = $value;
                                    }
                                    $val = implode(',',$zz);
-                                   $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val) LIMIT $offset, $no_of_records_per_page");
                                    // Create array to store loans with DPD for sorting
                                    $loans_with_dpd = [];
-                                   while($b = towfetch($a)){
-                                       // Calculate tday (days since processed_date, with -1 day alignment)
-                                       $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                                       $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                                       
-                                       // Derive loan_days using EMI flag strictly from DB
-                                       $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                                       $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                                       $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                                       
-                                       // DPD = Days Past Due
-                                       $dpd = $tday - $loan_days;
-                                       
-                                       // Filter by DPD < 35 for daily follow ups
-                                       if ($dpd < 35) {
-                                           $b['calculated_dpd'] = $dpd;
-                                           $loans_with_dpd[] = $b;
+                                   // Only run query if we have loan IDs
+                                   if (!empty($val)) {
+                                       $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val) LIMIT $offset, $no_of_records_per_page");
+                                       if ($a && townum($a) > 0) {
+                                           while($b = towfetch($a)){
+                                               if (!$b || !is_array($b)) {
+                                                   continue;
+                                               }
+                                               
+                                               // Skip if processed_date is empty or invalid
+                                               if (empty($b['processed_date'])) {
+                                                   continue;
+                                               }
+                                               
+                                               // Calculate tday (days since processed_date, with -1 day alignment)
+                                               $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                               if ($processed_date_str === false) {
+                                                   continue;
+                                               }
+                                               $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                                               
+                                               // Derive loan_days using EMI flag strictly from DB
+                                               $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                                               $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                                               $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                                               
+                                               // DPD = Days Past Due
+                                               $dpd = $tday - $loan_days;
+                                               
+                                               // Filter by DPD < 35 for daily follow ups
+                                               if ($dpd < 35) {
+                                                   $b['calculated_dpd'] = $dpd;
+                                                   $loans_with_dpd[] = $b;
+                                               }
+                                           }
                                        }
                                    }
                                    // Sort by DPD DESC
@@ -140,11 +161,15 @@ $updated_ats = [];
 $query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3");
 
 // 3. Loop through each row of the result set
-while ($row = towfetch($query_result)) {
-    // Add the data from the current row into our arrays
-    $responses[] = $row['customer_response'];
-    $commit_dates[] = $row['commitment_date'];
-    $updated_ats[] = $row['updated_at'];
+if ($query_result) {
+    while ($row = towfetch($query_result)) {
+        if ($row && is_array($row)) {
+            // Add the data from the current row into our arrays
+            $responses[] = isset($row['customer_response']) ? $row['customer_response'] : '';
+            $commit_dates[] = isset($row['commitment_date']) ? $row['commitment_date'] : '';
+            $updated_ats[] = isset($row['updated_at']) ? $row['updated_at'] : '';
+        }
+    }
 }
 
 // 4. Use implode() to concatenate the values with a line break
@@ -279,12 +304,24 @@ switch ((int)$user_member) {
                                    $reseauserid = array_unique($reseauserid);
                                    foreach($reseauserid as $value){
                                    $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$value AND loan.status_log='account manager'");
-                                   if(townum($a) > 0){
+                                   if($a && townum($a) > 0){
                                    // Create array to store loans with DPD for sorting
                                    $loans_with_dpd = [];
                                    while($b = towfetch($a)){
+                                       if (!$b || !is_array($b)) {
+                                           continue;
+                                       }
+                                       
+                                       // Skip if processed_date is empty or invalid
+                                       if (empty($b['processed_date'])) {
+                                           continue;
+                                       }
+                                       
                                        // Calculate tday (days since processed_date, with -1 day alignment)
                                        $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                       if ($processed_date_str === false) {
+                                           continue;
+                                       }
                                        $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
                                        
                                        // Derive loan_days using EMI flag strictly from DB
@@ -319,11 +356,15 @@ $updated_ats = [];
 $query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3");
 
 // 3. Loop through each row of the result set
-while ($row = towfetch($query_result)) {
-    // Add the data from the current row into our arrays
-    $responses[] = $row['customer_response'];
-    $commit_dates[] = $row['commitment_date'];
-    $updated_ats[] = $row['updated_at'];
+if ($query_result) {
+    while ($row = towfetch($query_result)) {
+        if ($row && is_array($row)) {
+            // Add the data from the current row into our arrays
+            $responses[] = isset($row['customer_response']) ? $row['customer_response'] : '';
+            $commit_dates[] = isset($row['commitment_date']) ? $row['commitment_date'] : '';
+            $updated_ats[] = isset($row['updated_at']) ? $row['updated_at'] : '';
+        }
+    }
 }
 
 // 4. Use implode() to concatenate the values with a line break
