@@ -50,8 +50,8 @@ if (isset($_GET['pageno'])) {
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
                             <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active"><a href="#description">Daily follow ups (less than 65 days)</a></li>
-                                <li><a href="#INFORMATION">Default (greater than 65 days)</a></li>
+                                <li class="active"><a href="#description">Daily follow ups (less than 35 DPD)</a></li>
+                                <li><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
                             </ul>
                             <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
                             <div id="myTabContent" class="tab-content custom-product-edit">
@@ -75,6 +75,7 @@ if (isset($_GET['pageno'])) {
                                         <th>Total Loans</th>
                                         <th>principal loan Amt</th>    
                                         <th>loan exhausted days</th>    
+                                        <th>DPD</th>    
                                         <th>outstanding Amount</th>    
                                         <th>loan ID</th>    
                                         <th>Salary Date</th>    
@@ -100,8 +101,33 @@ if (isset($_GET['pageno'])) {
                                        $zz[] = $value;
                                    }
                                    $val = implode(',',$zz);
-                                   $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi FROM user INNER JOIN loan ON loan.uid=user.id  WHERE loan.lid IN ($val) ORDER BY loan.id ASC  LIMIT $offset, $no_of_records_per_page");
-                                   while($b = towfetch($a)){
+                                   if (!empty($val)) {
+                                       $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val)");
+                                       $loans_with_dpd = [];
+                                       while($b = towfetch($a)){
+                                           if (!empty($b['processed_date'])) {
+                                               $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                               if ($processed_date_str !== false) {
+                                                   $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                                                   $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                                                   $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                                                   $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                                                   $dpd = $tday - $loan_days;
+                                                   if ($dpd < 35) {
+                                                       $b['calculated_dpd'] = $dpd;
+                                                       $loans_with_dpd[] = $b;
+                                                   }
+                                               }
+                                           }
+                                       }
+                                       usort($loans_with_dpd, function($a, $b) {
+                                           return $b['calculated_dpd'] <=> $a['calculated_dpd'];
+                                       });
+                                       $loans_with_dpd = array_slice($loans_with_dpd, $offset, $no_of_records_per_page);
+                                   } else {
+                                       $loans_with_dpd = [];
+                                   }
+                                   foreach($loans_with_dpd as $b){
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                 //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC"));
                                    ?>
@@ -172,6 +198,7 @@ switch ((int)$user_member) {
                                         <td data-title="Total Loans"><?=$loan_count_markup?></td>
                                         <td data-title="Mobile"><?=$user_processed_amount+$user_p_fee+($user_p_fee*0.18)?></td>
                                         <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
+                                        <td data-title="DPD"><?=isset($user_calculated_dpd) ? $user_calculated_dpd : 0?></td>
                                         <td data-title="Mobile"><?=$user_processed_amount+$user_p_fee+($user_p_fee*0.18)+$user_service_charge+$user_penality_charge?></td>
                                         <td data-title="Mobile">CLL<?=$user_lid?></td>
                                         <td data-title="Mobile"><?=$user_salary_date?></td>
@@ -232,6 +259,7 @@ switch ((int)$user_member) {
                                         <th>Total Loans</th>
                                         <th>principal loan Amt</th>    
                                         <th>loan exhausted days</th>    
+                                        <th>DPD</th>    
                                         <th>outstanding Amount</th>    
                                         <th>loan ID</th>    
                                         <th>St response</th>    
@@ -250,10 +278,33 @@ switch ((int)$user_member) {
                                        $i++;
                                    }
                                    $reseauserid = array_unique($reseauserid);
+                                   $loans_with_dpd = [];
                                    foreach($reseauserid as $value){
-                                   $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_acc_man.customer_response, loan_acc_man.commitment_date, loan_acc_man.updated_at FROM user INNER JOIN loan ON loan.uid=user.id LEFT JOIN loan_acc_man ON loan_acc_man.uid=user.id WHERE user.id=$value AND loan.status_log='account manager' ORDER BY loan.lid");
+                                   $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$value AND loan.status_log='account manager'");
                                    if(townum($a) > 0){
-                                   $b = towfetch($a);
+                                   while($b = towfetch($a)){
+                                       if (!empty($b['processed_date'])) {
+                                           $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                                           if ($processed_date_str !== false) {
+                                               $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                                               $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                                               $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                                               $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                                               $dpd = $tday - $loan_days;
+                                               if ($dpd >= 35) {
+                                                   $b['calculated_dpd'] = $dpd;
+                                                   $loans_with_dpd[] = $b;
+                                               }
+                                           }
+                                       }
+                                   }
+                                   }
+                                   }
+                                   usort($loans_with_dpd, function($a, $b) {
+                                       return $b['calculated_dpd'] <=> $a['calculated_dpd'];
+                                   });
+                                   $loans_with_dpd = array_slice($loans_with_dpd, $offset, $no_of_records_per_page);
+                                   foreach($loans_with_dpd as $b){
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                 //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC"));
                                    ?>
@@ -324,6 +375,7 @@ switch ((int)$user_member) {
                                         <td data-title="Total Loans"><?=$loan_count_markup?></td>
                                         <td data-title="Mobile"><?=$user_processed_amount?></td>
                                         <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
+                                        <td data-title="DPD"><?=isset($user_calculated_dpd) ? $user_calculated_dpd : 0?></td>
                                         <td data-title="Mobile"><?=$user_total_amount?></td>
                                         <td data-title="Mobile">CLL<?=$user_lid?></td>
                                         <td data-title="Customer Response"><?php echo $concatenated_responses; ?></td>
@@ -332,7 +384,7 @@ switch ((int)$user_member) {
                                         <!--<td data-title="Status" style="color:white; background:<?php #if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php #$user_status?></td>-->
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
                                     </tr>
-                                <?php $ii++;}} ?>
+                                <?php $ii++;} ?>
             </tbody>
     </table>
 							<nav aria-label="Page navigation example">
