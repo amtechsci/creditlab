@@ -733,7 +733,7 @@ try {
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
                 // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
-                if ($limit_inc_status === 0 && $loan_limit > $processed_amount) {
+                if (($limit_inc_status === 0 && $loan_limit > $processed_amount) || ($loan_limit > $processed_amount)) {
                     logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
                     // Determine which time window we're in for unique tracking
                     $time_slot = '';
