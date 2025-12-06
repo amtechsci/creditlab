@@ -95,6 +95,9 @@ $counts_data = towfetch($counts);
                         <a href="account_manager_updates_report.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/account_manager_updates_report.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-bar-chart"></i> <span class="mini-click-non">AM Updates Report</span></a>
                     </li>
                     <li>
+                        <a href="performance_dashboard.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/performance_dashboard.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
+                    </li>
+                    <li>
                         <a href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
                     </li>
                     <li>

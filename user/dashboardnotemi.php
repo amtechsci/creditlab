@@ -517,7 +517,7 @@ switch ($page_state) {
                 <div class="new-limit-content">
                     <h2 class="limit-title">You are eligible for a new limit of Rs.<?=$nincamt?>.</h2>
                     <button class="apply-btn" onclick="showUnlockMessage()">Apply Now</button>
-                    <p id="unlock-message" class="unlock-message">Unlock <span class="unlock-icon">🔓</span> your new limit by increasing your <a href="/user/creditlab_score.php" class="btn btn-success">Creditlab Score</a>.</p>
+                    <p id="unlock-message" class="unlock-message">Close your current running loan to get the new limit.</p>
                 </div>
             </div>
             <?php } ?>
