@@ -127,8 +127,14 @@ $monthly_not_responding_result = towfetch(towquery($monthly_not_responding_query
 $monthly_not_responding = isset($monthly_not_responding_result['count']) ? (int)$monthly_not_responding_result['count'] : 0;
 
 // Calculate performance percentage (fix NaN issue)
-$today_performance = ($today_followup_calls > 0) ? round(($today_responding / $today_followup_calls) * 100, 2) : 0;
-$monthly_performance = ($monthly_followup_calls > 0) ? round(($monthly_responding / $monthly_followup_calls) * 100, 2) : 0;
+$today_performance = 0;
+if ($today_followup_calls > 0 && $today_responding >= 0) {
+    $today_performance = round(($today_responding / $today_followup_calls) * 100, 2);
+}
+$monthly_performance = 0;
+if ($monthly_followup_calls > 0 && $monthly_responding >= 0) {
+    $monthly_performance = round(($monthly_responding / $monthly_followup_calls) * 100, 2);
+}
 
 // Get repayment statistics
 // Today cleared follow-up (loans cleared today where there was a follow-up entry)
@@ -225,14 +231,14 @@ $monthly_part_payment_amount = isset($monthly_part_payment_result['total_amount'
 $today_total_cleared = $today_cleared_followup_count + $today_cleared_auto_count;
 $monthly_total_cleared = $monthly_cleared_followup_count + $monthly_cleared_auto_count;
 
-// Get user-wise performance data
+// Get user-wise performance data for selected date
 $user_wise_query = "SELECT 
                     lam.updated_by,
                     COUNT(*) as total_calls,
                     SUM(CASE WHEN (" . implode(" OR ", $responding_conditions) . ") THEN 1 ELSE 0 END) as responding_count,
                     SUM(CASE WHEN (" . implode(" OR ", $not_responding_conditions) . ") THEN 1 ELSE 0 END) as not_responding_count
                     FROM loan_acc_man lam
-                    WHERE DATE(lam.updated_at) >= '$month_start' AND DATE(lam.updated_at) <= '$month_end'
+                    WHERE DATE(lam.updated_at) = '$selected_date'
                     AND lam.updated_by IS NOT NULL AND lam.updated_by != ''
                     GROUP BY lam.updated_by
                     ORDER BY total_calls DESC";
@@ -341,28 +347,6 @@ $account_managers = towquery($account_managers_query);
                                     <button type="submit" class="btn btn-primary">Filter</button>
                                 </form>
                                 
-                                <!-- Date Headers -->
-                                <div class="analytics-sparkle-area">
-                                    <div class="container-fluid">
-                                        <div class="row">
-                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #2196F3; color: white;">
-                                                    <div class="analytics-content" style="text-align: center;">
-                                                        <h3>TODAY REPAYMENTS: <?=date('d-M-Y', strtotime($selected_date));?></h3>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                                                    <div class="analytics-content" style="text-align: center;">
-                                                        <h3>MONTHLY REPAYMENTS: <?=date('d-M-Y', strtotime($month_start));?> TO <?=date('d-M-Y', strtotime($month_end));?></h3>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
                                 <!-- Performance Metrics -->
                                 <div style="margin-top: 20px;">
                                     <h3 style="margin-bottom: 20px;">Performance Metrics</h3>
@@ -398,8 +382,8 @@ $account_managers = towquery($account_managers_query);
                                             <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
                                                 <div class="analytics-content">
                                                     <h5>PERFORMANCE</h5>
-                                                    <h2><span class="counter"><?=$today_performance;?>%</span></h2>
-                                                    <span class="text-muted">Monthly: <?=$monthly_performance;?>%</span>
+                                                    <h2><span class="counter"><?=number_format($today_performance, 2);?>%</span></h2>
+                                                    <span class="text-muted">Monthly: <?=number_format($monthly_performance, 2);?>%</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -666,42 +650,69 @@ $account_managers = towquery($account_managers_query);
                                 </form>
                                 
                                 <div style="margin-top: 30px;">
-                                    <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($month_start));?> to <?=date('d-M-Y', strtotime($month_end));?>)</h3>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-striped">
-                                            <thead class="thead-light">
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Account Manager</th>
-                                                    <th>Total Calls</th>
-                                                    <th>Responding</th>
-                                                    <th>Not Responding</th>
-                                                    <th>Performance %</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $user_row_num = 1;
-                                                $user_wise_results_rewind = towquery($user_wise_query);
-                                                while($user_data = towfetch($user_wise_results_rewind)) {
-                                                    $user_performance = ($user_data['total_calls'] > 0) ? round(($user_data['responding_count'] / $user_data['total_calls']) * 100, 2) : 0;
-                                                    ?>
-                                                    <tr>
-                                                        <td><?=$user_row_num++;?></td>
-                                                        <td><strong><?=htmlspecialchars($user_data['updated_by']);?></strong></td>
-                                                        <td><?=$user_data['total_calls'];?></td>
-                                                        <td><?=$user_data['responding_count'];?></td>
-                                                        <td><?=$user_data['not_responding_count'];?></td>
-                                                        <td><?=$user_performance;?>%</td>
-                                                    </tr>
-                                                    <?php
-                                                }
-                                                if($user_row_num == 1) {
-                                                    echo "<tr><td colspan='6' class='text-center'>No data found for the selected period.</td></tr>";
-                                                }
-                                                ?>
-                                            </tbody>
-                                        </table>
+                                    <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($selected_date));?>)</h3>
+                                    <div class="row">
+                                        <?php
+                                        $user_wise_results_rewind = towquery($user_wise_query);
+                                        while($user_data = towfetch($user_wise_results_rewind)) {
+                                            $user_total = $user_data['total_calls'];
+                                            $user_responding = $user_data['responding_count'];
+                                            $user_not_responding = $user_data['not_responding_count'];
+                                            $user_performance = ($user_total > 0) ? round(($user_responding / $user_total) * 100, 2) : 0;
+                                            ?>
+                                            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="margin-bottom: 30px;">
+                                                <div class="product-payment-inner-st" style="border: 1px solid #ddd; border-radius: 5px; padding: 20px;">
+                                                    <h3 style="border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+                                                        <?=htmlspecialchars($user_data['updated_by']);?>
+                                                    </h3>
+                                                    <div class="row">
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #E3F2FD; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #2196F3; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">R</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Responding</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #2196F3;"><?=$user_responding;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #FFEBEE; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #F44336; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">NR</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Not Responding</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #F44336;"><?=$user_not_responding;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #FFF3E0; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #FF9800; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">T</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Total</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #FF9800;"><?=$user_total;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #E8F5E9; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #4CAF50; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">%</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Performance</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #4CAF50;"><?=$user_performance;?>%</h2>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <?php
+                                        }
+                                        // Check if no data found
+                                        $user_wise_check = towquery($user_wise_query);
+                                        if(townum($user_wise_check) == 0) {
+                                            echo '<div class="col-lg-12"><div class="alert alert-info">No data found for the selected date.</div></div>';
+                                        }
+                                        ?>
                                     </div>
                                 </div>
                             </div>
