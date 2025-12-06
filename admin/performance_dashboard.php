@@ -4,7 +4,7 @@ include_once 'head.php';
 // Get filter parameters
 $selected_date = isset($_GET['date']) ? towreal($_GET['date']) : date('Y-m-d');
 $selected_user = isset($_GET['user']) ? towreal($_GET['user']) : '';
-$view_mode = isset($_GET['view']) ? towreal($_GET['view']) : 'performance'; // 'performance' or 'updates'
+$view_mode = isset($_GET['view']) ? towreal($_GET['view']) : 'userwise'; // 'userwise' or 'updates'
 
 // Validate date
 if (empty($selected_date) || !strtotime($selected_date)) {
@@ -244,6 +244,62 @@ $user_wise_query = "SELECT
                     ORDER BY total_calls DESC";
 $user_wise_results = towquery($user_wise_query);
 
+// Function to get user repayment data
+function getUserRepaymentData($user_name, $selected_date, $month_start, $month_end, $responding_conditions) {
+    $user_escaped = towreal($user_name);
+    
+    // Today cleared follow-up (loans cleared today where user's last update was responding)
+    // Get loans where the last update by this user was responding and loan was cleared today
+    $today_cleared_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
+                           FROM transaction_details td
+                           INNER JOIN (
+                               SELECT lam1.lid, lam1.customer_response
+                               FROM loan_acc_man lam1
+                               INNER JOIN (
+                                   SELECT lid, MAX(id) as max_id
+                                   FROM loan_acc_man
+                                   WHERE updated_by = '$user_escaped'
+                                   GROUP BY lid
+                               ) lam2 ON lam1.id = lam2.max_id
+                               WHERE lam1.updated_by = '$user_escaped'
+                               AND LOWER(TRIM(lam1.customer_response)) IN ('" . implode("','", array_map('strtolower', ['shall pay by eod', 'shall pay tomorrow', 'shall pay ontime', 'shall pay on time', 'need extension', 'called back', 'shall pay part payment', 'already paid', 'sms sent by mobile'])) . "')
+                           ) lam ON td.cllid = lam.lid
+                           WHERE DATE(td.transaction_date) = '$selected_date'
+                           AND td.transaction_flow = 'full'";
+    $today_result = towfetch(towquery($today_cleared_query));
+    $today_count = isset($today_result['count']) ? (int)$today_result['count'] : 0;
+    $today_amount = isset($today_result['total_amount']) ? (float)$today_result['total_amount'] : 0;
+    
+    // Monthly cleared follow-up (loans cleared in month where user's last update was responding)
+    $monthly_cleared_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
+                             FROM transaction_details td
+                             INNER JOIN (
+                                 SELECT lam1.lid, lam1.customer_response
+                                 FROM loan_acc_man lam1
+                                 INNER JOIN (
+                                     SELECT lid, MAX(id) as max_id
+                                     FROM loan_acc_man
+                                     WHERE updated_by = '$user_escaped'
+                                     AND DATE(updated_at) <= '$month_end'
+                                     GROUP BY lid
+                                 ) lam2 ON lam1.id = lam2.max_id
+                                 WHERE lam1.updated_by = '$user_escaped'
+                                 AND LOWER(TRIM(lam1.customer_response)) IN ('" . implode("','", array_map('strtolower', ['shall pay by eod', 'shall pay tomorrow', 'shall pay ontime', 'shall pay on time', 'need extension', 'called back', 'shall pay part payment', 'already paid', 'sms sent by mobile'])) . "')
+                             ) lam ON td.cllid = lam.lid
+                             WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
+                             AND td.transaction_flow = 'full'";
+    $monthly_result = towfetch(towquery($monthly_cleared_query));
+    $monthly_count = isset($monthly_result['count']) ? (int)$monthly_result['count'] : 0;
+    $monthly_amount = isset($monthly_result['total_amount']) ? (float)$monthly_result['total_amount'] : 0;
+    
+    return [
+        'today_count' => $today_count,
+        'today_amount' => $today_amount,
+        'monthly_count' => $monthly_count,
+        'monthly_amount' => $monthly_amount
+    ];
+}
+
 // Get updates summary for date range (for AM Updates Report functionality)
 $from_date = isset($_GET['from_date']) ? towreal($_GET['from_date']) : $month_start;
 $to_date = isset($_GET['to_date']) ? towreal($_GET['to_date']) : $month_end;
@@ -318,175 +374,114 @@ $account_managers = towquery($account_managers_query);
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         <ul id="myTabedu1" class="tab-review-design">
-                            <li class="<?=$view_mode == 'performance' ? 'active' : '';?>"><a href="#performance">Performance</a></li>
-                            <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="#updates">Updates Report</a></li>
                             <li class="<?=$view_mode == 'userwise' ? 'active' : '';?>"><a href="#userwise">User-wise Report</a></li>
+                            <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="#updates">Updates Report</a></li>
                         </ul>
                         <div id="myTabContent" class="tab-content custom-product-edit">
-                            <!-- Performance Tab -->
-                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'performance' ? 'active in' : '';?>" id="performance">
+                            <!-- User-wise Report Tab -->
+                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'userwise' ? 'active in' : '';?>" id="userwise">
                                 <form method="GET" action="" class="form-inline" style="padding: 20px;">
-                                    <input type="hidden" name="view" value="performance">
+                                    <input type="hidden" name="view" value="userwise">
                                     <div class="form-group" style="margin-right: 20px;">
                                         <label for="date" style="margin-right: 10px;">Date:</label>
                                         <input type="date" name="date" id="date" class="form-control" value="<?=$selected_date;?>" required>
                                     </div>
-                                    <div class="form-group" style="margin-right: 20px;">
-                                        <label for="user" style="margin-right: 10px;">Account Manager:</label>
-                                        <select name="user" id="user" class="form-control">
-                                            <option value="">All Account Managers</option>
-                                            <?php 
-                                            $account_managers_rewind = towquery($account_managers_query);
-                                            while($am = towfetch($account_managers_rewind)): ?>
-                                                <option value="<?=htmlspecialchars($am['updated_by']);?>" <?=$selected_user == $am['updated_by'] ? 'selected' : '';?>>
-                                                    <?=htmlspecialchars($am['updated_by']);?>
-                                                </option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
                                     <button type="submit" class="btn btn-primary">Filter</button>
                                 </form>
                                 
-                                <!-- Performance Metrics -->
-                                <div style="margin-top: 20px;">
-                                    <h3 style="margin-bottom: 20px;">Performance Metrics</h3>
-                                    <div class="row">
-                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Responding</h5>
-                                                    <h2><span class="counter"><?=$today_responding;?></span></h2>
-                                                    <span class="text-muted">Monthly: <?=$monthly_responding;?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Not Responding</h5>
-                                                    <h2><span class="counter"><?=$today_not_responding;?></span></h2>
-                                                    <span class="text-muted">Monthly: <?=$monthly_not_responding;?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Today_Follow-up Calls</h5>
-                                                    <h2><span class="counter"><?=$today_followup_calls;?></span></h2>
-                                                    <span class="text-muted">Monthly: <?=$monthly_followup_calls;?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                                                <div class="analytics-content">
-                                                    <h5>PERFORMANCE</h5>
-                                                    <h2><span class="counter"><?=number_format($today_performance, 2);?>%</span></h2>
-                                                    <span class="text-muted">Monthly: <?=number_format($monthly_performance, 2);?>%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Repayments Section -->
                                 <div style="margin-top: 30px;">
-                                    <h3 style="margin-bottom: 20px;">Repayments</h3>
+                                    <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($selected_date));?>)</h3>
                                     <div class="row">
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Today_Cleared Follow-up</h5>
-                                                    <h2><span class="counter"><?=$today_cleared_followup_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($today_cleared_followup_amount, 2);?></span>
+                                        <?php
+                                        $user_wise_results_rewind = towquery($user_wise_query);
+                                        while($user_data = towfetch($user_wise_results_rewind)) {
+                                            $user_total = $user_data['total_calls'];
+                                            $user_responding = $user_data['responding_count'];
+                                            $user_not_responding = $user_data['not_responding_count'];
+                                            $user_performance = ($user_total > 0) ? round(($user_responding / $user_total) * 100, 2) : 0;
+                                            ?>
+                                            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="margin-bottom: 30px;">
+                                                <div class="product-payment-inner-st" style="border: 1px solid #ddd; border-radius: 5px; padding: 20px;">
+                                                    <h3 style="border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+                                                        <?=htmlspecialchars($user_data['updated_by']);?>
+                                                    </h3>
+                                                    <div class="row">
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #E3F2FD; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #2196F3; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">R</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Responding</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #2196F3;"><?=$user_responding;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #FFEBEE; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #F44336; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">NR</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Not Responding</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #F44336;"><?=$user_not_responding;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #FFF3E0; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #FF9800; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">T</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Total</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #FF9800;"><?=$user_total;?></h2>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                            <div style="text-align: center; padding: 15px; background-color: #E8F5E9; border-radius: 5px; margin-bottom: 10px;">
+                                                                <div style="width: 50px; height: 50px; background-color: #4CAF50; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                                                    <span style="color: white; font-weight: bold;">%</span>
+                                                                </div>
+                                                                <h5 style="margin: 0;">Performance</h5>
+                                                                <h2 style="margin: 5px 0 0; color: #4CAF50;"><?=$user_performance;?>%</h2>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Repayments Section -->
+                                                    <?php
+                                                    // Get repayment data for this user
+                                                    $repayment_data = getUserRepaymentData($user_data['updated_by'], $selected_date, $month_start, $month_end, $responding_conditions);
+                                                    ?>
+                                                    <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
+                                                        <h4 style="margin-bottom: 15px; color: #666;">Repayments</h4>
+                                                        <div class="row">
+                                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                                <div style="padding: 10px; background-color: #f5f5f5; border-radius: 5px; margin-bottom: 10px;">
+                                                                    <h6 style="margin: 0 0 5px 0; color: #666; font-size: 12px;">Today_Cleared Follow-up</h6>
+                                                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                                        <span style="font-size: 18px; font-weight: bold; color: #2196F3;"><?=$repayment_data['today_count'];?></span>
+                                                                        <span style="font-size: 14px; color: #666;">₹<?=number_format($repayment_data['today_amount'], 2);?></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                                <div style="padding: 10px; background-color: #f5f5f5; border-radius: 5px; margin-bottom: 10px;">
+                                                                    <h6 style="margin: 0 0 5px 0; color: #666; font-size: 12px;">Monthly_Cleared Follow-up</h6>
+                                                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                                        <span style="font-size: 18px; font-weight: bold; color: #4CAF50;"><?=$repayment_data['monthly_count'];?></span>
+                                                                        <span style="font-size: 14px; color: #666;">₹<?=number_format($repayment_data['monthly_amount'], 2);?></span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Today_Cleared Auto</h5>
-                                                    <h2><span class="counter"><?=$today_cleared_auto_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($today_cleared_auto_amount, 2);?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Today_Part Payment</h5>
-                                                    <h2><span class="counter"><?=$today_part_payment_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($today_part_payment_amount, 2);?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Monthly_Cleared Follow-up</h5>
-                                                    <h2><span class="counter"><?=$monthly_cleared_followup_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_followup_amount, 2);?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Monthly_Cleared Auto</h5>
-                                                    <h2><span class="counter"><?=$monthly_cleared_auto_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_auto_amount, 2);?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Monthly_Part Payment</h5>
-                                                    <h2><span class="counter"><?=$monthly_part_payment_count;?></span></h2>
-                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_part_payment_amount, 2);?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                                                <div class="analytics-content" style="text-align: center;">
-                                                    <h3>TOTAL CLEARED: <?=$today_total_cleared;?></h3>
-                                                    <span class="text-muted">Monthly Total: <?=$monthly_total_cleared;?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Passed to ULTRA RM Section -->
-                                <div style="margin-top: 30px;">
-                                    <h3 style="margin-bottom: 20px;">Passed to ULTRA RM</h3>
-                                    <div class="row">
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Monthly_Passed</h5>
-                                                    <h2><span class="counter">0</span></h2>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>Monthly_Passed_Amount</h5>
-                                                    <h2><span class="counter">₹0</span></h2>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                            <div class="analytics-sparkle-line reso-mg-b-30">
-                                                <div class="analytics-content">
-                                                    <h5>LTD_Passed</h5>
-                                                    <h2><span class="counter">0</span></h2>
-                                                </div>
-                                            </div>
-                                        </div>
+                                            <?php
+                                        }
+                                        // Check if no data found
+                                        $user_wise_check = towquery($user_wise_query);
+                                        if(townum($user_wise_check) == 0) {
+                                            echo '<div class="col-lg-12"><div class="alert alert-info">No data found for the selected date.</div></div>';
+                                        }
+                                        ?>
                                     </div>
                                 </div>
                             </div>
@@ -634,85 +629,6 @@ $account_managers = towquery($account_managers_query);
                                                 ?>
                                             </tbody>
                                         </table>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- User-wise Report Tab -->
-                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'userwise' ? 'active in' : '';?>" id="userwise">
-                                <form method="GET" action="" class="form-inline" style="padding: 20px;">
-                                    <input type="hidden" name="view" value="userwise">
-                                    <div class="form-group" style="margin-right: 20px;">
-                                        <label for="date" style="margin-right: 10px;">Date:</label>
-                                        <input type="date" name="date" id="date" class="form-control" value="<?=$selected_date;?>" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Filter</button>
-                                </form>
-                                
-                                <div style="margin-top: 30px;">
-                                    <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($selected_date));?>)</h3>
-                                    <div class="row">
-                                        <?php
-                                        $user_wise_results_rewind = towquery($user_wise_query);
-                                        while($user_data = towfetch($user_wise_results_rewind)) {
-                                            $user_total = $user_data['total_calls'];
-                                            $user_responding = $user_data['responding_count'];
-                                            $user_not_responding = $user_data['not_responding_count'];
-                                            $user_performance = ($user_total > 0) ? round(($user_responding / $user_total) * 100, 2) : 0;
-                                            ?>
-                                            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="margin-bottom: 30px;">
-                                                <div class="product-payment-inner-st" style="border: 1px solid #ddd; border-radius: 5px; padding: 20px;">
-                                                    <h3 style="border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
-                                                        <?=htmlspecialchars($user_data['updated_by']);?>
-                                                    </h3>
-                                                    <div class="row">
-                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                            <div style="text-align: center; padding: 15px; background-color: #E3F2FD; border-radius: 5px; margin-bottom: 10px;">
-                                                                <div style="width: 50px; height: 50px; background-color: #2196F3; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-                                                                    <span style="color: white; font-weight: bold;">R</span>
-                                                                </div>
-                                                                <h5 style="margin: 0;">Responding</h5>
-                                                                <h2 style="margin: 5px 0 0; color: #2196F3;"><?=$user_responding;?></h2>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                            <div style="text-align: center; padding: 15px; background-color: #FFEBEE; border-radius: 5px; margin-bottom: 10px;">
-                                                                <div style="width: 50px; height: 50px; background-color: #F44336; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-                                                                    <span style="color: white; font-weight: bold;">NR</span>
-                                                                </div>
-                                                                <h5 style="margin: 0;">Not Responding</h5>
-                                                                <h2 style="margin: 5px 0 0; color: #F44336;"><?=$user_not_responding;?></h2>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                            <div style="text-align: center; padding: 15px; background-color: #FFF3E0; border-radius: 5px; margin-bottom: 10px;">
-                                                                <div style="width: 50px; height: 50px; background-color: #FF9800; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-                                                                    <span style="color: white; font-weight: bold;">T</span>
-                                                                </div>
-                                                                <h5 style="margin: 0;">Total</h5>
-                                                                <h2 style="margin: 5px 0 0; color: #FF9800;"><?=$user_total;?></h2>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                                            <div style="text-align: center; padding: 15px; background-color: #E8F5E9; border-radius: 5px; margin-bottom: 10px;">
-                                                                <div style="width: 50px; height: 50px; background-color: #4CAF50; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
-                                                                    <span style="color: white; font-weight: bold;">%</span>
-                                                                </div>
-                                                                <h5 style="margin: 0;">Performance</h5>
-                                                                <h2 style="margin: 5px 0 0; color: #4CAF50;"><?=$user_performance;?>%</h2>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <?php
-                                        }
-                                        // Check if no data found
-                                        $user_wise_check = towquery($user_wise_query);
-                                        if(townum($user_wise_check) == 0) {
-                                            echo '<div class="col-lg-12"><div class="alert alert-info">No data found for the selected date.</div></div>';
-                                        }
-                                        ?>
                                     </div>
                                 </div>
                             </div>
