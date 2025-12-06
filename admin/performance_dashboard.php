@@ -4,6 +4,7 @@ include_once 'head.php';
 // Get filter parameters
 $selected_date = isset($_GET['date']) ? towreal($_GET['date']) : date('Y-m-d');
 $selected_user = isset($_GET['user']) ? towreal($_GET['user']) : '';
+$view_mode = isset($_GET['view']) ? towreal($_GET['view']) : 'performance'; // 'performance' or 'updates'
 
 // Validate date
 if (empty($selected_date) || !strtotime($selected_date)) {
@@ -125,13 +126,13 @@ $monthly_not_responding_query = "SELECT COUNT(*) as count FROM loan_acc_man lam
 $monthly_not_responding_result = towfetch(towquery($monthly_not_responding_query));
 $monthly_not_responding = isset($monthly_not_responding_result['count']) ? (int)$monthly_not_responding_result['count'] : 0;
 
-// Calculate performance percentage
-$today_performance = $today_followup_calls > 0 ? round(($today_responding / $today_followup_calls) * 100, 2) : 0;
-$monthly_performance = $monthly_followup_calls > 0 ? round(($monthly_responding / $monthly_followup_calls) * 100, 2) : 0;
+// Calculate performance percentage (fix NaN issue)
+$today_performance = ($today_followup_calls > 0) ? round(($today_responding / $today_followup_calls) * 100, 2) : 0;
+$monthly_performance = ($monthly_followup_calls > 0) ? round(($monthly_responding / $monthly_followup_calls) * 100, 2) : 0;
 
 // Get repayment statistics
 // Today cleared follow-up (loans cleared today where there was a follow-up entry)
-$today_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$today_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                                 FROM transaction_details td
                                 INNER JOIN loan_acc_man lam ON td.cllid = lam.lid
                                 WHERE DATE(td.transaction_date) = '$selected_date'
@@ -145,7 +146,7 @@ $today_cleared_followup_count = isset($today_cleared_followup_result['count']) ?
 $today_cleared_followup_amount = isset($today_cleared_followup_result['total_amount']) ? (float)$today_cleared_followup_result['total_amount'] : 0;
 
 // Today cleared auto (loans cleared today via autopay/enach)
-$today_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$today_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                             FROM transaction_details td
                             WHERE DATE(td.transaction_date) = '$selected_date'
                             AND td.transaction_flow = 'full'
@@ -161,7 +162,7 @@ $today_cleared_auto_count = isset($today_cleared_auto_result['count']) ? (int)$t
 $today_cleared_auto_amount = isset($today_cleared_auto_result['total_amount']) ? (float)$today_cleared_auto_result['total_amount'] : 0;
 
 // Today part payment
-$today_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$today_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                              FROM transaction_details td
                              WHERE DATE(td.transaction_date) = '$selected_date'
                              AND td.transaction_flow = 'part'";
@@ -176,7 +177,7 @@ $today_part_payment_count = isset($today_part_payment_result['count']) ? (int)$t
 $today_part_payment_amount = isset($today_part_payment_result['total_amount']) ? (float)$today_part_payment_result['total_amount'] : 0;
 
 // Monthly cleared follow-up
-$monthly_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$monthly_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                                   FROM transaction_details td
                                   INNER JOIN loan_acc_man lam ON td.cllid = lam.lid
                                   WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
@@ -190,7 +191,7 @@ $monthly_cleared_followup_count = isset($monthly_cleared_followup_result['count'
 $monthly_cleared_followup_amount = isset($monthly_cleared_followup_result['total_amount']) ? (float)$monthly_cleared_followup_result['total_amount'] : 0;
 
 // Monthly cleared auto
-$monthly_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$monthly_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                               FROM transaction_details td
                               WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
                               AND td.transaction_flow = 'full'
@@ -206,7 +207,7 @@ $monthly_cleared_auto_count = isset($monthly_cleared_auto_result['count']) ? (in
 $monthly_cleared_auto_amount = isset($monthly_cleared_auto_result['total_amount']) ? (float)$monthly_cleared_auto_result['total_amount'] : 0;
 
 // Monthly part payment
-$monthly_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, SUM(td.transaction_amount) as total_amount
+$monthly_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
                                FROM transaction_details td
                                WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
                                AND td.transaction_flow = 'part'";
@@ -223,6 +224,52 @@ $monthly_part_payment_amount = isset($monthly_part_payment_result['total_amount'
 // Calculate totals
 $today_total_cleared = $today_cleared_followup_count + $today_cleared_auto_count;
 $monthly_total_cleared = $monthly_cleared_followup_count + $monthly_cleared_auto_count;
+
+// Get user-wise performance data
+$user_wise_query = "SELECT 
+                    lam.updated_by,
+                    COUNT(*) as total_calls,
+                    SUM(CASE WHEN (" . implode(" OR ", $responding_conditions) . ") THEN 1 ELSE 0 END) as responding_count,
+                    SUM(CASE WHEN (" . implode(" OR ", $not_responding_conditions) . ") THEN 1 ELSE 0 END) as not_responding_count
+                    FROM loan_acc_man lam
+                    WHERE DATE(lam.updated_at) >= '$month_start' AND DATE(lam.updated_at) <= '$month_end'
+                    AND lam.updated_by IS NOT NULL AND lam.updated_by != ''
+                    GROUP BY lam.updated_by
+                    ORDER BY total_calls DESC";
+$user_wise_results = towquery($user_wise_query);
+
+// Get updates summary for date range (for AM Updates Report functionality)
+$from_date = isset($_GET['from_date']) ? towreal($_GET['from_date']) : $month_start;
+$to_date = isset($_GET['to_date']) ? towreal($_GET['to_date']) : $month_end;
+$date_where_updates = "DATE(updated_at) >= '$from_date' AND DATE(updated_at) <= '$to_date'";
+$user_where_updates = '';
+if (!empty($selected_user)) {
+    $user_where_updates = "AND updated_by = '$selected_user_escaped'";
+}
+
+// Get total updates count
+$total_updates_query = "SELECT COUNT(*) as total FROM loan_acc_man WHERE $date_where_updates $user_where_updates";
+$total_updates_result = towfetch(towquery($total_updates_query));
+$total_updates = isset($total_updates_result['total']) ? $total_updates_result['total'] : 0;
+
+// Get updates grouped by user (for summary table)
+$summary_query = "SELECT updated_by, COUNT(*) as update_count, 
+                  MIN(updated_at) as first_update, 
+                  MAX(updated_at) as last_update
+                  FROM loan_acc_man 
+                  WHERE $date_where_updates $user_where_updates AND updated_by IS NOT NULL AND updated_by != ''
+                  GROUP BY updated_by 
+                  ORDER BY update_count DESC";
+$summary_results = towquery($summary_query);
+
+// Get all updates with details (for detailed table)
+$details_query = "SELECT lam.*, u.name as customer_name, u.mobile as customer_mobile, u.email as customer_email
+                  FROM loan_acc_man lam
+                  LEFT JOIN user u ON lam.uid = u.id
+                  WHERE $date_where_updates $user_where_updates
+                  ORDER BY lam.updated_at DESC
+                  LIMIT 500";
+$details_results = towquery($details_query);
 
 // Get list of account managers for filter
 $account_managers_query = "SELECT DISTINCT updated_by FROM loan_acc_man WHERE updated_by IS NOT NULL AND updated_by != '' ORDER BY updated_by";
@@ -264,209 +311,397 @@ $account_managers = towquery($account_managers_query);
             <div class="row">
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
-                        <form method="GET" action="" class="form-inline" style="padding: 20px;">
-                            <div class="form-group" style="margin-right: 20px;">
-                                <label for="date" style="margin-right: 10px;">Date:</label>
-                                <input type="date" name="date" id="date" class="form-control" value="<?=$selected_date;?>" required>
-                            </div>
-                            <div class="form-group" style="margin-right: 20px;">
-                                <label for="user" style="margin-right: 10px;">Account Manager:</label>
-                                <select name="user" id="user" class="form-control">
-                                    <option value="">All Account Managers</option>
-                                    <?php while($am = towfetch($account_managers)): ?>
-                                        <option value="<?=htmlspecialchars($am['updated_by']);?>" <?=$selected_user == $am['updated_by'] ? 'selected' : '';?>>
-                                            <?=htmlspecialchars($am['updated_by']);?>
-                                        </option>
-                                    <?php endwhile; ?>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Filter</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Date Headers -->
-    <div class="analytics-sparkle-area">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                    <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #2196F3; color: white;">
-                        <div class="analytics-content" style="text-align: center;">
-                            <h3>TODAY REPAYMENTS: <?=date('d-M-Y', strtotime($selected_date));?></h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                    <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                        <div class="analytics-content" style="text-align: center;">
-                            <h3>MONTHLY REPAYMENTS: <?=date('d-M-Y', strtotime($month_start));?> TO <?=date('d-M-Y', strtotime($month_end));?></h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Performance Metrics -->
-    <div class="single-pro-review-area mt-t-30 mg-b-15">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                    <div class="product-payment-inner-st">
-                        <h3 style="margin-bottom: 20px;">Performance Metrics</h3>
-                        <div class="row">
-                            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Responding</h5>
-                                        <h2><span class="counter"><?=$today_responding;?></span></h2>
-                                        <span class="text-muted">Monthly: <?=$monthly_responding;?></span>
+                        <ul id="myTabedu1" class="tab-review-design">
+                            <li class="<?=$view_mode == 'performance' ? 'active' : '';?>"><a href="#performance">Performance</a></li>
+                            <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="#updates">Updates Report</a></li>
+                            <li class="<?=$view_mode == 'userwise' ? 'active' : '';?>"><a href="#userwise">User-wise Report</a></li>
+                        </ul>
+                        <div id="myTabContent" class="tab-content custom-product-edit">
+                            <!-- Performance Tab -->
+                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'performance' ? 'active in' : '';?>" id="performance">
+                                <form method="GET" action="" class="form-inline" style="padding: 20px;">
+                                    <input type="hidden" name="view" value="performance">
+                                    <div class="form-group" style="margin-right: 20px;">
+                                        <label for="date" style="margin-right: 10px;">Date:</label>
+                                        <input type="date" name="date" id="date" class="form-control" value="<?=$selected_date;?>" required>
+                                    </div>
+                                    <div class="form-group" style="margin-right: 20px;">
+                                        <label for="user" style="margin-right: 10px;">Account Manager:</label>
+                                        <select name="user" id="user" class="form-control">
+                                            <option value="">All Account Managers</option>
+                                            <?php 
+                                            $account_managers_rewind = towquery($account_managers_query);
+                                            while($am = towfetch($account_managers_rewind)): ?>
+                                                <option value="<?=htmlspecialchars($am['updated_by']);?>" <?=$selected_user == $am['updated_by'] ? 'selected' : '';?>>
+                                                    <?=htmlspecialchars($am['updated_by']);?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                                
+                                <!-- Date Headers -->
+                                <div class="analytics-sparkle-area">
+                                    <div class="container-fluid">
+                                        <div class="row">
+                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #2196F3; color: white;">
+                                                    <div class="analytics-content" style="text-align: center;">
+                                                        <h3>TODAY REPAYMENTS: <?=date('d-M-Y', strtotime($selected_date));?></h3>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
+                                                    <div class="analytics-content" style="text-align: center;">
+                                                        <h3>MONTHLY REPAYMENTS: <?=date('d-M-Y', strtotime($month_start));?> TO <?=date('d-M-Y', strtotime($month_end));?></h3>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Performance Metrics -->
+                                <div style="margin-top: 20px;">
+                                    <h3 style="margin-bottom: 20px;">Performance Metrics</h3>
+                                    <div class="row">
+                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Responding</h5>
+                                                    <h2><span class="counter"><?=$today_responding;?></span></h2>
+                                                    <span class="text-muted">Monthly: <?=$monthly_responding;?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Not Responding</h5>
+                                                    <h2><span class="counter"><?=$today_not_responding;?></span></h2>
+                                                    <span class="text-muted">Monthly: <?=$monthly_not_responding;?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Today_Follow-up Calls</h5>
+                                                    <h2><span class="counter"><?=$today_followup_calls;?></span></h2>
+                                                    <span class="text-muted">Monthly: <?=$monthly_followup_calls;?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
+                                                <div class="analytics-content">
+                                                    <h5>PERFORMANCE</h5>
+                                                    <h2><span class="counter"><?=$today_performance;?>%</span></h2>
+                                                    <span class="text-muted">Monthly: <?=$monthly_performance;?>%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Repayments Section -->
+                                <div style="margin-top: 30px;">
+                                    <h3 style="margin-bottom: 20px;">Repayments</h3>
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Today_Cleared Follow-up</h5>
+                                                    <h2><span class="counter"><?=$today_cleared_followup_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($today_cleared_followup_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Today_Cleared Auto</h5>
+                                                    <h2><span class="counter"><?=$today_cleared_auto_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($today_cleared_auto_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Today_Part Payment</h5>
+                                                    <h2><span class="counter"><?=$today_part_payment_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($today_part_payment_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Monthly_Cleared Follow-up</h5>
+                                                    <h2><span class="counter"><?=$monthly_cleared_followup_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_followup_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Monthly_Cleared Auto</h5>
+                                                    <h2><span class="counter"><?=$monthly_cleared_auto_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_auto_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Monthly_Part Payment</h5>
+                                                    <h2><span class="counter"><?=$monthly_part_payment_count;?></span></h2>
+                                                    <span class="text-muted">Amount: ₹<?=number_format($monthly_part_payment_amount, 2);?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
+                                                <div class="analytics-content" style="text-align: center;">
+                                                    <h3>TOTAL CLEARED: <?=$today_total_cleared;?></h3>
+                                                    <span class="text-muted">Monthly Total: <?=$monthly_total_cleared;?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Passed to ULTRA RM Section -->
+                                <div style="margin-top: 30px;">
+                                    <h3 style="margin-bottom: 20px;">Passed to ULTRA RM</h3>
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Monthly_Passed</h5>
+                                                    <h2><span class="counter">0</span></h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>Monthly_Passed_Amount</h5>
+                                                    <h2><span class="counter">₹0</span></h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                            <div class="analytics-sparkle-line reso-mg-b-30">
+                                                <div class="analytics-content">
+                                                    <h5>LTD_Passed</h5>
+                                                    <h2><span class="counter">0</span></h2>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Not Responding</h5>
-                                        <h2><span class="counter"><?=$today_not_responding;?></span></h2>
-                                        <span class="text-muted">Monthly: <?=$monthly_not_responding;?></span>
+                            
+                            <!-- Updates Report Tab -->
+                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'updates' ? 'active in' : '';?>" id="updates">
+                                <form method="GET" action="" class="form-inline" style="padding: 20px;">
+                                    <input type="hidden" name="view" value="updates">
+                                    <div class="form-group" style="margin-right: 15px;">
+                                        <label for="from_date" style="margin-right: 10px;">From Date:</label>
+                                        <input type="date" name="from_date" id="from_date" class="form-control" value="<?=$from_date;?>" required>
+                                    </div>
+                                    <div class="form-group" style="margin-right: 15px;">
+                                        <label for="to_date" style="margin-right: 10px;">To Date:</label>
+                                        <input type="date" name="to_date" id="to_date" class="form-control" value="<?=$to_date;?>" required>
+                                    </div>
+                                    <div class="form-group" style="margin-right: 15px;">
+                                        <label for="user" style="margin-right: 10px;">Filter by User:</label>
+                                        <select name="user" id="user" class="form-control">
+                                            <option value="">All Users</option>
+                                            <?php 
+                                            $account_managers_rewind2 = towquery($account_managers_query);
+                                            while($am = towfetch($account_managers_rewind2)): ?>
+                                                <option value="<?=htmlspecialchars($am['updated_by']);?>" <?=$selected_user == $am['updated_by'] ? 'selected' : '';?>>
+                                                    <?=htmlspecialchars($am['updated_by']);?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-success" style="margin-right: 10px;">Apply Filters</button>
+                                    <a href="performance_dashboard.php?view=updates" class="btn btn-default">Reset</a>
+                                </form>
+                                
+                                <!-- Summary Statistics -->
+                                <div class="analytics-sparkle-area" style="margin-top: 20px;">
+                                    <div class="container-fluid">
+                                        <div class="row">
+                                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                                <div class="analytics-sparkle-line reso-mg-b-30">
+                                                    <div class="analytics-content">
+                                                        <h5>Total Updates</h5>
+                                                        <h2><span class="counter"><?=$total_updates;?></span></h2>
+                                                        <span class="text-muted">From <?=date('d M Y', strtotime($from_date));?> to <?=date('d M Y', strtotime($to_date));?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Summary by User -->
+                                <div style="margin-top: 30px;">
+                                    <h3 style="margin-bottom: 20px;">Summary by User</h3>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Updated By</th>
+                                                    <th>Total Updates</th>
+                                                    <th>First Update</th>
+                                                    <th>Last Update</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $row_num = 1;
+                                                $summary_results_rewind = towquery($summary_query);
+                                                while($summary = towfetch($summary_results_rewind)) {
+                                                    $first_update = $summary['first_update'] ? date('d M Y H:i', strtotime($summary['first_update'])) : 'N/A';
+                                                    $last_update = $summary['last_update'] ? date('d M Y H:i', strtotime($summary['last_update'])) : 'N/A';
+                                                    ?>
+                                                    <tr>
+                                                        <td><?=$row_num++;?></td>
+                                                        <td><strong><?=htmlspecialchars($summary['updated_by']);?></strong></td>
+                                                        <td><span class="badge badge-primary" style="font-size: 14px;"><?=$summary['update_count'];?></span></td>
+                                                        <td><?=$first_update;?></td>
+                                                        <td><?=$last_update;?></td>
+                                                        <td>
+                                                            <a href="?view=updates&from_date=<?=$from_date;?>&to_date=<?=$to_date;?>&user=<?=urlencode($summary['updated_by']);?>" class="btn btn-sm btn-info">View Details</a>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                                if($row_num == 1) {
+                                                    echo "<tr><td colspan='6' class='text-center'>No updates found for the selected date range.</td></tr>";
+                                                }
+                                                ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <!-- All Updates Details -->
+                                <div style="margin-top: 30px;">
+                                    <h3 style="margin-bottom: 20px;">All Updates Details</h3>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped" id="updatesTable">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Updated By</th>
+                                                    <th>Customer Name</th>
+                                                    <th>Loan ID</th>
+                                                    <th>Customer Response</th>
+                                                    <th>Commitment Date</th>
+                                                    <th>Commitment Text</th>
+                                                    <th>Default Type</th>
+                                                    <th>Updated At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $detail_num = 1;
+                                                $details_results_rewind = towquery($details_query);
+                                                while($detail = towfetch($details_results_rewind)) {
+                                                    $updated_at = $detail['updated_at'] ? date('d M Y H:i:s', strtotime($detail['updated_at'])) : 'N/A';
+                                                    $commitment_date = $detail['commitment_date'] ? date('d M Y', strtotime($detail['commitment_date'])) : 'N/A';
+                                                    ?>
+                                                    <tr>
+                                                        <td><?=$detail_num++;?></td>
+                                                        <td><strong><?=htmlspecialchars($detail['updated_by']);?></strong></td>
+                                                        <td>
+                                                            <?php if($detail['customer_name']): ?>
+                                                                <a href="profile.php?id=<?=$detail['uid'];?>" target="_blank">
+                                                                    <?=htmlspecialchars($detail['customer_name']);?>
+                                                                </a>
+                                                            <?php else: ?>
+                                                                User ID: <?=$detail['uid'];?>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>CLL<?=$detail['lid'];?></td>
+                                                        <td><?=htmlspecialchars($detail['customer_response']);?></td>
+                                                        <td><?=$commitment_date;?></td>
+                                                        <td><?=htmlspecialchars(substr($detail['commitment_text'], 0, 50));?><?=strlen($detail['commitment_text']) > 50 ? '...' : '';?></td>
+                                                        <td><?=htmlspecialchars($detail['default_type']);?></td>
+                                                        <td><?=$updated_at;?></td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                                if($detail_num == 1) {
+                                                    echo "<tr><td colspan='9' class='text-center'>No updates found for the selected filters.</td></tr>";
+                                                }
+                                                ?>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Today_Follow-up Calls</h5>
-                                        <h2><span class="counter"><?=$today_followup_calls;?></span></h2>
-                                        <span class="text-muted">Monthly: <?=$monthly_followup_calls;?></span>
+                            
+                            <!-- User-wise Report Tab -->
+                            <div class="product-tab-list tab-pane fade <?=$view_mode == 'userwise' ? 'active in' : '';?>" id="userwise">
+                                <form method="GET" action="" class="form-inline" style="padding: 20px;">
+                                    <input type="hidden" name="view" value="userwise">
+                                    <div class="form-group" style="margin-right: 20px;">
+                                        <label for="date" style="margin-right: 10px;">Date:</label>
+                                        <input type="date" name="date" id="date" class="form-control" value="<?=$selected_date;?>" required>
                                     </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                                    <div class="analytics-content">
-                                        <h5>PERFORMANCE</h5>
-                                        <h2><span class="counter"><?=$today_performance;?>%</span></h2>
-                                        <span class="text-muted">Monthly: <?=$monthly_performance;?>%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Repayments Section -->
-    <div class="single-pro-review-area mt-t-30 mg-b-15">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                    <div class="product-payment-inner-st">
-                        <h3 style="margin-bottom: 20px;">Repayments</h3>
-                        <div class="row">
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Today_Cleared Follow-up</h5>
-                                        <h2><span class="counter"><?=$today_cleared_followup_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($today_cleared_followup_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Today_Cleared Auto</h5>
-                                        <h2><span class="counter"><?=$today_cleared_auto_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($today_cleared_auto_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Today_Part Payment</h5>
-                                        <h2><span class="counter"><?=$today_part_payment_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($today_part_payment_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Monthly_Cleared Follow-up</h5>
-                                        <h2><span class="counter"><?=$monthly_cleared_followup_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_followup_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Monthly_Cleared Auto</h5>
-                                        <h2><span class="counter"><?=$monthly_cleared_auto_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($monthly_cleared_auto_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Monthly_Part Payment</h5>
-                                        <h2><span class="counter"><?=$monthly_part_payment_count;?></span></h2>
-                                        <span class="text-muted">Amount: ₹<?=number_format($monthly_part_payment_amount, 2);?></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30" style="background-color: #4CAF50; color: white;">
-                                    <div class="analytics-content" style="text-align: center;">
-                                        <h3>TOTAL CLEARED: <?=$today_total_cleared;?></h3>
-                                        <span class="text-muted">Monthly Total: <?=$monthly_total_cleared;?></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Passed to ULTRA RM Section -->
-    <div class="single-pro-review-area mt-t-30 mg-b-15">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                    <div class="product-payment-inner-st">
-                        <h3 style="margin-bottom: 20px;">Passed to ULTRA RM</h3>
-                        <div class="row">
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Monthly_Passed</h5>
-                                        <h2><span class="counter">0</span></h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>Monthly_Passed_Amount</h5>
-                                        <h2><span class="counter">₹0</span></h2>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                                <div class="analytics-sparkle-line reso-mg-b-30">
-                                    <div class="analytics-content">
-                                        <h5>LTD_Passed</h5>
-                                        <h2><span class="counter">0</span></h2>
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                                
+                                <div style="margin-top: 30px;">
+                                    <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($month_start));?> to <?=date('d-M-Y', strtotime($month_end));?>)</h3>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Account Manager</th>
+                                                    <th>Total Calls</th>
+                                                    <th>Responding</th>
+                                                    <th>Not Responding</th>
+                                                    <th>Performance %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $user_row_num = 1;
+                                                $user_wise_results_rewind = towquery($user_wise_query);
+                                                while($user_data = towfetch($user_wise_results_rewind)) {
+                                                    $user_performance = ($user_data['total_calls'] > 0) ? round(($user_data['responding_count'] / $user_data['total_calls']) * 100, 2) : 0;
+                                                    ?>
+                                                    <tr>
+                                                        <td><?=$user_row_num++;?></td>
+                                                        <td><strong><?=htmlspecialchars($user_data['updated_by']);?></strong></td>
+                                                        <td><?=$user_data['total_calls'];?></td>
+                                                        <td><?=$user_data['responding_count'];?></td>
+                                                        <td><?=$user_data['not_responding_count'];?></td>
+                                                        <td><?=$user_performance;?>%</td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                                if($user_row_num == 1) {
+                                                    echo "<tr><td colspan='6' class='text-center'>No data found for the selected period.</td></tr>";
+                                                }
+                                                ?>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -480,4 +715,24 @@ $account_managers = towquery($account_managers_query);
     <?php
     include_once 'foot.php';
     ?>
-
+    
+    <script>
+    // Initialize DataTable if available
+    $(document).ready(function() {
+        if ($.fn.DataTable) {
+            $('#updatesTable').DataTable({
+                "pageLength": 25,
+                "order": [[ 8, "desc" ]], // Sort by Updated At column
+                "language": {
+                    "search": "Search:",
+                    "lengthMenu": "Show _MENU_ entries",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                    "infoEmpty": "No entries found",
+                    "infoFiltered": "(filtered from _TOTAL_ total entries)"
+                }
+            });
+        }
+    });
+    </script>
+</body>
+</html>

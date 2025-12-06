@@ -92,10 +92,7 @@ $counts_data = towfetch($counts);
                         <a href="bank_statistics.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/bank_statistics.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Bank Statistics</span></a>
                     </li>
                     <li>
-                        <a href="account_manager_updates_report.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/account_manager_updates_report.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-bar-chart"></i> <span class="mini-click-non">AM Updates Report</span></a>
-                    </li>
-                    <li>
-                        <a href="performance_dashboard.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/performance_dashboard.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
+                        <a href="performance_dashboard.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/performance_dashboard.php" || strpos($_SERVER['REQUEST_URI'], "/admin/performance_dashboard.php") !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
                     </li>
                     <li>
                         <a href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
