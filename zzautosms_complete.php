@@ -12,6 +12,10 @@ date_default_timezone_set('Asia/Kolkata');
 set_time_limit(300); // 5 minutes
 ini_set("memory_limit", "256M");
 
+// --- DRY RUN MODE ---
+// Set to true to simulate sending without actually calling the SMS API
+$dry_run = false; 
+
 // --- LOGGING SETUP ---
 $log_dir = "logs";
 $sent_log_dir = "sent_logs"; // Directory to track sent messages
@@ -101,10 +105,14 @@ function hasBeenSentToday($loan_id, $template_name) {
 }
 
 function markAsSent($loan_id, $template_name) {
-    global $sent_log_file, $sent_today_cache;
+    global $sent_log_file, $sent_today_cache, $dry_run;
     $key = getSentLogKey($loan_id, $template_name);
     if (!isset($sent_today_cache[$key])) {
-        file_put_contents($sent_log_file, $key . PHP_EOL, FILE_APPEND | LOCK_EX);
+        if (!$dry_run) {
+            file_put_contents($sent_log_file, $key . PHP_EOL, FILE_APPEND | LOCK_EX);
+        } else {
+            logMessage("DRY RUN: [SKIPPED] Writing '$key' to sent log file.");
+        }
         $sent_today_cache[$key] = true;
     }
 }
@@ -237,8 +245,14 @@ try {
     $monitoring_sms_sent_this_run = [];
 
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
+        global $dry_run;
         $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
         
+        if ($dry_run) {
+            logMessage("DRY RUN: [SIMULATED] SMS to $mobile (Template: $template_id): $message");
+            return true; // Return true to simulate successful send
+        }
+
         $curl = curl_init();
         curl_setopt_array($curl, [
             CURLOPT_URL => $url,
@@ -312,6 +326,11 @@ try {
     } else {
         $current_time = date('H:i');
         logMessage("Using current system time: $current_time");
+    }
+
+    if (isset($_GET['dry_run']) && $_GET['dry_run'] == '1') {
+        $dry_run = true;
+        logMessage("!!! DRY RUN MODE ENABLED !!! No SMS will be actually sent.");
     }
 
     $current_day_of_month = (int)date('j');
