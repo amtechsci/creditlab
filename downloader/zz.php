@@ -18,11 +18,11 @@ header('Content-Disposition: attachment; filename="Account_manager_data.csv"');
 
 $output = fopen('php://output', 'w');
 fputcsv($output, [
-    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "outstanding amount", "total loans"
+    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "DPD", "outstanding amount", "total loans"
 ]);
 
 foreach($reseauserid as $value){
-$a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_acc_man.customer_response, loan_acc_man.commitment_date, loan_acc_man.updated_at FROM user INNER JOIN loan ON loan.uid=user.id LEFT JOIN loan_acc_man ON loan_acc_man.uid=user.id WHERE user.id=$value AND loan.status_log='account manager' ORDER BY loan.lid");
+$a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_acc_man.customer_response, loan_acc_man.commitment_date, loan_acc_man.updated_at, loan_apply.days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan.lid = loan_apply.id LEFT JOIN loan_acc_man ON loan_acc_man.uid=user.id WHERE user.id=$value AND loan.status_log='account manager' ORDER BY loan.lid");
 if(townum($a) > 0){
 $b = towfetch($a);
 extract($b,EXTR_PREFIX_ALL,"user");
@@ -30,6 +30,10 @@ extract($b,EXTR_PREFIX_ALL,"user");
     $loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
     $loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
     $loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
+
+    $tday = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24));
+    $loan_days = isset($user_days) ? (int)$user_days : 30;
+    $dpd = $tday - $loan_days;
 
     $row = [
         $user_name,
@@ -39,7 +43,8 @@ extract($b,EXTR_PREFIX_ALL,"user");
         $user_altemail,
         (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18),
         $user_processed_amount,
-        ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24)),
+        $tday,
+        $dpd,
         (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge,
         $loan_count
     ];
