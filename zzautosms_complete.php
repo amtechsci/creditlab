@@ -325,7 +325,7 @@ try {
     $date_limit = date('Y-m-d H:i:s', strtotime("-120 days"));
     
     $loan_query_sql = "SELECT 
-                           user.id as user_id, user.name as user_name, user.mobile as user_mobile, 
+                           user.id as user_id, user.name as user_name, user.mobile as user_mobile, user.status as user_status, 
                            user.altmobile as user_altmobile, user.salary_date, user.loan_limit, user.limit_inc,
                            loan.lid, loan_apply.amount AS processed_amount, loan.processed_date, 
                            loan.total_amount, loan.service_charge, loan.penality_charge, loan.advance_amount,
@@ -733,7 +733,7 @@ try {
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
                 // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
-                if (($limit_inc_status === 0 && $loan_limit > $processed_amount) || ($loan_limit > $processed_amount)) {
+                if (($limit_inc_status === 0 && $loan_limit > $processed_amount) || ($loan_limit > $processed_amount && 1==2)) {
                     logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
                     // Determine which time window we're in for unique tracking
                     $time_slot = '';
