@@ -373,6 +373,7 @@ try {
             // --- FIX: Cast amount fields from TEXT/string to float/int ---
             $processed_amount = (float)$loan_data['processed_amount'];
             $total_amount = (float)$loan_data['total_amount'] + (float)$loan_data['service_charge'] + (float)$loan_data['penality_charge'];
+            $ltotal_amount = $loan_data['total_amount'];
             $outstanding_amount = $total_amount - (float)$loan_data['advance_amount'];
             $loan_limit = (int)$loan_data['loan_limit'];
             $limit_inc_status = (int)$loan_data['limit_inc'];
@@ -752,7 +753,7 @@ try {
             if (($current_time >= "08:00" && $current_time < "08:05") || ($current_time >= "12:50" && $current_time < "12:55") || ($current_time >= "16:00" && $current_time < "16:05")) {
                 logMessage("LID $user_lid: Checking Limit Increase. Time condition met.");
                 // Check if user has a pending limit increase offer (limit_inc == 0) and their new limit is higher
-                if (($limit_inc_status === 0 && $loan_limit > $processed_amount) || ($loan_limit > $processed_amount && 1==2)) {
+                if (($limit_inc_status === 0 && $loan_limit > $ltotal_amount) || ($loan_limit > $ltotal_amount)) {
                     logMessage("LID $user_lid: Loan limit condition met (limit_inc is 0 and new limit is higher).");
                     // Determine which time window we're in for unique tracking
                     $time_slot = '';
@@ -773,7 +774,7 @@ try {
                         if ($result['sent'] > 0) { markAsSent($user_lid, $unique_key); }
                         $sms_sent += $result['sent']; $errors += $result['errors'];
                     } else { logMessage("LID $user_lid: Already sent 'limit_increase' for time slot $time_slot today. Skipping."); }
-                } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $processed_amount)."); }
+                } else { logMessage("LID $user_lid: Loan limit condition not met (limit_inc: $limit_inc_status, limit: $loan_limit, processed: $ltotal_amount)."); }
             }
 
         }
