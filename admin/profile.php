@@ -141,7 +141,10 @@
                     if($transaction_flow == "full"){
                         $loan_data = towquery("SELECT * FROM loan WHERE lid='$cllid' ORDER BY id DESC");
                         $udpd = towfetch($loan_data);
-                        $dpd = $udpd['exhausted_period']-30; 
+                        // Fetch loan days from loan_apply table
+                        $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id='$cllid'"));
+                        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+                        $dpd = $udpd['exhausted_period']-$loan_days; 
                         if($dpd > 0){
                             if($dpd > 30){
                                 $point = -50;
@@ -168,7 +171,10 @@
                     if($transaction_flow == "settlement"){
                         $loan_data = towquery("SELECT * FROM loan WHERE lid='$cllid' ORDER BY id DESC");
                         $udpd = towfetch($loan_data);
-                        $dpd = $udpd['exhausted_period']-30; 
+                        // Fetch loan days from loan_apply table
+                        $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id='$cllid'"));
+                        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+                        $dpd = $udpd['exhausted_period']-$loan_days; 
                         if($dpd > 0){
                             if($dpd > 30){
                                 $point = -50;
@@ -2306,6 +2312,9 @@
                                         $usersd_penality_charge = 0;
                                     }
         $lof = towfetch(towquery("SELECT *, enach_skip_date, enach_skip_reason FROM loan WHERE lid=".$usersd_lid));
+        // Fetch loan days from loan_apply table
+        $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=".$usersd_lid));
+        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
         $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
         $processed_date = $lof['processed_date'] ?: date('Y-m-d');
         $dis_date = date('Y-m-d', strtotime(date_create($processed_date)->format("Y-m-d") . " -1 day"));
@@ -2381,7 +2390,7 @@
                                             echo isset($paid_amtf['paid_amt']) ? $paid_amtf['paid_amt'] : 0;
                                             ?></td>
                                             <td><?=$usersd_cleard_date?></td>
-                                            <td><?php $dpd = $usersd_exhausted_period-30; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
+                                            <td><?php $dpd = $usersd_exhausted_period-$loan_days; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
                                             <td><?php 
                                             if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
                                                 echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';

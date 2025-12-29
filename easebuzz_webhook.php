@@ -168,8 +168,12 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
         }
         $loan_details = towfetch($loan_data);
         
+        // Fetch loan days from loan_apply table
+        $loan_apply_data = towfetch(towquery($db, "SELECT days FROM loan_apply WHERE id='$loan_lid_escaped'"));
+        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+        
         // Calculate credit score points
-        $dpd = $loan_details['exhausted_period'] - 30;
+        $dpd = $loan_details['exhausted_period'] - $loan_days;
         $point = calculateCreditScorePoints($dpd);
         
         // Check if it's EMI and update accordingly
@@ -560,7 +564,12 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
             $user_data_result = towquery($db, "SELECT * FROM user WHERE id='$uid_escaped'");
             $user_details = towfetch($user_data_result);
 
-            $dpd = $loan_details['exhausted_period'] - 30;
+            // Fetch loan days from loan_apply table
+            $loan_apply_data_result = towquery($db, "SELECT days FROM loan_apply WHERE id='" . mysqli_real_escape_string($db, $loan_details['lid']) . "'");
+            $loan_apply_data = towfetch($loan_apply_data_result);
+            $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+
+            $dpd = $loan_details['exhausted_period'] - $loan_days;
             $point = ($dpd > 0) ? (($dpd > 30) ? -50 : (($dpd > 10) ? -8 : 2)) : 8;
 
             $point_escaped = mysqli_real_escape_string($db, $point);

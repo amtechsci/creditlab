@@ -55,8 +55,12 @@ if ($_POST) {
             $user_data = towquery("SELECT * FROM user WHERE id='".$loan_details['uid']."'");
             $user_details = towfetch($user_data);
     
+            // Fetch loan days from loan_apply table
+            $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id='".$loan_details['lid']."'"));
+            $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+    
             // Handle exhausted period and calculate the points for loan
-            $dpd = $loan_details['exhausted_period'] - 30;
+            $dpd = $loan_details['exhausted_period'] - $loan_days;
             if ($dpd > 0) {
                 if ($dpd > 30) {
                     $point = -50;

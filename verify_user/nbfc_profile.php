@@ -768,6 +768,9 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                        $usersd_penality_charge = 0;
                                    }
     $lof = towfetch(towquery("SELECT * FROM loan WHERE lid=".$usersd_lid));
+    // Fetch loan days from loan_apply table
+    $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=".$usersd_lid));
+    $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
     $loan_amountc = (float)$lof['processed_amount'] + (float)$lof['p_fee'] + (float)$lof['origination_fee'];
     $dis_date = date('Y-m-d', strtotime(date_create($lof['processed_date'])->format("Y-m-d") . " -1 day"));
     $di = strtotime($dis_date);
@@ -828,7 +831,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td <?php if($usersd_action == "no data"){ ?>class="bg-success" <?php }?>><?=$usersd_status_log?></td>
                                         <td><?php $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); $paid_amtf = towfetch($paid_amt); echo $paid_amtf['paid_amt'] ? $paid_amtf['paid_amt'] : 0;?></td>
                                         <td><?=$usersd_cleard_date?></td>
-                                        <td><?php $dpd = $usersd_exhausted_period-30; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
+                                        <td><?php $dpd = $usersd_exhausted_period-$loan_days; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
                                     </tr></form>
                                 <?php } ?>
             </tbody>

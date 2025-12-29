@@ -116,7 +116,12 @@ foreach ($requests as $requestBlock) {
                     $user_data_result = mysqli_query($db, "SELECT * FROM user WHERE id='$uid'");
                     $user_details = mysqli_fetch_assoc($user_data_result);
 
-                    $dpd = $loan_details['exhausted_period'] - 30;
+                    // Fetch loan days from loan_apply table
+                    $loan_apply_result = mysqli_query($db, "SELECT days FROM loan_apply WHERE id='" . mysqli_real_escape_string($db, $loan_details['lid']) . "'");
+                    $loan_apply_data = mysqli_fetch_assoc($loan_apply_result);
+                    $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+
+                    $dpd = $loan_details['exhausted_period'] - $loan_days;
                     $point = ($dpd > 0) ? (($dpd > 30) ? -50 : (($dpd > 10) ? -8 : 2)) : 8;
 
                     mysqli_query($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$uid);

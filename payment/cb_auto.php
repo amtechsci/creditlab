@@ -111,8 +111,12 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
             $user_data = towquery($db, "SELECT * FROM user WHERE id='$uid'");
             $user_details = towfetch($user_data);
             
+            // Fetch loan days from loan_apply table
+            $loan_apply_data = towfetch(towquery($db, "SELECT days FROM loan_apply WHERE id='$loan_lid'"));
+            $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+            
             // Calculate credit score points (same logic as admin/profile.php)
-            $dpd = $loan_details['exhausted_period'] - 30;
+            $dpd = $loan_details['exhausted_period'] - $loan_days;
             if ($dpd > 0) {
                 if ($dpd > 30) {
                     $point = -50;

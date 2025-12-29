@@ -60,7 +60,11 @@ while ($row = towfetch($result)) {
     
     $gst = ($row['processing_fees']*0.18);
     $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
-    $dpd = ($row['exhausted_period'] > 30) ? $row['exhausted_period']-30 : 0;
+    
+    // Fetch loan days from loan_apply table
+    $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=" . (int)$row['lid']));
+    $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+    $dpd = ($row['exhausted_period'] > $loan_days) ? $row['exhausted_period']-$loan_days : 0;
     
     if($dpd > 61){$dpdt = '05';}elseif($dpd > 31){$dpdt = '03';}elseif($dpd > 1){$dpdt = '02';}else{$dpdt = '01';}
     

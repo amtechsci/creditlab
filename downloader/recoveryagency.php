@@ -91,8 +91,13 @@ while ($row = towfetch($result)) {
     if (!empty($row['loan_start_date'])) {
         // Calculate Exhausted Days as per your logic
         $exhausted_days = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($row['loan_start_date'] . " -1 day")))) / (60 * 60 * 24));
-        if($exhausted_days > 30){
-            $dpd = $exhausted_days - 30;
+        
+        // Fetch loan days from loan_apply table
+        $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=" . (int)$row['loan_id']));
+        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
+        
+        if($exhausted_days > $loan_days){
+            $dpd = $exhausted_days - $loan_days;
         }
     }
 
