@@ -74,6 +74,7 @@ $loan_data_query = "
     SELECT
         loan.*,
         loan_apply.interest_percentage,
+        loan_apply.days,
         user.approvenew,
         user.star_member
     FROM
@@ -117,6 +118,9 @@ while ($loan_fetch = cron_fetch($loan_data)) {
     $day =  $days;
     $service_charge = 0;
 
+    // Get loan days from database (default to 30 for old loans)
+    $loan_days = isset($users_days) && $users_days > 0 ? (int)$users_days : 30;
+    
     if ($users_interest_percentage == 1) {
         if ($days >= 3) {
             $fee = $t * 3 / 100 * 0;
@@ -163,8 +167,10 @@ while ($loan_fetch = cron_fetch($loan_data)) {
         $service_charge += $fee;
     }
 
-    if ($day > 30) {
-        $penalitydays = $day - 30;
+    // Calculate penalty based on actual loan days (not hardcoded 30)
+    // Penalty starts AFTER the loan due date
+    if ($day > $loan_days) {
+        $penalitydays = $day - $loan_days;
         $penalitydays--;
         $penality = (($t) / 100) * 4;
         $atnp = ((($t) / 100) * 0.2) * $penalitydays;
