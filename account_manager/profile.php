@@ -11,6 +11,13 @@ if(isset($_GET['id'])){
     $aaid = towreal($_GET['id']);
   $userprofile = towquery("SELECT * FROM `user` WHERE id=".$id."");
   $userprofetch = towfetch($userprofile);
+  
+    // Check if user data was fetched successfully
+    if(!$userprofetch || !is_array($userprofetch)){
+        echo "<script>alert('User not found'); window.location.replace('index.php');</script>";
+        exit;
+    }
+  
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';

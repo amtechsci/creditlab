@@ -4,10 +4,44 @@ header("refresh:420");
 if(isset($user)){
     $userquery = towquery("SELECT * FROM user WHERE mobile='$user'");
     $userfetch = towfetch($userquery);
-    extract($userfetch,EXTR_PREFIX_ALL,"user");
-    // print_r($userfetch);exit;
+    
+    // Check if user data was fetched successfully
+    if($userfetch && is_array($userfetch)){
+        extract($userfetch,EXTR_PREFIX_ALL,"user");
+        // print_r($userfetch);exit;
+    }else{
+        // User not found or session expired - clear all session data and cookies
+        $_SESSION = array();
+        
+        // Delete session cookie
+        if (isset($_COOKIE[session_name()])) {
+            setcookie(session_name(), '', time()-3600, '/');
+        }
+        
+        // Clear any custom cookies
+        if (isset($_COOKIE['user'])) {
+            setcookie('user', '', time()-3600, '/');
+        }
+        
+        session_destroy();
+        header('location:../account/?session_expired=1');
+        exit;
+    }
 }else{
+    // No user session - clear everything and redirect to login
+    $_SESSION = array();
+    
+    if (isset($_COOKIE[session_name()])) {
+        setcookie(session_name(), '', time()-3600, '/');
+    }
+    
+    if (isset($_COOKIE['user'])) {
+        setcookie('user', '', time()-3600, '/');
+    }
+    
+    session_destroy();
     header('location:../account/');
+    exit;
 }
 ?>
 <!DOCTYPE html>

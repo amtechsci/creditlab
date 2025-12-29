@@ -35,6 +35,22 @@ if (isset($user)) {
 <br>
 <br>
 <br>
+		<?php
+		// Show session expiry message
+		if(isset($_GET['session_expired'])){
+			echo '<div style="max-width: 600px; margin: 0 auto 20px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; color: #856404;">
+					<strong><i class="fa fa-exclamation-triangle"></i> Session Expired!</strong><br>
+					Your session has expired due to inactivity or cookie expiration. Please login again to continue.
+				  </div>';
+		}
+		// Show logout success message
+		if(isset($_GET['logout']) && $_GET['logout'] == 'success'){
+			echo '<div style="max-width: 600px; margin: 0 auto 20px; padding: 15px; background-color: #d4edda; border: 1px solid #28a745; border-radius: 5px; color: #155724;">
+					<strong><i class="fa fa-check-circle"></i> Logged Out Successfully!</strong><br>
+					You have been logged out. Login again to access your account.
+				  </div>';
+		}
+		?>
 		<div class="main-grid">
 			<div class="agile-grids">	
 				<div class="grids">
