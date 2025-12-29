@@ -106,6 +106,9 @@ $counts_data = towfetch($counts);
                     <li>
                         <a href="pdf_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/pdf_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-pdf-o"></i> <span class="mini-click-non">PDF Settings</span></a>
                     </li>
+                    <li>
+                        <a href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
+                    </li>
                 </ul>
             </nav>
         </div>

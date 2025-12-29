@@ -99,6 +99,9 @@
                         <li>
                             <a class="" href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
                         </li>
+                        <li>
+                            <a class="" href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
+                        </li>
                         
                         
                     </ul>
