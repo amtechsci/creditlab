@@ -29,12 +29,13 @@ $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data
+// Include ALL loans disbursed within the selected period, regardless of closure status
 $sql = "SELECT u.pan_name, u.dob, u.marital_status AS gender, u.pan, u.mobile, u.email, u.present_address, u.state_code, u.pincode, u.permanent_address, u.rcid, 
                l.processed_date, l.lid, la.amount, la.processing_fees, l.p_fee, l.service_charge
         FROM user u
         LEFT JOIN loan_apply la ON u.id = la.uid
         JOIN loan l ON la.id = l.lid
-        WHERE l.status_log in ('recovery officer','account manager')";
+        WHERE 1=1"; // No status filter - include all loans
 
 // Add date range filter if provided
 if ($from_date && $to_date) {

@@ -32,6 +32,7 @@ $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data for 'cleared' loans only
+// Exclude settled loans (loans with transaction_flow = 'settlement')
 $sql = "SELECT 
     u.pan_name, u.dob, u.gender, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, u.rcid, 
@@ -41,7 +42,13 @@ $sql = "SELECT
 FROM user u
 LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
-LEFT JOIN transaction_details t ON t.cllid = l.lid WHERE l.status_log = 'cleared'  AND NOT t.transaction_flow = 'settlement'";
+LEFT JOIN transaction_details t ON t.cllid = l.lid 
+WHERE l.status_log = 'cleared'  
+AND l.lid NOT IN (
+    SELECT DISTINCT cllid 
+    FROM transaction_details 
+    WHERE transaction_flow = 'settlement'
+)";
 
 // Add date range filter if provided (filter by processed_date or cleard_date)
 if ($from_date && $to_date) {

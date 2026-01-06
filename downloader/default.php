@@ -31,13 +31,14 @@ fputcsv($output, [
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
-// SQL query to fetch data for loans in default (status 'recovery officer')
+// SQL query to fetch data for loans in default
+// Include only loans where DPD > 0 (exclude DPD = 0)
 $sql = "SELECT u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, u.present_address, u.state_code, u.pincode, u.rcid, 
-               l.processed_date, l.lid, la.amount, la.processing_fees, l.service_charge, l.exhausted_period, l.penality_charge, l.status_log, la.status
+               l.processed_date, l.lid, la.amount, la.processing_fees, l.service_charge, l.exhausted_period, l.penality_charge, l.status_log, la.status, la.days AS loan_days
         FROM user u
         LEFT JOIN loan_apply la ON u.id = la.uid
         JOIN loan l ON la.id = l.lid
-        WHERE DATEDIFF(NOW(), processed_date) > 29 AND l.status_log in ('recovery officer','account manager')"; // Filter for 'recovery officer' status
+        WHERE DATEDIFF(NOW(), processed_date) > 29 AND l.status_log in ('recovery officer','account manager')";
 
 // Add date range filter if provided
 if ($from_date && $to_date) {
@@ -63,13 +64,26 @@ while ($row = towfetch($result)) {
     $gst = ($row['processing_fees']*0.18);
     $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
     
-    // Fetch loan days from loan_apply table
-    $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=" . (int)$row['lid']));
-    $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
-    $dpd = $row['exhausted_period']-$loan_days;
-    if($dpd > 61){$dpdt = '05';}elseif($dpd > 31){$dpdt = '03';}elseif($dpd > 1){$dpdt = '02';}else{$dpdt = '01';}
-    if($dpd > 60){$sf = '02';}else{$dpdt = '';}
-    $cb = $totalamount+$row['service_charge']+$row['penality_charge'];
+    // Get loan days from query result
+    $loan_days = isset($row['loan_days']) && $row['loan_days'] > 0 ? (int)$row['loan_days'] : 30;
+    $dpd = $row['exhausted_period'] - $loan_days;
+    
+    // Only include loans where DPD > 0 (exclude DPD = 0)
+    if ($dpd <= 0) {
+        continue; // Skip this row
+    }
+    
+    // Suit Filed / Wilful Default: If DPD > 60 → set value as 01, otherwise blank
+    if ($dpd > 60) {
+        $sf = '01';
+    } else {
+        $sf = '';
+    }
+    
+    // Asset Classification: Keep blank for all rows
+    $dpdt = '';
+    
+    $cb = $totalamount + $row['service_charge'] + $row['penality_charge'];
     
     $state_code = $row['state_code'];
     if ($state_code >= 1 && $state_code <= 9) {
@@ -118,15 +132,15 @@ while ($row = towfetch($result)) {
         '',                         // PIN Code 2
         '',                         // Address Category 2
         '',                         // Residence Code 2
-        '',               // Current/New Member Code
-        '',               // Current/New Member Short Name
+        'NB36250001',               // Current/New Member Code
+        'SONUMARPL',               // Current/New Member Short Name
         $row['lid'],                // Curr/New Account No
-        "\t05",                       // Account Type (default)
+        "\t69",                       // Account Type
         '1',                        // Ownership Indicator (default)
         $date_opened,               // Date Opened/Disbursed
         '',                         // Date of Last Payment
         '',                         // Date Closed
-        '',                         // Date Reported
+        "\t".date('dmY'),                         // Date Reported (current date)
         $totalamount,               // High Credit/Sanctioned Amt
         ceil($cb),           // Current Balance
         ceil($cb),                         // Amt Overdue
@@ -136,9 +150,9 @@ while ($row = towfetch($result)) {
         '',                         // Old Acc No
         '',                         // Old Acc Type
         '',                         // Old Ownership Indicator
-        "\t".$sf,                        // Suit Filed / Wilful Default (Assume '1' for defaults)
-        '',                       // Credit Facility Status (Assume '02' for default loans)
-        "\t".$dpdt,                       // Asset Classification (Assume '03' for sub-standard assets)
+        $sf,                        // Suit Filed / Wilful Default (01 if DPD > 60, otherwise blank)
+        '',                       // Credit Facility Status
+        '',                       // Asset Classification (blank for all rows)
         '',                         // Value of Collateral
         '',                         // Type of Collateral
         '',                         // Credit Limit
