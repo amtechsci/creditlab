@@ -33,27 +33,32 @@ $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data for 'cleared' loans only
 // Exclude settled loans (loans with transaction_flow = 'settlement')
+// Optimized: Use EXISTS instead of NOT IN for better performance
 $sql = "SELECT 
     u.pan_name, u.dob, u.gender, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, u.rcid, 
     l.processed_date, l.cleard_date, l.lid, 
     la.amount, la.processing_fees, l.exhausted_period, l.service_charge, l.status_log,
     t.transaction_number, t.transaction_date, t.transaction_amount, t.transaction_flow
-FROM user u
-LEFT JOIN loan_apply la ON u.id = la.uid
-JOIN loan l ON la.id = l.lid
-LEFT JOIN transaction_details t ON t.cllid = l.lid 
+FROM loan l
+INNER JOIN loan_apply la ON la.id = l.lid
+INNER JOIN user u ON u.id = la.uid
+LEFT JOIN transaction_details t ON t.cllid = l.lid AND t.transaction_flow != 'settlement'
 WHERE l.status_log = 'cleared'  
-AND l.lid NOT IN (
-    SELECT DISTINCT cllid 
-    FROM transaction_details 
-    WHERE transaction_flow = 'settlement'
+AND NOT EXISTS (
+    SELECT 1 
+    FROM transaction_details td 
+    WHERE td.cllid = l.lid 
+    AND td.transaction_flow = 'settlement'
+    LIMIT 1
 )";
 
-// Add date range filter if provided (filter by processed_date or cleard_date)
+// Add date range filter if provided (filter ONLY by cleard_date for cleared loans)
 if ($from_date && $to_date) {
-    $sql .= " AND (DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "' 
-                OR DATE(l.cleard_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "')";
+    $from_date_escaped = date('Y-m-d', strtotime($from_date));
+    $to_date_escaped = date('Y-m-d', strtotime($to_date));
+    // Filter only by cleard_date (when loan was cleared)
+    $sql .= " AND l.cleard_date >= '$from_date_escaped' AND l.cleard_date <= '$to_date_escaped'";
 }
 
 // Execute the query

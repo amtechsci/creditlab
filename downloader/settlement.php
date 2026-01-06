@@ -43,11 +43,12 @@ LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
 LEFT JOIN transaction_details t ON t.cllid = l.lid WHERE l.status_log = 'cleared'  AND t.transaction_flow = 'settlement'";
 
-// Add date range filter if provided (filter by processed_date, cleard_date, or transaction_date)
+// Add date range filter if provided (filter ONLY by transaction_date for settled loans)
 if ($from_date && $to_date) {
-    $sql .= " AND (DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "' 
-                OR DATE(l.cleard_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'
-                OR DATE(t.transaction_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "')";
+    $from_date_escaped = date('Y-m-d', strtotime($from_date));
+    $to_date_escaped = date('Y-m-d', strtotime($to_date));
+    // Filter only by transaction_date (when settlement transaction occurred)
+    $sql .= " AND t.transaction_date >= '$from_date_escaped' AND t.transaction_date <= '$to_date_escaped'";
 }
 
 // Execute the query
