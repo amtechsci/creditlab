@@ -27,6 +27,10 @@ fputcsv($output, [
     'Income', 'Net/Gross Income Indicator', 'Monthly/Annual Income Indicator', 'CKYC', 'NREGA Card Number'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch data for loans in default (status 'recovery officer')
 $sql = "SELECT u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, u.present_address, u.state_code, u.pincode, u.rcid, 
                l.processed_date, l.lid, la.amount, la.processing_fees, l.service_charge, l.exhausted_period, l.penality_charge, l.status_log, la.status
@@ -34,6 +38,11 @@ $sql = "SELECT u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, u.
         LEFT JOIN loan_apply la ON u.id = la.uid
         JOIN loan l ON la.id = l.lid
         WHERE DATEDIFF(NOW(), processed_date) > 29 AND l.status_log in ('recovery officer','account manager')"; // Filter for 'recovery officer' status
+
+// Add date range filter if provided
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
 
 // Execute the query
 $result = towquery($sql);

@@ -17,8 +17,17 @@ fputcsv($output, [
     'Check', 'Remarks'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch data for loan disbursal
 $sql = "SELECT u.rcid, u.pan_name, u.state_code, l.lid, la.amount, la.processing_fees, l.processed_amount, l.p_fee, l.exhausted_period, l.processed_date, la.pro_fee_per FROM loan l INNER JOIN loan_apply la ON la.id = l.lid INNER JOIN user u ON u.id = la.uid WHERE l.status_log IN ('account manager','cleared')";  // Only fetch records where status_log = 'account manager'
+
+// Add date range filter if provided
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
 
 // Execute the query
 $result = towquery($sql);

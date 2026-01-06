@@ -26,6 +26,10 @@ fputcsv($output, [
     'customer response 5 & commitment date 5'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch all loans with status 'account manager'
 $sql = "SELECT 
             u.id AS user_id,
@@ -52,9 +56,14 @@ $sql = "SELECT
         INNER JOIN 
             loan l ON la.id = l.lid
         WHERE 
-            la.status = 'account manager'
-        ORDER BY 
-            la.id DESC";
+            la.status = 'account manager'";
+
+// Add date range filter if provided
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
+
+$sql .= " ORDER BY la.id DESC";
 
 // Execute the main query
 $result = towquery($sql);

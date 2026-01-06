@@ -20,6 +20,10 @@ fputcsv($output, [
     'REPAYMENT AMOUNT'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 $sql = "SELECT 
             u.rcid, u.pan_name, u.state_code, 
             l.lid, l.processed_amount, l.p_fee, l.service_charge, l.penality_charge,
@@ -30,8 +34,14 @@ $sql = "SELECT
         INNER JOIN loan_apply la ON la.id = td.cllid
         INNER JOIN user u ON u.id = la.uid
         INNER JOIN loan l ON l.lid = td.cllid
-        WHERE td.transaction_flow IN ('settlement', 'part', 'renew', 'full', 'preclose')
-        ORDER BY td.transaction_date DESC"; 
+        WHERE td.transaction_flow IN ('settlement', 'part', 'renew', 'full', 'preclose')";
+
+// Add date range filter if provided
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(td.transaction_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
+
+$sql .= " ORDER BY td.transaction_date DESC"; 
 
 $result = towquery($sql);
 $state_result = towquery("SELECT id, state_name FROM state_code");

@@ -20,6 +20,10 @@ fputcsv($output, [
     'Loan Applied Date'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch the required data
 // It joins user, loan_apply, and account_manager tables
 $sql = "SELECT 
@@ -36,9 +40,14 @@ $sql = "SELECT
             loan_apply la ON u.id = la.uid
         LEFT JOIN 
             account_manager am ON u.assign_account_manager = am.id
-            WHERE la.status='pending'
-        ORDER BY 
-            la.apply_date DESC";
+            WHERE la.status='pending'";
+
+// Add date range filter if provided
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(la.apply_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
+
+$sql .= " ORDER BY la.apply_date DESC";
 
 // Execute the query
 $result = towquery($sql);

@@ -27,6 +27,10 @@ fputcsv($output, [
     'Income', 'Net/Gross Income Indicator', 'Monthly/Annual Income Indicator', 'CKYC', 'NREGA Card Number'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch data for 'cleared' loans only
 $sql = "SELECT 
     u.pan_name, u.dob, u.gender, u.marital_status, u.pan, u.mobile, u.email, 
@@ -39,11 +43,31 @@ LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
 LEFT JOIN transaction_details t ON t.cllid = l.lid WHERE l.status_log = 'cleared'  AND NOT t.transaction_flow = 'settlement'";
 
+// Add date range filter if provided (filter by processed_date or cleard_date)
+if ($from_date && $to_date) {
+    $sql .= " AND (DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "' 
+                OR DATE(l.cleard_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "')";
+}
+
 // Execute the query
 $result = towquery($sql);
 
-// Loop through the result and write each row to the CSV
+// Store unique rows to prevent duplicates (using lid as business key)
+$unique_rows = [];
+$seen_lids = [];
+
+// Collect unique rows
 while ($row = towfetch($result)) {
+    // Remove duplicates based on loan ID (business key)
+    if (isset($seen_lids[$row['lid']])) {
+        continue; // Skip duplicate
+    }
+    $seen_lids[$row['lid']] = true;
+    $unique_rows[] = $row;
+}
+
+// Loop through unique rows and write each row to the CSV
+foreach ($unique_rows as $row) {
     // Format the date of birth and loan dates as DDMMYYYY
     $dob = date('dmY', strtotime($row['dob']));
     $date_opened = date('dmY', strtotime($row['processed_date']));
@@ -66,7 +90,20 @@ while ($row = towfetch($result)) {
     $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
     $dpd = ($row['exhausted_period'] > $loan_days) ? $row['exhausted_period']-$loan_days : 0;
     
-    if($dpd > 61){$dpdt = '05';}elseif($dpd > 31){$dpdt = '03';}elseif($dpd > 1){$dpdt = '02';}else{$dpdt = '01';}
+    // Asset Classification based on DPD:
+    // 01 - if dpd < 90
+    // 02 - if 90 <= dpd < 180
+    // 03 - if 180 <= dpd <= 360
+    // 04 - if dpd > 360
+    if ($dpd < 90) {
+        $dpdt = '01';
+    } elseif ($dpd >= 90 && $dpd < 180) {
+        $dpdt = '02';
+    } elseif ($dpd >= 180 && $dpd <= 360) {
+        $dpdt = '03';
+    } else { // dpd > 360
+        $dpdt = '04';
+    }
     
     // Create the array for CSV row
     $state_code = $row['state_code'];
@@ -111,19 +148,19 @@ while ($row = towfetch($result)) {
         '',                         // PIN Code 2
         '',                         // Address Category 2
         '',                         // Residence Code 2
-        '',                         // Current/New Member Code
-        '',                         // Current/New Member Short Name
+        'NB36250001',                         // Current/New Member Code
+        'SONUMARPL',                         // Current/New Member Short Name
         $row['lid'],                // Curr/New Account No
-        "\t05",                       // Account Type (default)
+        "\t69",                       // Account Type
         '1',                        // Ownership Indicator (default)
         "\t".$date_opened,               // Date Opened/Disbursed
         "\t".$date_cleared,              // Date of Last Payment
         "\t".$date_cleared,              // Date Closed
-        '',                         // Date Reported
+        "\t".date('dmY'),                         // Date Reported (current date)
         $totalamount,               // High Credit/Sanctioned Amt
         0,           // Current Balance
         '',                         // Amt Overdue
-        $dpd,                         // No of Days Past Due
+        '',                         // No of Days Past Due (blank)
         '',                         // Old Mbr Code
         '',                         // Old Mbr Short Name
         '',                         // Old Acc No

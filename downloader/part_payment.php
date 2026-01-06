@@ -27,6 +27,10 @@ fputcsv($output, [
     'Income', 'Net/Gross Income Indicator', 'Monthly/Annual Income Indicator', 'CKYC', 'NREGA Card Number'
 ]);
 
+// Get date range parameters
+$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
+$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+
 // SQL query to fetch data for loan part payments (transaction_flow = 'part')
 $sql = "SELECT u.pan_name, u.dob, u.gender, u.pan, u.mobile, u.email, u.present_address, u.state_code, u.pincode, u.rcid, 
                l.processed_date, l.lid, la.amount, l.service_charge, td.transaction_date, td.transaction_amount, td.transaction_flow
@@ -35,6 +39,11 @@ $sql = "SELECT u.pan_name, u.dob, u.gender, u.pan, u.mobile, u.email, u.present_
         JOIN loan l ON la.id = l.lid
         JOIN transaction_details td ON l.lid = td.cllid
         WHERE td.transaction_flow = 'part'"; // Filter for part payment transactions
+
+// Add date range filter if provided (filter by transaction_date)
+if ($from_date && $to_date) {
+    $sql .= " AND DATE(td.transaction_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+}
 
 // Execute the query
 $result = towquery($sql);
