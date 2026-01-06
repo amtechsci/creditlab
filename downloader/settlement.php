@@ -87,6 +87,9 @@ foreach ($unique_rows as $row) {
     $gst = ((float)$row['processing_fees']*0.18);
     $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
     
+    // Total Outstanding = Principal + Processing Fees + GST + Service Charge
+    $total_outstanding = (float)$row['amount'] + (float)$row['processing_fees'] + $gst + (float)$row['service_charge'];
+    
     // Settlement amount from transaction
     $settlement_amount = isset($row['transaction_amount']) ? (float)$row['transaction_amount'] : 0;
     
@@ -111,12 +114,12 @@ foreach ($unique_rows as $row) {
     }
     
     // Calculate Written-off amounts
-    // For settlement: Written-off Total = Current Balance - Settlement Amount
-    // Current Balance = Principal + Service Charge
+    // For settlement: Written-off Total = Total Outstanding - Settlement Amount
+    // Total Outstanding = Principal + Processing Fees + GST + Service Charge
     // Settlement Amount = Amount paid in settlement transaction
     
-    // Written-off Amount (Total) = Current Balance - Settlement Amount
-    $written_off_total = $current_balance - $settlement_amount;
+    // Written-off Amount (Total) = Total Outstanding - Settlement Amount
+    $written_off_total = $total_outstanding - $settlement_amount;
     if ($written_off_total < 0) {
         $written_off_total = 0;
     }
