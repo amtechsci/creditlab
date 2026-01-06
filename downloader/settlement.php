@@ -36,7 +36,7 @@ $sql = "SELECT
     u.pan_name, u.dob, u.gender, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, u.rcid, 
     l.processed_date, l.cleard_date, l.lid, 
-    la.amount, la.processing_fees, l.exhausted_period, l.service_charge, l.status_log,
+    la.amount, la.processing_fees, l.exhausted_period, l.service_charge, l.penality_charge, l.status_log,
     t.transaction_number, t.transaction_date, t.transaction_amount, t.transaction_flow
 FROM user u
 LEFT JOIN loan_apply la ON u.id = la.uid
@@ -87,8 +87,9 @@ foreach ($unique_rows as $row) {
     $gst = ((float)$row['processing_fees']*0.18);
     $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
     
-    // Total Outstanding = Principal + Processing Fees + GST + Service Charge
-    $total_outstanding = (float)$row['amount'] + (float)$row['processing_fees'] + $gst + (float)$row['service_charge'];
+    // Total Outstanding = Principal + Processing Fees + GST + Service Charge + Penalty Charge
+    $penalty_charge = isset($row['penality_charge']) ? (float)$row['penality_charge'] : 0;
+    $total_outstanding = (float)$row['amount'] + (float)$row['processing_fees'] + $gst + (float)$row['service_charge'] + $penalty_charge;
     
     // Settlement amount from transaction
     $settlement_amount = isset($row['transaction_amount']) ? (float)$row['transaction_amount'] : 0;
