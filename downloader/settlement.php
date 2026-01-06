@@ -87,6 +87,9 @@ foreach ($unique_rows as $row) {
     $gst = ((float)$row['processing_fees']*0.18);
     $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
     
+    // Settlement amount from transaction
+    $settlement_amount = isset($row['transaction_amount']) ? (float)$row['transaction_amount'] : 0;
+    
     // Fetch loan days from loan_apply table
     $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=" . (int)$row['lid']));
     $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
@@ -108,26 +111,24 @@ foreach ($unique_rows as $row) {
     }
     
     // Calculate Written-off amounts
-    // Total Outstanding = Principal + Processing Fees + GST + Service Charge
-    $gst_on_pf = (float)$row['processing_fees'] * 0.18;
-    $total_outstanding = (float)$row['amount'] + (float)$row['processing_fees'] + $gst_on_pf + (float)$row['service_charge'];
+    // For settlement: Written-off Total = Current Balance - Settlement Amount
+    // Current Balance = Principal + Service Charge
+    // Settlement Amount = Amount paid in settlement transaction
     
-    // Get total paid amount from transaction_details
-    $paid_query = towquery("SELECT SUM(transaction_amount) as total_paid FROM transaction_details WHERE cllid = " . (int)$row['lid'] . " AND transaction_flow IN ('part', 'renew', 'full', 'settlement')");
-    $paid_data = towfetch($paid_query);
-    $total_paid = isset($paid_data['total_paid']) ? (float)$paid_data['total_paid'] : 0;
-    
-    // Written-off Amount (Total) = Total Outstanding - Total Paid Amount
-    $written_off_total = $total_outstanding - $total_paid;
+    // Written-off Amount (Total) = Current Balance - Settlement Amount
+    $written_off_total = $current_balance - $settlement_amount;
     if ($written_off_total < 0) {
         $written_off_total = 0;
     }
     
-    // Written-off Principal Amount = Principal Amount - Repayment Amount
-    // Repayment amount is the principal portion of payments
+    // Get total paid amount (including settlement) for principal calculation
+    $paid_query = towquery("SELECT SUM(transaction_amount) as total_paid FROM transaction_details WHERE cllid = " . (int)$row['lid'] . " AND transaction_flow IN ('part', 'renew', 'full', 'settlement')");
+    $paid_data = towfetch($paid_query);
+    $total_paid = isset($paid_data['total_paid']) ? (float)$paid_data['total_paid'] : 0;
+    
+    // Written-off Principal Amount = Principal Amount - Total Paid (including settlement)
     $principal_amount = (float)$row['amount'];
-    $repayment_amount = $total_paid; // For simplicity, using total paid as repayment
-    $written_off_principal = $principal_amount - $repayment_amount;
+    $written_off_principal = $principal_amount - $total_paid;
     
     // If result <= 0, force value to 1
     if ($written_off_principal <= 0) {
