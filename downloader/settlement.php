@@ -31,25 +31,31 @@ fputcsv($output, [
 $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
-// SQL query to fetch data for 'cleared' loans only
+// SQL query to fetch data for loans with settlement transactions
+// Use INNER JOIN to ensure we only get loans that have settlement transactions
 $sql = "SELECT 
     u.pan_name, u.dob, u.gender, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, u.rcid, 
     l.processed_date, l.cleard_date, l.lid, 
     la.amount, la.processing_fees, l.exhausted_period, l.service_charge, l.penality_charge, l.status_log,
     t.transaction_number, t.transaction_date, t.transaction_amount, t.transaction_flow
-FROM user u
-LEFT JOIN loan_apply la ON u.id = la.uid
-JOIN loan l ON la.id = l.lid
-LEFT JOIN transaction_details t ON t.cllid = l.lid WHERE l.status_log = 'cleared'  AND t.transaction_flow = 'settlement'";
+FROM loan l
+INNER JOIN loan_apply la ON la.id = l.lid
+INNER JOIN user u ON u.id = la.uid
+INNER JOIN transaction_details t ON t.cllid = l.lid AND t.transaction_flow = 'settlement'
+WHERE l.status_log = 'cleared'";
 
 // Add date range filter if provided (filter ONLY by transaction_date for settled loans)
 if ($from_date && $to_date) {
     $from_date_escaped = date('Y-m-d', strtotime($from_date));
     $to_date_escaped = date('Y-m-d', strtotime($to_date));
     // Filter only by transaction_date (when settlement transaction occurred)
-    $sql .= " AND t.transaction_date >= '$from_date_escaped' AND t.transaction_date <= '$to_date_escaped'";
+    // Use CAST or DATE() to handle both datetime and date formats
+    $sql .= " AND DATE(t.transaction_date) >= '$from_date_escaped' AND DATE(t.transaction_date) <= '$to_date_escaped'";
 }
+
+// Order by transaction date to ensure consistent results
+$sql .= " ORDER BY t.transaction_date DESC, l.lid ASC";
 
 // Execute the query
 $result = towquery($sql);
