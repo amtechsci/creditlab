@@ -28,16 +28,15 @@ fputcsv($output, [
 ]);
 
 // Query matching account_manager.php logic exactly
-// Uses loan_apply.days for loan tenure, checks is_emi flag
+// Start from loan table (like the working SQL), then join others
 $sql = "SELECT 
+    l.lid, l.processed_date, l.service_charge, l.penality_charge, l.is_emi,
+    la.days as loan_apply_days, la.amount, la.processing_fees,
     u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, 
-    u.present_address, u.state_code, u.pincode, 
-    l.processed_date, l.lid, la.amount, la.processing_fees, 
-    l.service_charge, l.penality_charge, l.is_emi,
-    la.days as loan_apply_days
-FROM user u
-INNER JOIN loan_apply la ON u.id = la.uid
-INNER JOIN loan l ON la.id = l.lid
+    u.present_address, u.state_code, u.pincode
+FROM loan l
+INNER JOIN loan_apply la ON la.id = l.lid
+LEFT JOIN user u ON u.id = la.uid
 WHERE l.status_log IN ('recovery officer', 'account manager')";
 
 $result = towquery($sql);
