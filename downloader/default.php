@@ -2,6 +2,24 @@
 
 include '../db.php';
 
+/**
+ * Default CIBIL Report Generator
+ * 
+ * This file generates the Default CIBIL report with compliance filters applied.
+ * 
+ * COMPLIANCE FILTERS APPLIED:
+ * 1. Excludes loans with missing mandatory fields (PAN, DOB)
+ * 2. Removes duplicate records (business-key level de-duplication)
+ * 3. Only includes loans with DPD > 0 (calculated as exhausted_period - loan_days)
+ *    - No minimum days restriction - loans with any tenure (e.g., 20 days) are included if DPD > 0
+ * 4. Only includes loans with status_log = 'recovery officer' or 'account manager'
+ * 
+ * NOTE: The dashboard may show more loans with DPD > 0 than this report because:
+ * - Dashboard shows live operational count
+ * - This report applies additional compliance and regulatory validations
+ * - Some loans are excluded due to status, missing fields, or duplicate suppression
+ */
+
 // Set headers to download the CSV file
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename=loan_default_cibil.csv');
@@ -33,7 +51,8 @@ $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data for loans in default
 // Filter by status_log: 'recovery officer' or 'account manager'
-// Only loans older than 29 days from processed_date
+// DPD (Days Past Due) check: Only include loans where (exhausted_period - loan_days) > 0
+// This allows loans with any tenure (e.g., 20 days) to be included if DPD > 0
 $sql = "SELECT 
     u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, u.rcid, 
@@ -43,8 +62,8 @@ $sql = "SELECT
 FROM user u
 LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
-WHERE DATEDIFF(NOW(), l.processed_date) > 29 
-AND l.status_log IN ('recovery officer', 'account manager')";
+WHERE l.status_log IN ('recovery officer', 'account manager')
+AND (l.exhausted_period - COALESCE(la.days, 30)) > 0";
 
 // Add date range filter if provided (filter by processed_date)
 if ($from_date && $to_date) {
@@ -56,8 +75,28 @@ if ($from_date && $to_date) {
 // Execute the query
 $result = towquery($sql);
 
-// Loop through the result and write each row to the CSV
+// Store unique rows to prevent duplicates (using lid as business key)
+$unique_rows = [];
+$seen_lids = [];
+
+// Collect unique rows and apply compliance validations
 while ($row = towfetch($result)) {
+    // COMPLIANCE FILTER 1: Remove duplicates based on loan ID (business key)
+    if (isset($seen_lids[$row['lid']])) {
+        continue; // Skip duplicate
+    }
+    
+    // COMPLIANCE FILTER 2: Validate mandatory fields (PAN and DOB are required for CIBIL reporting)
+    if (empty($row['pan']) || empty($row['dob'])) {
+        continue; // Skip if mandatory fields are missing
+    }
+    
+    $seen_lids[$row['lid']] = true;
+    $unique_rows[] = $row;
+}
+
+// Loop through unique rows and write each row to the CSV
+foreach ($unique_rows as $row) {
     // Format the date of birth and loan dates as DDMMYYYY
     $dob = date('dmY', strtotime($row['dob']));
     $date_opened = date('dmY', strtotime($row['processed_date']));
@@ -80,6 +119,7 @@ while ($row = towfetch($result)) {
     $dpd = (int)$row['exhausted_period'] - $loan_days;
     
     // REQUIREMENT 1: Only include loans where DPD > 0 (exclude DPD = 0 or negative)
+    // Note: This is also checked in SQL query, but keeping here as a safety validation
     if ($dpd <= 0) {
         continue; // Skip this row
     }
