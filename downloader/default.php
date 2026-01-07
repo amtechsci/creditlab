@@ -27,21 +27,44 @@ fputcsv($output, [
     'Income', 'Net/Gross Income Indicator', 'Monthly/Annual Income Indicator', 'CKYC', 'NREGA Card Number'
 ]);
 
-// Simple query: Get loans where exhausted_period > total_time (DPD > 0)
+// Query matching account_manager.php logic exactly
+// Uses loan_apply.days for loan tenure, checks is_emi flag
 $sql = "SELECT 
     u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, 
     u.present_address, u.state_code, u.pincode, 
     l.processed_date, l.lid, la.amount, la.processing_fees, 
-    l.service_charge, l.exhausted_period, l.total_time, l.penality_charge
+    l.service_charge, l.penality_charge, l.is_emi,
+    la.days as loan_apply_days
 FROM user u
-LEFT JOIN loan_apply la ON u.id = la.uid
-JOIN loan l ON la.id = l.lid
-WHERE l.status_log IN ('recovery officer', 'account manager')
-AND l.exhausted_period > l.total_time";
+INNER JOIN loan_apply la ON u.id = la.uid
+INNER JOIN loan l ON la.id = l.lid
+WHERE l.status_log IN ('recovery officer', 'account manager')";
 
 $result = towquery($sql);
 
 while ($row = towfetch($result)) {
+    // Skip if no processed_date
+    if (empty($row['processed_date'])) {
+        continue;
+    }
+    
+    // Calculate DPD exactly like account_manager.php (lines 26-32)
+    $processed_date_str = date('Y-m-d', strtotime($row['processed_date'] . " -1 day"));
+    $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+    
+    // Get loan days - check is_emi flag like account_manager.php
+    $loan_days_raw = isset($row['loan_apply_days']) ? (int)$row['loan_apply_days'] : 30;
+    $loan_is_emi = isset($row['is_emi']) ? (int)$row['is_emi'] : 0;
+    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+    
+    // Calculate DPD
+    $dpd = $tday - $loan_days;
+    
+    // Only include if DPD > 0
+    if ($dpd <= 0) {
+        continue;
+    }
+    
     // Format dates
     $dob = date('dmY', strtotime($row['dob']));
     $date_opened = date('dmY', strtotime($row['processed_date']));
@@ -54,9 +77,6 @@ while ($row = towfetch($result)) {
     $gst = (float)$row['processing_fees'] * 0.18;
     $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
     $current_balance = $totalamount + (float)$row['service_charge'] + (float)$row['penality_charge'];
-    
-    // DPD = exhausted_period - total_time
-    $dpd = (int)$row['exhausted_period'] - (int)$row['total_time'];
     
     // Suit Filed: 01 if DPD > 60
     $suit_filed = ($dpd > 60) ? '01' : '';
