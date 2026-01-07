@@ -51,7 +51,7 @@ $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data for loans in default
 // Filter by status_log: 'recovery officer' or 'account manager'
-// DPD (Days Past Due) check: Only include loans where (exhausted_period - loan_days) > 0
+// DPD is calculated DYNAMICALLY from processed_date (like zz.php and recoveryagency.php)
 // This allows loans with any tenure (e.g., 20 days) to be included if DPD > 0
 $sql = "SELECT 
     u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, 
@@ -114,13 +114,15 @@ foreach ($unique_rows as $row) {
     // Get loan days from query result (default to 30 if not set)
     $loan_days = isset($row['loan_days']) && $row['loan_days'] > 0 ? (int)$row['loan_days'] : 30;
     
-    // Validate exhausted_period exists and is numeric
-    if (empty($row['exhausted_period']) || !is_numeric($row['exhausted_period'])) {
-        continue; // Skip if exhausted_period is invalid
+    // Calculate exhausted_days DYNAMICALLY from processed_date (like zz.php and recoveryagency.php)
+    // This ensures we get accurate current day count, not relying on database exhausted_period
+    $exhausted_days = 0;
+    if (!empty($row['processed_date'])) {
+        $exhausted_days = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($row['processed_date'] . " -1 day")))) / (60 * 60 * 24));
     }
     
-    // Calculate DPD (Days Past Due) = exhausted_period - loan_days
-    $dpd = (int)$row['exhausted_period'] - $loan_days;
+    // Calculate DPD (Days Past Due) = exhausted_days - loan_days
+    $dpd = $exhausted_days - $loan_days;
     
     // REQUIREMENT 1: Only include loans where DPD > 0 (exclude DPD = 0 or negative)
     if ($dpd <= 0) {
