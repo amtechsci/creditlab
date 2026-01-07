@@ -47,9 +47,11 @@ while ($row = towfetch($result)) {
         continue;
     }
     
-    // Calculate DPD exactly like account_manager.php (lines 26-32)
-    $processed_date_str = date('Y-m-d', strtotime($row['processed_date'] . " -1 day"));
-    $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+    // Calculate DPD using DateTime for accurate day difference (matches SQL DATEDIFF exactly)
+    $today = new DateTime(date('Y-m-d'));
+    $processed = new DateTime(date('Y-m-d', strtotime($row['processed_date'])));
+    $processed->modify('-1 day'); // Same as SQL: DATE_SUB(processed_date, INTERVAL 1 DAY)
+    $tday = (int)$today->diff($processed)->days;
     
     // Get loan days - check is_emi flag like account_manager.php
     $loan_days_raw = isset($row['loan_apply_days']) ? (int)$row['loan_apply_days'] : 30;
