@@ -32,17 +32,25 @@ $from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
 $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
 
 // SQL query to fetch data for loans in default
-// Include only loans where DPD > 0 (exclude DPD = 0)
-$sql = "SELECT u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, u.present_address, u.state_code, u.pincode, u.rcid, 
-               l.processed_date, l.lid, la.amount, la.processing_fees, l.service_charge, l.exhausted_period, l.penality_charge, l.status_log, la.status, la.days AS loan_days
-        FROM user u
-        LEFT JOIN loan_apply la ON u.id = la.uid
-        JOIN loan l ON la.id = l.lid
-        WHERE DATEDIFF(NOW(), processed_date) > 29 AND l.status_log in ('recovery officer','account manager')";
+// Filter by status_log: 'recovery officer' or 'account manager'
+// Only loans older than 29 days from processed_date
+$sql = "SELECT 
+    u.pan_name, u.dob, u.marital_status, u.pan, u.mobile, u.email, 
+    u.present_address, u.state_code, u.pincode, u.rcid, 
+    l.processed_date, l.lid, la.amount, la.processing_fees, 
+    l.service_charge, l.exhausted_period, l.penality_charge, l.status_log, 
+    la.status, la.days AS loan_days
+FROM user u
+LEFT JOIN loan_apply la ON u.id = la.uid
+JOIN loan l ON la.id = l.lid
+WHERE DATEDIFF(NOW(), l.processed_date) > 29 
+AND l.status_log IN ('recovery officer', 'account manager')";
 
-// Add date range filter if provided
+// Add date range filter if provided (filter by processed_date)
 if ($from_date && $to_date) {
-    $sql .= " AND DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($from_date)) . "' AND '" . date('Y-m-d', strtotime($to_date)) . "'";
+    $from_date_escaped = date('Y-m-d', strtotime($from_date));
+    $to_date_escaped = date('Y-m-d', strtotime($to_date));
+    $sql .= " AND DATE(l.processed_date) BETWEEN '$from_date_escaped' AND '$to_date_escaped'";
 }
 
 // Execute the query
@@ -59,118 +67,124 @@ while ($row = towfetch($result)) {
     $gender = isset($gender_map[strtolower($row['marital_status'])]) ? $gender_map[strtolower($row['marital_status'])] : 0;
 
     // Calculate financial details
-    $current_balance = $row['amount'] + $row['service_charge']; // Add service charge to the loan amount
+    $gst = (float)$row['processing_fees'] * 0.18;
+    $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
     
-    $gst = ($row['processing_fees']*0.18);
-    $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
+    // Current Balance = Principal + Processing Fees + GST + Service Charge + Penalty Charge
+    $current_balance = $totalamount + (float)$row['service_charge'] + (float)$row['penality_charge'];
     
-    // Get loan days from query result
+    // Get loan days from query result (default to 30 if not set)
     $loan_days = isset($row['loan_days']) && $row['loan_days'] > 0 ? (int)$row['loan_days'] : 30;
-    $dpd = $row['exhausted_period'] - $loan_days;
     
-    // Only include loans where DPD > 0 (exclude DPD = 0)
+    // Calculate DPD (Days Past Due) = exhausted_period - loan_days
+    $dpd = (int)$row['exhausted_period'] - $loan_days;
+    
+    // REQUIREMENT 1: Only include loans where DPD > 0 (exclude DPD = 0 or negative)
     if ($dpd <= 0) {
         continue; // Skip this row
     }
     
-    // Suit Filed / Wilful Default: If DPD > 60 → set value as 01, otherwise blank
+    // REQUIREMENT 3: Suit Filed / Wilful Default
+    // If DPD > 60 → set value as "01", otherwise blank
     if ($dpd > 60) {
-        $sf = '01';
+        $suit_filed = '01';
     } else {
-        $sf = '';
+        $suit_filed = '';
     }
     
-    // Asset Classification: Keep blank for all rows
-    $dpdt = '';
+    // REQUIREMENT 2: Asset Classification - Keep blank for all rows
+    $asset_classification = '';
     
-    $cb = $totalamount + $row['service_charge'] + $row['penality_charge'];
-    
+    // Format state code (add leading zero if single digit)
     $state_code = $row['state_code'];
     if ($state_code >= 1 && $state_code <= 9) {
         $state_code = "\t0" . $state_code;
     }
     
+    // Format DOB (add tab if starts with 0)
     if (substr($dob, 0, 1) === '0') {
         $dob = "\t" . $dob;
     }
     
+    // Format date opened (add tab if starts with 0)
     if (substr($date_opened, 0, 1) === '0') {
         $date_opened = "\t" . $date_opened;
     }
+    
     // Create the array for CSV row
     $data = [
         $row['pan_name'],               // Consumer Name
-        $dob,                       // Date of Birth
-        $gender,                    // Gender
-        $row['pan'],                // Income Tax ID Number
-        '',                         // Passport Number
-        '',                         // Passport Issue Date
-        '',                         // Passport Expiry Date
-        '',                         // Voter ID Number
-        '',                         // Driving License Number
-        '',                         // Driving License Issue Date
-        '',                         // Driving License Expiry Date
-        '',                         // Ration Card Number
-        '',                         // Universal ID Number
-        '',                         // Additional ID #1
-        '',                         // Additional ID #2
-        '',             // Telephone No.Mobile
-        '',                         // Telephone No.Residence
-        '',                         // Telephone No.Office
-        '',                         // Extension Office
-        '',                         // Telephone No.Other
-        '',                         // Extension Other
-        '',              // Email ID 1
-        '',                         // Email ID 2
-        $row['present_address'],    // Address Line 1
-        $state_code,         // State Code 1
-        $row['pincode'],            // PIN Code 1
-        "\t02",                       // Address Category 1 (default)
-        '',                         // Residence Code 1
-        '',                         // Address Line 2
-        '',                         // State Code 2
-        '',                         // PIN Code 2
-        '',                         // Address Category 2
-        '',                         // Residence Code 2
-        'NB36250001',               // Current/New Member Code
-        'SONUMARPL',               // Current/New Member Short Name
-        $row['lid'],                // Curr/New Account No
-        "\t69",                       // Account Type
-        '1',                        // Ownership Indicator (default)
-        $date_opened,               // Date Opened/Disbursed
-        '',                         // Date of Last Payment
-        '',                         // Date Closed
-        "\t".date('dmY'),                         // Date Reported (current date)
-        $totalamount,               // High Credit/Sanctioned Amt
-        ceil($cb),           // Current Balance
-        ceil($cb),                         // Amt Overdue
-        $dpd,                         // No of Days Past Due
-        '',                         // Old Mbr Code
-        '',                         // Old Mbr Short Name
-        '',                         // Old Acc No
-        '',                         // Old Acc Type
-        '',                         // Old Ownership Indicator
-        $sf,                        // Suit Filed / Wilful Default (01 if DPD > 60, otherwise blank)
-        '',                       // Credit Facility Status
-        '',                       // Asset Classification (blank for all rows)
-        '',                         // Value of Collateral
-        '',                         // Type of Collateral
-        '',                         // Credit Limit
-        '',                         // Cash Limit
-        '',                         // Rate of Interest
-        '',                         // Repayment Tenure
-        '',                         // EMI Amount
-        '',                         // Written-off Amount (Total)
-        '',                         // Written-off Principal Amount
-        '',                         // Settlement Amt
-        '',                         // Payment Frequency
-        '',                         // Actual Payment Amt
-        '',                         // Occupation Code
-        '',                         // Income
-        '',                         // Net/Gross Income Indicator
-        '',                         // Monthly/Annual Income Indicator
-        '',                         // CKYC
-        ''                          // NREGA Card Number
+        $dob,                           // Date of Birth
+        $gender,                        // Gender
+        $row['pan'],                    // Income Tax ID Number
+        '',                             // Passport Number
+        '',                             // Passport Issue Date
+        '',                             // Passport Expiry Date
+        '',                             // Voter ID Number
+        '',                             // Driving License Number
+        '',                             // Driving License Issue Date
+        '',                             // Driving License Expiry Date
+        '',                             // Ration Card Number
+        '',                             // Universal ID Number
+        '',                             // Additional ID #1
+        '',                             // Additional ID #2
+        '',                             // Telephone No.Mobile
+        '',                             // Telephone No.Residence
+        '',                             // Telephone No.Office
+        '',                             // Extension Office
+        '',                             // Telephone No.Other
+        '',                             // Extension Other
+        '',                             // Email ID 1
+        '',                             // Email ID 2
+        $row['present_address'],        // Address Line 1
+        $state_code,                    // State Code 1
+        $row['pincode'],                // PIN Code 1
+        "\t02",                         // Address Category 1 (default)
+        '',                             // Residence Code 1
+        '',                             // Address Line 2
+        '',                             // State Code 2
+        '',                             // PIN Code 2
+        '',                             // Address Category 2
+        '',                             // Residence Code 2
+        'NB36250001',                   // REQUIREMENT 5: Current/New Member Code (Column AH)
+        'SONUMARPL',                    // REQUIREMENT 6: Current/New Member Short Name (Column AI)
+        $row['lid'],                    // Curr/New Account No
+        "\t69",                         // REQUIREMENT 4: Account Type (69 for all rows)
+        '1',                            // Ownership Indicator (default)
+        $date_opened,                   // Date Opened/Disbursed
+        '',                             // Date of Last Payment
+        '',                             // Date Closed
+        "\t".date('dmY'),               // REQUIREMENT 7: Date Reported (current date of download)
+        $totalamount,                   // High Credit/Sanctioned Amt
+        ceil($current_balance),         // Current Balance (rounded up)
+        ceil($current_balance),         // Amt Overdue (same as current balance)
+        $dpd,                           // No of Days Past Due
+        '',                             // Old Mbr Code
+        '',                             // Old Mbr Short Name
+        '',                             // Old Acc No
+        '',                             // Old Acc Type
+        '',                             // Old Ownership Indicator
+        $suit_filed,                    // REQUIREMENT 3: Suit Filed / Wilful Default (01 if DPD > 60, otherwise blank)
+        '',                             // Credit Facility Status
+        $asset_classification,          // REQUIREMENT 2: Asset Classification (blank for all rows)
+        '',                             // Value of Collateral
+        '',                             // Type of Collateral
+        '',                             // Credit Limit
+        '',                             // Cash Limit
+        '',                             // Rate of Interest
+        '',                             // Repayment Tenure
+        '',                             // EMI Amount
+        '',                             // Written-off Amount (Total)
+        '',                             // Written-off Principal Amount
+        '',                             // Settlement Amt
+        '',                             // Payment Frequency
+        '',                             // Actual Payment Amt
+        '',                             // Occupation Code
+        '',                             // Income
+        '',                             // Net/Gross Income Indicator
+        '',                             // Monthly/Annual Income Indicator
+        '',                             // CKYC
+        ''                              // NREGA Card Number
     ];
 
     // Write each row to the CSV file
