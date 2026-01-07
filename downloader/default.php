@@ -62,8 +62,7 @@ $sql = "SELECT
 FROM user u
 LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
-WHERE l.status_log IN ('recovery officer', 'account manager')
-AND (l.exhausted_period - COALESCE(la.days, 30)) > 0";
+WHERE l.status_log IN ('recovery officer', 'account manager')";
 
 // Add date range filter if provided (filter by processed_date)
 if ($from_date && $to_date) {
@@ -115,11 +114,15 @@ foreach ($unique_rows as $row) {
     // Get loan days from query result (default to 30 if not set)
     $loan_days = isset($row['loan_days']) && $row['loan_days'] > 0 ? (int)$row['loan_days'] : 30;
     
+    // Validate exhausted_period exists and is numeric
+    if (empty($row['exhausted_period']) || !is_numeric($row['exhausted_period'])) {
+        continue; // Skip if exhausted_period is invalid
+    }
+    
     // Calculate DPD (Days Past Due) = exhausted_period - loan_days
     $dpd = (int)$row['exhausted_period'] - $loan_days;
     
     // REQUIREMENT 1: Only include loans where DPD > 0 (exclude DPD = 0 or negative)
-    // Note: This is also checked in SQL query, but keeping here as a safety validation
     if ($dpd <= 0) {
         continue; // Skip this row
     }
