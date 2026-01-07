@@ -18,7 +18,7 @@ header('Content-Disposition: attachment; filename="Account_manager_data.csv"');
 
 $output = fopen('php://output', 'w');
 fputcsv($output, [
-    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "DPD", "outstanding amount", "total loans"
+    "Name" , "primary number", "alt number", "primary mail" , "alt mail" , "principal loan", "processed amount", "exhausted days" , "DPD", "outstanding amount", "total loans","loan id"
 ]);
 
 foreach($reseauserid as $value){
@@ -46,7 +46,8 @@ extract($b,EXTR_PREFIX_ALL,"user");
         $tday,
         $dpd,
         (float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge,
-        $loan_count
+        $loan_count,
+        $user_lid
     ];
 
     // Write the row to the output
