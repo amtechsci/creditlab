@@ -45,9 +45,7 @@ fputcsv($output, [
     'Income', 'Net/Gross Income Indicator', 'Monthly/Annual Income Indicator', 'CKYC', 'NREGA Card Number'
 ]);
 
-// Get date range parameters
-$from_date = isset($_GET['from_date']) ? $_GET['from_date'] : null;
-$to_date = isset($_GET['to_date']) ? $_GET['to_date'] : null;
+// Note: Date range parameters not used for default report - shows all loans with DPD > 0
 
 // SQL query to fetch data for loans in default
 // Filter by status_log: 'recovery officer' or 'account manager'
@@ -64,12 +62,7 @@ LEFT JOIN loan_apply la ON u.id = la.uid
 JOIN loan l ON la.id = l.lid
 WHERE l.status_log IN ('recovery officer', 'account manager')";
 
-// Add date range filter if provided (filter by processed_date)
-if ($from_date && $to_date) {
-    $from_date_escaped = date('Y-m-d', strtotime($from_date));
-    $to_date_escaped = date('Y-m-d', strtotime($to_date));
-    $sql .= " AND DATE(l.processed_date) BETWEEN '$from_date_escaped' AND '$to_date_escaped'";
-}
+// Note: Date range filter removed - default report shows all loans with DPD > 0 regardless of date
 
 // Execute the query
 $result = towquery($sql);
