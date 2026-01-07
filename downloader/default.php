@@ -41,7 +41,17 @@ WHERE l.status_log IN ('recovery officer', 'account manager')";
 
 $result = towquery($sql);
 
+// Store unique rows to prevent duplicates (using lid as business key)
+$unique_rows = [];
+$seen_lids = [];
+
+// Collect unique rows and calculate DPD
 while ($row = towfetch($result)) {
+    // Remove duplicates based on loan ID (business key)
+    if (isset($seen_lids[$row['lid']])) {
+        continue; // Skip duplicate
+    }
+    
     // Skip if no processed_date
     if (empty($row['processed_date'])) {
         continue;
@@ -66,6 +76,14 @@ while ($row = towfetch($result)) {
         continue;
     }
     
+    $seen_lids[$row['lid']] = true;
+    $row['calculated_dpd'] = $dpd;
+    $unique_rows[] = $row;
+}
+
+// Loop through unique rows and write each row to the CSV
+foreach ($unique_rows as $row) {
+    
     // Format dates
     $dob = date('dmY', strtotime($row['dob']));
     $date_opened = date('dmY', strtotime($row['processed_date']));
@@ -74,6 +92,9 @@ while ($row = towfetch($result)) {
     $gender_map = ['female' => 1, 'male' => 2, 'transgender' => 3];
     $gender = isset($gender_map[strtolower($row['marital_status'])]) ? $gender_map[strtolower($row['marital_status'])] : 0;
 
+    // Get DPD from calculated value
+    $dpd = isset($row['calculated_dpd']) ? $row['calculated_dpd'] : 0;
+    
     // Calculate financial details
     $gst = (float)$row['processing_fees'] * 0.18;
     $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
