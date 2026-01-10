@@ -246,11 +246,49 @@
                 
                 towquery("UPDATE `user` SET `status`='account manager', `loan`=0, `sloan`=`sloan`+1 WHERE id=".$id."");
                 $tdate = date('Y-m-d', strtotime($transaction_date));
-                towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
-                if($userpro_approvenew == 0){$is_emi = 0;}else{$is_emi = 1;}
+                
+                // Recalculate days based on transaction date (processed_date) and CURRENT salary_date
+                // Always query database to get most current salary_date and approvenew values
+                // (in case admin updated them in the same session)
+                $apply_date = $tdate; // Use transaction date as the processed date
+                $user_current_data = towquery("SELECT salary_date, approvenew FROM user WHERE id=$id");
+                $user_current = towfetch($user_current_data);
+                
+                // Get current salary_date from database
+                $salary_date_value = null;
+                if ($user_current && isset($user_current['salary_date']) && is_numeric($user_current['salary_date']) && (int)$user_current['salary_date'] >= 1 && (int)$user_current['salary_date'] <= 31) {
+                    $salary_date_value = (int)$user_current['salary_date'];
+                }
+                
+                // Calculate days based on transaction date and current salary_date
+                // This ensures we recalculate even if salary_date was set AFTER loan_apply was created
+                $calculated_days = calculateLoanDays($apply_date, $salary_date_value);
+                
+                // Get current approvenew value from database
+                $current_approvenew = isset($user_current['approvenew']) ? (int)$user_current['approvenew'] : 0;
+                
+                // Determine if EMI or non-EMI based on CURRENT approvenew value
+                if($current_approvenew == 0){
+                    $is_emi = 0;
+                    // Non-EMI loans: use calculated days based on salary_date
+                    // This recalculates days even if loan_apply was created when salary_date was not set
+                    $loan_days = $calculated_days;
+                } else {
+                    $is_emi = 1;
+                    // EMI loans: always use 30 days
+                    $loan_days = 30;
+                }
+                
+                // Update loan_apply with correct days if it's different
+                if($validfetch['days'] != $loan_days){
+                    towquery("UPDATE `loan_apply` SET `days`='$loan_days', `status`='account manager', `status_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
+                } else {
+                    towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
+                }
+                
                 $totalamount = (float)$transaction_amount + (float)$validfetch['processing_fees'] + ((float)$validfetch['processing_fees']*0.18);
                 towquery("INSERT INTO `loan`(`lid`, `uid`, `processed_date`, `processed_amount`, `exhausted_period`, `p_fee`, `origination_fee`, `service_charge`, `penality_charge`, `total_amount`, `status_log`, `action`, `total_time`, `is_emi`)
-                                VALUES (".$cllid.",$id,'$tdate','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$validfetch['days']."','$is_emi')");
+                                VALUES (".$cllid.",$id,'$tdate','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$loan_days."','$is_emi')");
                 
                 // Insert transaction details
                 towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
