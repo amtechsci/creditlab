@@ -100,25 +100,46 @@ class S3Helper {
     }
     
     public function getFileUrl($name, $expiration = '+7 days') {
-        // Try uploads/ first, then zxc/uploads/
-        $prefixes = [S3_PREFIX, S3_ZXC_PREFIX];
+        // Check if name already has a known prefix
+        $name_trimmed = ltrim($name, '/');
+        $has_prefix = false;
+        $key = $name_trimmed;
         
-        foreach ($prefixes as $prefix) {
-            try {
-                $key = $prefix . ltrim($name, '/');
-                $cmd = $this->s3Client->getCommand('GetObject', [
-                    'Bucket' => S3_BUCKET,
-                    'Key'    => $key
-                ]);
-                $request = $this->s3Client->createPresignedRequest($cmd, $expiration);
-                return [true, (string) $request->getUri()];
-            } catch (AwsException $e) {
-                // Continue to next prefix if this one fails
-                continue;
+        // If name already starts with a known prefix, use it as-is
+        if (strpos($name_trimmed, S3_PREFIX) === 0 || strpos($name_trimmed, S3_ZXC_PREFIX) === 0) {
+            $has_prefix = true;
+            $key = $name_trimmed;
+        } else {
+            // Try uploads/ first, then zxc/uploads/
+            $prefixes = [S3_PREFIX, S3_ZXC_PREFIX];
+            
+            foreach ($prefixes as $prefix) {
+                try {
+                    $test_key = $prefix . $name_trimmed;
+                    $cmd = $this->s3Client->getCommand('GetObject', [
+                        'Bucket' => S3_BUCKET,
+                        'Key'    => $test_key
+                    ]);
+                    $request = $this->s3Client->createPresignedRequest($cmd, $expiration);
+                    return [true, (string) $request->getUri()];
+                } catch (AwsException $e) {
+                    // Continue to next prefix if this one fails
+                    continue;
+                }
             }
         }
         
-        return [false, 'File not found in any S3 prefix'];
+        // If we have a key (either with prefix or without), try it directly
+        try {
+            $cmd = $this->s3Client->getCommand('GetObject', [
+                'Bucket' => S3_BUCKET,
+                'Key'    => $key
+            ]);
+            $request = $this->s3Client->createPresignedRequest($cmd, $expiration);
+            return [true, (string) $request->getUri()];
+        } catch (AwsException $e) {
+            return [false, 'File not found: ' . $e->getMessage()];
+        }
     }
 }
 

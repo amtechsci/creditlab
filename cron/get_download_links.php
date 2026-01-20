@@ -166,16 +166,17 @@ if ($is_cli) {
                 $download_url = $row['s3_url']; // Default to stored URL
                 $s3_key = $row['s3_key'];
                 
-                // Extract key from s3_key or s3_url
+                // Use s3_key directly (it already has the correct prefix)
+                // If s3_key is empty, try to extract from URL
                 $key_for_presigned = $s3_key;
-                if (empty($key_for_presigned) || !strpos($key_for_presigned, '/')) {
+                if (empty($key_for_presigned)) {
                     // Try to extract from URL
                     if (preg_match('#/(uploads/.+)$#', $row['s3_url'], $matches)) {
                         $key_for_presigned = $matches[1];
                     }
                 }
                 
-                // Generate presigned URL
+                // Generate presigned URL (s3_key already has prefix, so pass as-is)
                 if (!empty($key_for_presigned)) {
                     list($success, $presigned_url) = s3_get_file_url($key_for_presigned, '+7 days');
                     if ($success) {

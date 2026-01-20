@@ -570,15 +570,16 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
                     $download_url = $row['s3_url'];
                     $s3_key = $row['s3_key'];
                     
-                    // Extract key for presigned URL
+                    // Use s3_key directly (it already has the correct prefix)
+                    // If s3_key is empty, try to extract from URL
                     $key_for_presigned = $s3_key;
-                    if (empty($key_for_presigned) || !strpos($key_for_presigned, '/')) {
+                    if (empty($key_for_presigned)) {
                         if (preg_match('#/(uploads/.+)$#', $row['s3_url'], $matches)) {
                             $key_for_presigned = $matches[1];
                         }
                     }
                     
-                    // Generate presigned URL (valid for 7 days)
+                    // Generate presigned URL (s3_key already has prefix, so pass as-is)
                     if (!empty($key_for_presigned)) {
                         list($success, $presigned_url) = s3_get_file_url($key_for_presigned, '+7 days');
                         if ($success) {
