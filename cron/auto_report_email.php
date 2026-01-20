@@ -335,8 +335,42 @@ function generateReport($report_type, $from_date, $to_date) {
     // Read the report file content
     $file_content = file_get_contents($report_file);
     
+    // Calculate absolute paths for includes
+    // The report files are in downloader/ and include ../db.php
+    // So db.php is at the root level, which from cron/ is ../db.php
+    $db_path = realpath(__DIR__ . '/../db.php');
+    if (!$db_path || !file_exists($db_path)) {
+        global $log_file;
+        $error_msg = "[" . date('Y-m-d H:i:s') . "] ERROR: Cannot find db.php at " . __DIR__ . "/../db.php\n";
+        if (isset($log_file)) {
+            file_put_contents($log_file, $error_msg, FILE_APPEND);
+        }
+        return false;
+    }
+    $downloader_dir = dirname($report_file);
+    $parent_dir = dirname($downloader_dir);
+    
+    // Replace relative include paths with absolute paths
+    // Handle all variations: include, require, include_once, require_once
+    // Match patterns like: include '../db.php'; or include "../db.php";
+    $modified_content = preg_replace_callback(
+        "/(include|require|include_once|require_once)\s+['\"]\.\.\/([^'\"]+)['\"]\s*;/i",
+        function($matches) use ($parent_dir) {
+            $include_type = $matches[1];
+            $relative_path = $matches[2];
+            $absolute_path = realpath($parent_dir . '/' . $relative_path);
+            if ($absolute_path && file_exists($absolute_path)) {
+                return $include_type . " '" . addslashes($absolute_path) . "';";
+            }
+            // If path doesn't resolve, try to construct it anyway
+            $constructed_path = $parent_dir . '/' . $relative_path;
+            return $include_type . " '" . addslashes($constructed_path) . "';";
+        },
+        $file_content
+    );
+    
     // Replace php://output with our file path
-    $modified_content = str_replace("fopen('php://output', 'w')", "fopen('" . addslashes($csv_file) . "', 'w')", $file_content);
+    $modified_content = str_replace("fopen('php://output', 'w')", "fopen('" . addslashes($csv_file) . "', 'w')", $modified_content);
     $modified_content = str_replace('fopen("php://output", "w")', 'fopen("' . addslashes($csv_file) . '", "w")', $modified_content);
     
     // Remove or comment out header() calls
@@ -354,6 +388,7 @@ function generateReport($report_type, $from_date, $to_date) {
     ob_start();
     
     // Execute the modified script
+    // All relative paths have been converted to absolute paths, so we can include from anywhere
     try {
         include $temp_script;
     } catch (Exception $e) {
