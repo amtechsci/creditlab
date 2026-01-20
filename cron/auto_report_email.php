@@ -42,13 +42,28 @@ $log_message = "[" . date('Y-m-d H:i:s') . "] ==================================
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Script executed - Day: $current_day, Month: $current_month, Year: $current_year\n";
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Force mode: " . ($force_mode ? 'YES' : 'NO') . ", Test mode: " . ($test_mode ? 'YES' : 'NO') . "\n";
 
+// Output to console if running from command line
+if (php_sapi_name() === 'cli') {
+    echo "CreditLab Auto Report Email Script\n";
+    echo "==================================\n";
+    echo "Date: " . date('Y-m-d H:i:s') . "\n";
+    echo "Force mode: " . ($force_mode ? 'YES' : 'NO') . "\n";
+    echo "Test mode: " . ($test_mode ? 'YES' : 'NO') . "\n";
+}
+
 // Check database connectivity
 if (!isset($db) || !@mysqli_ping($db)) {
     $log_message .= "[" . date('Y-m-d H:i:s') . "] ERROR: Database connection failed or lost\n";
     file_put_contents($log_file, $log_message, FILE_APPEND);
+    if (php_sapi_name() === 'cli') {
+        echo "ERROR: Database connection failed!\n";
+    }
     exit(1);
 }
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Database connection: OK\n";
+if (php_sapi_name() === 'cli') {
+    echo "Database connection: OK\n";
+}
 
 // Check if it's the 15th or last day of the month
 $is_15th = ($current_day == 15);
@@ -62,15 +77,25 @@ if (!$is_15th && !$is_last_day && !$force_mode && !$test_mode) {
     $log_message .= "[" . date('Y-m-d H:i:s') . "] To force run: php auto_report_email.php force\n";
     $log_message .= "[" . date('Y-m-d H:i:s') . "] To test run: php auto_report_email.php test\n\n";
     file_put_contents($log_file, $log_message, FILE_APPEND);
+    if (php_sapi_name() === 'cli') {
+        echo "Not a scheduled day. Exiting.\n";
+        echo "Next run: 15th or " . date('t') . " of " . date('F Y') . "\n";
+    }
     exit(0);
 }
 
 if ($force_mode || $test_mode) {
     $log_message .= "[" . date('Y-m-d H:i:s') . "] " . ($force_mode ? 'FORCE' : 'TEST') . " mode enabled - proceeding despite date check\n";
+    if (php_sapi_name() === 'cli') {
+        echo ($force_mode ? 'FORCE' : 'TEST') . " mode enabled - proceeding\n";
+    }
 }
 
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Proceeding with report generation.\n";
 file_put_contents($log_file, $log_message, FILE_APPEND);
+if (php_sapi_name() === 'cli') {
+    echo "Proceeding with report generation...\n";
+}
 
 // Determine date range based on the day
 if ($test_mode) {
@@ -106,6 +131,11 @@ file_put_contents($log_file, $log_message, FILE_APPEND);
 $log_message = "[" . date('Y-m-d H:i:s') . "] Auto Report Email Cron Started - Period: $report_period\n";
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Date Range: $from_date to $to_date\n";
 file_put_contents($log_file, $log_message, FILE_APPEND);
+if (php_sapi_name() === 'cli') {
+    echo "Report Period: $report_period\n";
+    echo "Date Range: $from_date to $to_date\n";
+    echo "Generating reports...\n";
+}
 
 // List of all reports to generate
 $reports = [
@@ -131,14 +161,14 @@ foreach ($reports as $report_key => $report_name) {
         if ($csv_file && file_exists($csv_file)) {
             $file_name = $report_name . ' - ' . date('Y-m-d') . '.csv';
             
-            // Upload to S3
+            // Upload to S3 (make public so reports are accessible)
             $s3_path = 'reports/' . date('Y/m/') . $report_key . '_' . date('Y-m-d') . '_' . time() . '.csv';
-            list($s3_success, $s3_result) = s3_upload_file($csv_file, $s3_path, 'text/csv');
+            list($s3_success, $s3_result) = s3_upload_file($csv_file, $s3_path, 'text/csv', true); // true = make public
             
             // If upload fails, try using uploadString instead
             if (!$s3_success) {
                 $csv_content = file_get_contents($csv_file);
-                list($s3_success, $s3_result) = s3_upload_string($csv_content, $s3_path, 'text/csv');
+                list($s3_success, $s3_result) = s3_upload_string($csv_content, $s3_path, 'text/csv', true); // true = make public
             }
             
             if ($s3_success) {
@@ -179,6 +209,9 @@ foreach ($reports as $report_key => $report_name) {
                     $log_message = "[" . date('Y-m-d H:i:s') . "] Generated and uploaded to S3: $report_name (ID: $db_id)\n";
                     $log_message .= "[" . date('Y-m-d H:i:s') . "] S3 URL: $s3_url\n";
                     file_put_contents($log_file, $log_message, FILE_APPEND);
+                    if (php_sapi_name() === 'cli') {
+                        echo "  ✓ $report_name (ID: $db_id)\n";
+                    }
                 } else {
                     $errors[] = "Failed to save download link to database: $report_name";
                     $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Generated $report_name but failed to save to database\n";
@@ -255,6 +288,15 @@ $log_message = "[" . date('Y-m-d H:i:s') . "] Auto Report Email Cron Completed\n
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Summary - Reports generated: " . count($attachments) . ", Errors: " . count($errors) . ", Email sent: " . ($email_sent ? 'YES' : 'NO') . "\n";
 $log_message .= "[" . date('Y-m-d H:i:s') . "] Database records created: " . count($download_links) . "\n\n";
 file_put_contents($log_file, $log_message, FILE_APPEND);
+if (php_sapi_name() === 'cli') {
+    echo "\n==================================\n";
+    echo "Summary:\n";
+    echo "  Reports generated: " . count($attachments) . "\n";
+    echo "  Errors: " . count($errors) . "\n";
+    echo "  Email sent: " . ($email_sent ? 'YES' : 'NO') . "\n";
+    echo "  Database records: " . count($download_links) . "\n";
+    echo "==================================\n";
+}
 
 exit(0);
 

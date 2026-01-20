@@ -19,32 +19,46 @@ class S3Helper {
         ]);
     }
     
-    public function uploadFile($localPath, $destName, $contentType = 'application/octet-stream', $useZxcPrefix = false) {
+    public function uploadFile($localPath, $destName, $contentType = 'application/octet-stream', $useZxcPrefix = false, $makePublic = false) {
         try {
             $prefix = $useZxcPrefix ? S3_ZXC_PREFIX : S3_PREFIX;
             $key = $prefix . ltrim($destName, '/');
-            $result = $this->s3Client->putObject([
+            $params = [
                 'Bucket' => S3_BUCKET,
                 'Key'    => $key,
                 'SourceFile' => $localPath,
                 'ContentType' => $contentType
-            ]);
+            ];
+            
+            // Make file public if requested (for reports)
+            if ($makePublic) {
+                $params['ACL'] = 'public-read';
+            }
+            
+            $result = $this->s3Client->putObject($params);
             return [true, $result];
         } catch (AwsException $e) {
             return [false, $e->getMessage()];
         }
     }
     
-    public function uploadString($contents, $destName, $contentType = 'application/octet-stream', $useZxcPrefix = false) {
+    public function uploadString($contents, $destName, $contentType = 'application/octet-stream', $useZxcPrefix = false, $makePublic = false) {
         try {
             $prefix = $useZxcPrefix ? S3_ZXC_PREFIX : S3_PREFIX;
             $key = $prefix . ltrim($destName, '/');
-            $result = $this->s3Client->putObject([
+            $params = [
                 'Bucket' => S3_BUCKET,
                 'Key'    => $key,
                 'Body'   => $contents,
                 'ContentType' => $contentType
-            ]);
+            ];
+            
+            // Make file public if requested (for reports)
+            if ($makePublic) {
+                $params['ACL'] = 'public-read';
+            }
+            
+            $result = $this->s3Client->putObject($params);
             return [true, $result];
         } catch (AwsException $e) {
             return [false, $e->getMessage()];
@@ -110,16 +124,16 @@ class S3Helper {
 
 // Global helper functions
 if (!function_exists('s3_upload_file')) {
-    function s3_upload_file($localPath, $destName, $contentType = 'application/octet-stream') {
+    function s3_upload_file($localPath, $destName, $contentType = 'application/octet-stream', $makePublic = false) {
         $s3 = new S3Helper();
-        return $s3->uploadFile($localPath, $destName, $contentType);
+        return $s3->uploadFile($localPath, $destName, $contentType, false, $makePublic);
     }
 }
 
 if (!function_exists('s3_upload_string')) {
-    function s3_upload_string($contents, $destName, $contentType = 'application/octet-stream') {
+    function s3_upload_string($contents, $destName, $contentType = 'application/octet-stream', $makePublic = false) {
         $s3 = new S3Helper();
-        return $s3->uploadString($contents, $destName, $contentType);
+        return $s3->uploadString($contents, $destName, $contentType, false, $makePublic);
     }
 }
 
