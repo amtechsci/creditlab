@@ -224,8 +224,13 @@ if (!empty($attachments)) {
         $log_message = "[" . date('Y-m-d H:i:s') . "] Email sent successfully to $recipient_email\n";
         $log_message .= "[" . date('Y-m-d H:i:s') . "] Updated " . count($download_links) . " database records with email_sent=1\n";
     } else {
-        $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to send email to $recipient_email - Reports saved in database for manual retrieval\n";
-        $log_message .= "[" . date('Y-m-d H:i:s') . "] Check PHPMailer error details in log above\n";
+        if ($test_mode) {
+            $log_message = "[" . date('Y-m-d H:i:s') . "] TEST MODE: Email not sent (intentionally skipped)\n";
+            $log_message .= "[" . date('Y-m-d H:i:s') . "] All reports saved in database for manual retrieval\n";
+        } else {
+            $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to send email to $recipient_email - Reports saved in database for manual retrieval\n";
+            $log_message .= "[" . date('Y-m-d H:i:s') . "] Check PHPMailer error details in log above\n";
+        }
     }
     file_put_contents($log_file, $log_message, FILE_APPEND);
 } else {
