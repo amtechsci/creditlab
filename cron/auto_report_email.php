@@ -351,14 +351,22 @@ function generateReport($report_type, $from_date, $to_date) {
     $parent_dir = dirname($downloader_dir);
     
     // Replace relative include paths with absolute paths
-    // Handle all variations: include, require, include_once, require_once
+    // Convert all includes to include_once/require_once to prevent redeclaration errors
     // Match patterns like: include '../db.php'; or include "../db.php";
     $modified_content = preg_replace_callback(
         "/(include|require|include_once|require_once)\s+['\"]\.\.\/([^'\"]+)['\"]\s*;/i",
         function($matches) use ($parent_dir) {
-            $include_type = $matches[1];
+            $original_type = strtolower($matches[1]);
             $relative_path = $matches[2];
             $absolute_path = realpath($parent_dir . '/' . $relative_path);
+            
+            // Convert include/require to include_once/require_once to prevent redeclaration
+            if ($original_type === 'include' || $original_type === 'require') {
+                $include_type = $original_type . '_once';
+            } else {
+                $include_type = $original_type;
+            }
+            
             if ($absolute_path && file_exists($absolute_path)) {
                 return $include_type . " '" . addslashes($absolute_path) . "';";
             }
