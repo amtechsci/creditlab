@@ -26,23 +26,60 @@ $recipient_email = 'support@creditlab.in';
 $from_email = 'documents@creditlab.in';
 $from_name = 'CreditLab Reports';
 
+// Check for test/force mode (allows running on any day for testing)
+$force_mode = isset($_GET['force']) || isset($argv[1]) && $argv[1] === 'force';
+$test_mode = isset($_GET['test']) || isset($argv[1]) && $argv[1] === 'test';
+
 // Get current date
 $current_date = date('Y-m-d');
 $current_day = (int)date('d');
 $current_month = (int)date('m');
 $current_year = (int)date('Y');
 
+// Log every execution attempt
+$log_file = __DIR__ . '/cron_log.txt';
+$log_message = "[" . date('Y-m-d H:i:s') . "] ========================================\n";
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Script executed - Day: $current_day, Month: $current_month, Year: $current_year\n";
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Force mode: " . ($force_mode ? 'YES' : 'NO') . ", Test mode: " . ($test_mode ? 'YES' : 'NO') . "\n";
+
+// Check database connectivity
+if (!isset($db) || !@mysqli_ping($db)) {
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] ERROR: Database connection failed or lost\n";
+    file_put_contents($log_file, $log_message, FILE_APPEND);
+    exit(1);
+}
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Database connection: OK\n";
+
 // Check if it's the 15th or last day of the month
 $is_15th = ($current_day == 15);
 $is_last_day = ($current_day == date('t')); // date('t') returns the number of days in the current month
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Is 15th: " . ($is_15th ? 'YES' : 'NO') . ", Is Last Day: " . ($is_last_day ? 'YES' : 'NO') . "\n";
 
-if (!$is_15th && !$is_last_day) {
-    // Not a scheduled day, exit silently
+if (!$is_15th && !$is_last_day && !$force_mode && !$test_mode) {
+    // Not a scheduled day, log and exit
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] Not a scheduled day (15th or last day), exiting.\n";
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] Next scheduled run: 15th or " . date('t') . " of " . date('F Y') . "\n";
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] To force run: php auto_report_email.php force\n";
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] To test run: php auto_report_email.php test\n\n";
+    file_put_contents($log_file, $log_message, FILE_APPEND);
     exit(0);
 }
 
+if ($force_mode || $test_mode) {
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] " . ($force_mode ? 'FORCE' : 'TEST') . " mode enabled - proceeding despite date check\n";
+}
+
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Proceeding with report generation.\n";
+file_put_contents($log_file, $log_message, FILE_APPEND);
+
 // Determine date range based on the day
-if ($is_15th) {
+if ($test_mode) {
+    // Test mode: Use last 7 days for testing
+    $from_date = date('Y-m-d', strtotime('-7 days'));
+    $to_date = date('Y-m-d');
+    $report_period = "TEST MODE - Last 7 days (" . $from_date . " to " . $to_date . ")";
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] TEST MODE: Using date range $from_date to $to_date\n";
+} elseif ($is_15th || ($force_mode && $current_day <= 15)) {
     // For 15th: Report from 1st day of month (00:02 AM) to 15th day (11:58 PM)
     $from_date = date('Y-m-01');
     $to_date = date('Y-m-15');
@@ -55,11 +92,20 @@ if ($is_15th) {
 }
 
 // Ensure download_links table exists
-createDownloadLinksTable();
+$log_message = "[" . date('Y-m-d H:i:s') . "] Creating/checking download_links table...\n";
+file_put_contents($log_file, $log_message, FILE_APPEND);
+$table_result = createDownloadLinksTable();
+if ($table_result) {
+    $log_message = "[" . date('Y-m-d H:i:s') . "] Table check/creation successful.\n";
+} else {
+    $log_message = "[" . date('Y-m-d H:i:s') . "] WARNING: Table check/creation may have failed.\n";
+}
+file_put_contents($log_file, $log_message, FILE_APPEND);
 
 // Log the execution
 $log_message = "[" . date('Y-m-d H:i:s') . "] Auto Report Email Cron Started - Period: $report_period\n";
-file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Date Range: $from_date to $to_date\n";
+file_put_contents($log_file, $log_message, FILE_APPEND);
 
 // List of all reports to generate
 $reports = [
@@ -131,31 +177,44 @@ foreach ($reports as $report_key => $report_name) {
                     ];
                     
                     $log_message = "[" . date('Y-m-d H:i:s') . "] Generated and uploaded to S3: $report_name (ID: $db_id)\n";
-                    file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+                    $log_message .= "[" . date('Y-m-d H:i:s') . "] S3 URL: $s3_url\n";
+                    file_put_contents($log_file, $log_message, FILE_APPEND);
                 } else {
                     $errors[] = "Failed to save download link to database: $report_name";
-                    $log_message = "[" . date('Y-m-d H:i:s') . "] Warning: Generated $report_name but failed to save to database\n";
-                    file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+                    $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Generated $report_name but failed to save to database\n";
+                    $log_message .= "[" . date('Y-m-d H:i:s') . "] S3 upload succeeded but database insert failed\n";
+                    file_put_contents($log_file, $log_message, FILE_APPEND);
                 }
             } else {
-                $errors[] = "Failed to upload to S3: $report_name - " . (is_string($s3_result) ? $s3_result : 'Unknown error');
-                $log_message = "[" . date('Y-m-d H:i:s') . "] Error: Failed to upload $report_name to S3\n";
-                file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+                $error_detail = is_string($s3_result) ? $s3_result : (is_array($s3_result) ? json_encode($s3_result) : 'Unknown error');
+                $errors[] = "Failed to upload to S3: $report_name - " . $error_detail;
+                $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to upload $report_name to S3\n";
+                $log_message .= "[" . date('Y-m-d H:i:s') . "] Error details: $error_detail\n";
+                file_put_contents($log_file, $log_message, FILE_APPEND);
             }
         } else {
             $errors[] = "Failed to generate: $report_name";
+            $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to generate $report_name - No CSV file created\n";
+            file_put_contents($log_file, $log_message, FILE_APPEND);
         }
     } catch (Exception $e) {
         $errors[] = "Error generating $report_name: " . $e->getMessage();
-        $log_message = "[" . date('Y-m-d H:i:s') . "] Error: $report_name - " . $e->getMessage() . "\n";
-        file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+        $log_message = "[" . date('Y-m-d H:i:s') . "] EXCEPTION: $report_name - " . $e->getMessage() . "\n";
+        $log_message .= "[" . date('Y-m-d H:i:s') . "] Stack trace: " . $e->getTraceAsString() . "\n";
+        file_put_contents($log_file, $log_message, FILE_APPEND);
     }
 }
 
-// Send email with all attachments
+// Send email with all attachments (skip in test mode)
 $email_sent = false;
 if (!empty($attachments)) {
-    $email_sent = sendEmailWithAttachments($recipient_email, $from_email, $from_name, $report_period, $attachments, $errors, $download_links);
+    if ($test_mode) {
+        $log_message = "[" . date('Y-m-d H:i:s') . "] TEST MODE: Skipping email send\n";
+        file_put_contents($log_file, $log_message, FILE_APPEND);
+        $email_sent = false; // Don't send email in test mode
+    } else {
+        $email_sent = sendEmailWithAttachments($recipient_email, $from_email, $from_name, $report_period, $attachments, $errors, $download_links);
+    }
     
     if ($email_sent) {
         // Update database records to mark email as sent
@@ -163,13 +222,21 @@ if (!empty($attachments)) {
             updateEmailStatus($link['id'], 1);
         }
         $log_message = "[" . date('Y-m-d H:i:s') . "] Email sent successfully to $recipient_email\n";
+        $log_message .= "[" . date('Y-m-d H:i:s') . "] Updated " . count($download_links) . " database records with email_sent=1\n";
     } else {
-        $log_message = "[" . date('Y-m-d H:i:s') . "] Failed to send email to $recipient_email - Reports saved in database for manual retrieval\n";
+        $log_message = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to send email to $recipient_email - Reports saved in database for manual retrieval\n";
+        $log_message .= "[" . date('Y-m-d H:i:s') . "] Check PHPMailer error details in log above\n";
     }
-    file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+    file_put_contents($log_file, $log_message, FILE_APPEND);
 } else {
-    $log_message = "[" . date('Y-m-d H:i:s') . "] No reports generated, email not sent\n";
-    file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+    $log_message = "[" . date('Y-m-d H:i:s') . "] WARNING: No reports generated, email not sent\n";
+    $log_message .= "[" . date('Y-m-d H:i:s') . "] Total errors: " . count($errors) . "\n";
+    if (!empty($errors)) {
+        foreach ($errors as $error) {
+            $log_message .= "[" . date('Y-m-d H:i:s') . "] Error: $error\n";
+        }
+    }
+    file_put_contents($log_file, $log_message, FILE_APPEND);
 }
 
 // Clean up temporary files
@@ -179,8 +246,10 @@ foreach ($attachments as $attachment) {
     }
 }
 
-$log_message = "[" . date('Y-m-d H:i:s') . "] Auto Report Email Cron Completed\n\n";
-file_put_contents(__DIR__ . '/cron_log.txt', $log_message, FILE_APPEND);
+$log_message = "[" . date('Y-m-d H:i:s') . "] Auto Report Email Cron Completed\n";
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Summary - Reports generated: " . count($attachments) . ", Errors: " . count($errors) . ", Email sent: " . ($email_sent ? 'YES' : 'NO') . "\n";
+$log_message .= "[" . date('Y-m-d H:i:s') . "] Database records created: " . count($download_links) . "\n\n";
+file_put_contents($log_file, $log_message, FILE_APPEND);
 
 exit(0);
 
@@ -188,6 +257,8 @@ exit(0);
  * Create download_links table if it doesn't exist
  */
 function createDownloadLinksTable() {
+    global $log_file;
+    
     $sql = "CREATE TABLE IF NOT EXISTS `download_links` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
       `report_type` varchar(50) NOT NULL COMMENT 'Type of report (disbursal, cleared, default, etc.)',
@@ -209,7 +280,17 @@ function createDownloadLinksTable() {
       KEY `idx_created_at` (`created_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores S3 URLs for automated report downloads'";
     
-    towquery($sql);
+    $result = towquery($sql);
+    
+    if (!$result) {
+        $error_msg = "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to create/check download_links table: " . (function_exists('mysqli_error') && isset($GLOBALS['db']) ? mysqli_error($GLOBALS['db']) : 'Unknown error') . "\n";
+        if (isset($log_file)) {
+            file_put_contents($log_file, $error_msg, FILE_APPEND);
+        }
+        return false;
+    }
+    
+    return true;
 }
 
 /**
@@ -421,8 +502,11 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
         return true;
     } else {
         // Log error
+        global $log_file;
         $error_log = "[" . date('Y-m-d H:i:s') . "] Email Error: " . $mail->ErrorInfo . "\n";
-        file_put_contents(__DIR__ . '/cron_log.txt', $error_log, FILE_APPEND);
+        $error_log .= "[" . date('Y-m-d H:i:s') . "] SMTP Host: " . $mail->Host . ", Port: " . $mail->Port . "\n";
+        $error_log .= "[" . date('Y-m-d H:i:s') . "] From: " . $mail->From . ", To: " . $to_email . "\n";
+        file_put_contents($log_file, $error_log, FILE_APPEND);
         return false;
     }
 }
