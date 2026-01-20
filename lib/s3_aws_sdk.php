@@ -99,7 +99,7 @@ class S3Helper {
         }
     }
     
-    public function getFileUrl($name) {
+    public function getFileUrl($name, $expiration = '+7 days') {
         // Try uploads/ first, then zxc/uploads/
         $prefixes = [S3_PREFIX, S3_ZXC_PREFIX];
         
@@ -110,7 +110,7 @@ class S3Helper {
                     'Bucket' => S3_BUCKET,
                     'Key'    => $key
                 ]);
-                $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
+                $request = $this->s3Client->createPresignedRequest($cmd, $expiration);
                 return [true, (string) $request->getUri()];
             } catch (AwsException $e) {
                 // Continue to next prefix if this one fails
@@ -145,9 +145,9 @@ if (!function_exists('s3_download_file')) {
 }
 
 if (!function_exists('s3_get_file_url')) {
-    function s3_get_file_url($name) {
+    function s3_get_file_url($name, $expiration = '+7 days') {
         $s3 = new S3Helper();
-        return $s3->getFileUrl($name);
+        return $s3->getFileUrl($name, $expiration);
     }
 }
 ?>

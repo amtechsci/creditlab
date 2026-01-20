@@ -16,6 +16,7 @@
  */
 
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 
 // Get filters
 $date_filter = isset($_GET['date']) ? $_GET['date'] : (isset($argv[1]) ? $argv[1] : null);
@@ -58,7 +59,26 @@ if ($is_cli) {
             echo "Date: " . $row['report_date'] . "\n";
             echo "Period: " . $row['report_period'] . "\n";
             echo "From: " . $row['from_date'] . " To: " . $row['to_date'] . "\n";
-            echo "S3 URL: " . $row['s3_url'] . "\n";
+            // Generate presigned URL for command line
+            $s3_key = $row['s3_key'];
+            $key_for_presigned = $s3_key;
+            if (empty($key_for_presigned) || !strpos($key_for_presigned, '/')) {
+                if (preg_match('#/(uploads/.+)$#', $row['s3_url'], $matches)) {
+                    $key_for_presigned = $matches[1];
+                }
+            }
+            
+            $download_url = $row['s3_url'];
+            if (!empty($key_for_presigned)) {
+                require_once __DIR__ . '/../lib/s3_aws_sdk.php';
+                list($success, $presigned_url) = s3_get_file_url($key_for_presigned, '+7 days');
+                if ($success) {
+                    $download_url = $presigned_url;
+                }
+            }
+            
+            echo "S3 URL: " . $download_url . "\n";
+            echo "  (Presigned URL, valid for 7 days)\n";
             echo "Email Sent: " . ($row['email_sent'] ? 'Yes' : 'No') . "\n";
             if ($row['email_sent_at']) {
                 echo "Email Sent At: " . $row['email_sent_at'] . "\n";
@@ -142,6 +162,27 @@ if ($is_cli) {
             echo "</tr>";
             
             while ($row = towfetch($result)) {
+                // Generate presigned URL for secure access (valid for 7 days)
+                $download_url = $row['s3_url']; // Default to stored URL
+                $s3_key = $row['s3_key'];
+                
+                // Extract key from s3_key or s3_url
+                $key_for_presigned = $s3_key;
+                if (empty($key_for_presigned) || !strpos($key_for_presigned, '/')) {
+                    // Try to extract from URL
+                    if (preg_match('#/(uploads/.+)$#', $row['s3_url'], $matches)) {
+                        $key_for_presigned = $matches[1];
+                    }
+                }
+                
+                // Generate presigned URL
+                if (!empty($key_for_presigned)) {
+                    list($success, $presigned_url) = s3_get_file_url($key_for_presigned, '+7 days');
+                    if ($success) {
+                        $download_url = $presigned_url;
+                    }
+                }
+                
                 echo "<tr>";
                 echo "<td>" . htmlspecialchars($row['id']) . "</td>";
                 echo "<td>" . htmlspecialchars($row['report_name']) . "</td>";
@@ -149,7 +190,7 @@ if ($is_cli) {
                 echo "<td>" . htmlspecialchars($row['report_date']) . "</td>";
                 echo "<td>" . htmlspecialchars($row['report_period']) . "</td>";
                 echo "<td>" . htmlspecialchars($row['from_date']) . " to " . htmlspecialchars($row['to_date']) . "</td>";
-                echo "<td class='url-cell'><a href='" . htmlspecialchars($row['s3_url']) . "' target='_blank'>" . htmlspecialchars($row['s3_url']) . "</a></td>";
+                echo "<td class='url-cell'><a href='" . htmlspecialchars($download_url) . "' target='_blank' title='Click to download (Presigned URL, valid for 7 days)'>Download</a><br><small style='color:#666;'>" . htmlspecialchars(substr($download_url, 0, 80)) . "...</small></td>";
                 echo "<td class='" . ($row['email_sent'] ? 'status-yes' : 'status-no') . "'>" . ($row['email_sent'] ? 'Yes' : 'No') . "</td>";
                 echo "<td>" . ($row['email_sent_at'] ? htmlspecialchars($row['email_sent_at']) : '-') . "</td>";
                 echo "<td>" . htmlspecialchars($row['created_at']) . "</td>";

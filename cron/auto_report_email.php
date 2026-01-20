@@ -161,14 +161,14 @@ foreach ($reports as $report_key => $report_name) {
         if ($csv_file && file_exists($csv_file)) {
             $file_name = $report_name . ' - ' . date('Y-m-d') . '.csv';
             
-            // Upload to S3 (make public so reports are accessible)
+            // Upload to S3 (Note: ACLs not supported by bucket, will use presigned URLs instead)
             $s3_path = 'reports/' . date('Y/m/') . $report_key . '_' . date('Y-m-d') . '_' . time() . '.csv';
-            list($s3_success, $s3_result) = s3_upload_file($csv_file, $s3_path, 'text/csv', true); // true = make public
+            list($s3_success, $s3_result) = s3_upload_file($csv_file, $s3_path, 'text/csv', false); // ACL not supported
             
             // If upload fails, try using uploadString instead
             if (!$s3_success) {
                 $csv_content = file_get_contents($csv_file);
-                list($s3_success, $s3_result) = s3_upload_string($csv_content, $s3_path, 'text/csv', true); // true = make public
+                list($s3_success, $s3_result) = s3_upload_string($csv_content, $s3_path, 'text/csv', false); // ACL not supported
             }
             
             if ($s3_success) {
@@ -553,25 +553,46 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
     
     // Add S3 download links section
     if (!empty($download_links)) {
+        require_once __DIR__ . '/../lib/s3_aws_sdk.php';
         $body .= '<h3>Download Links (S3):</h3>';
-        $body .= '<p>If email attachments fail, you can download reports from the following links:</p>';
+        $body .= '<p>If email attachments fail, you can download reports from the following links (valid for 7 days):</p>';
         $body .= '<ul>';
         // Get all download links from database for this batch
         $link_ids = array_column($download_links, 'id');
         if (!empty($link_ids)) {
             $ids_str = implode(',', array_map('intval', $link_ids));
-            $sql = "SELECT id, report_name, s3_url FROM `download_links` WHERE id IN ($ids_str)";
+            $sql = "SELECT id, report_name, s3_url, s3_key FROM `download_links` WHERE id IN ($ids_str)";
             $result = towquery($sql);
             
             if ($result) {
                 while ($row = towfetch($result)) {
+                    // Generate presigned URL
+                    $download_url = $row['s3_url'];
+                    $s3_key = $row['s3_key'];
+                    
+                    // Extract key for presigned URL
+                    $key_for_presigned = $s3_key;
+                    if (empty($key_for_presigned) || !strpos($key_for_presigned, '/')) {
+                        if (preg_match('#/(uploads/.+)$#', $row['s3_url'], $matches)) {
+                            $key_for_presigned = $matches[1];
+                        }
+                    }
+                    
+                    // Generate presigned URL (valid for 7 days)
+                    if (!empty($key_for_presigned)) {
+                        list($success, $presigned_url) = s3_get_file_url($key_for_presigned, '+7 days');
+                        if ($success) {
+                            $download_url = $presigned_url;
+                        }
+                    }
+                    
                     $body .= '<li><strong>' . htmlspecialchars($row['report_name']) . ':</strong> ';
-                    $body .= '<a href="' . htmlspecialchars($row['s3_url']) . '">Download from S3</a></li>';
+                    $body .= '<a href="' . htmlspecialchars($download_url) . '">Download from S3</a></li>';
                 }
             }
         }
         $body .= '</ul>';
-        $body .= '<p><em>Note: All reports are also saved in the database table "download_links" for backup access.</em></p>';
+        $body .= '<p><em>Note: All reports are also saved in the database table "download_links" for backup access. Links are valid for 7 days.</em></p>';
     }
     
     $body .= '<p>Please find all reports attached to this email.</p>';

@@ -1,12 +1,16 @@
 <?php
 /**
- * Script to make existing report files in S3 public
+ * Script to generate presigned URLs for existing report files
  * 
- * This updates the ACL of existing report files to make them publicly accessible
+ * NOTE: This bucket does not support ACLs (Object Ownership is "Bucket owner enforced").
+ * Instead, we use presigned URLs which provide temporary secure access.
+ * 
+ * This script demonstrates how to generate presigned URLs for existing reports.
+ * The get_download_links.php page automatically generates presigned URLs when viewing.
  * 
  * Usage: php make_reports_public.php [report_id]
- *   - If report_id is provided, only that report will be updated
- *   - If no report_id, all reports with email_sent=0 will be updated
+ *   - If report_id is provided, only that report's presigned URL will be shown
+ *   - If no report_id, all reports with email_sent=0 will be shown
  */
 
 // Set timezone
@@ -35,8 +39,10 @@ $s3Client = new S3Client([
     ],
 ]);
 
-echo "Making S3 Report Files Public\n";
-echo "=============================\n\n";
+echo "Generating Presigned URLs for S3 Report Files\n";
+echo "==============================================\n";
+echo "NOTE: This bucket does not support ACLs.\n";
+echo "Presigned URLs provide secure temporary access (valid for 7 days).\n\n";
 
 // Build query
 if ($report_id) {
@@ -87,14 +93,16 @@ while ($row = towfetch($result)) {
     }
     
     try {
-        // Update ACL to public-read
-        $result_s3 = $s3Client->putObjectAcl([
+        // Generate presigned URL (valid for 7 days)
+        $cmd = $s3Client->getCommand('GetObject', [
             'Bucket' => S3_BUCKET,
-            'Key'    => $key,
-            'ACL'    => 'public-read'
+            'Key'    => $key
         ]);
+        $request = $s3Client->createPresignedRequest($cmd, '+7 days');
+        $presigned_url = (string) $request->getUri();
         
-        echo "  ✓ Made public successfully\n";
+        echo "  ✓ Presigned URL generated (valid for 7 days)\n";
+        echo "  URL: " . substr($presigned_url, 0, 100) . "...\n";
         $updated++;
         
     } catch (AwsException $e) {
