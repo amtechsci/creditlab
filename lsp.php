@@ -36,15 +36,15 @@ include_once 'head2.php';
                 </tr>
                 <tr>
                     <td>1</td>
-                    <td>Finwings Technologies pvt ltd</td>
+                    <td>Fairdebt solutions pvt Ltd</td>
                     <td>Collection and Recoveries</td>
-                    <td style="color:red;">Inactive</td>
+                    <td style="color:red;">Active</td>
                 </tr>
                 <tr>
                     <td>2</td>
                     <td>Shivtel Communications private limited</td>
                     <td>Communication Service - Outbound Dialing</td>
-                    <td style="color:red;">active</td>
+                    <td style="color:red;">Active</td>
                 </tr>
             </table>
         </div>
