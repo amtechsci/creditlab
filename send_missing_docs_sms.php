@@ -126,7 +126,7 @@ if ($sent_count > 0) {
 
 // Function to send SMS with template
 function sendSMSWithTemplate($mobile, $message, $template_id, $sender) {
-    $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+    $url = "https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
 
     $curl = curl_init();
     curl_setopt_array($curl, array(
