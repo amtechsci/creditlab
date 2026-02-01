@@ -23,7 +23,7 @@ require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 
 // Configuration
 $recipient_email = 'support@creditlab.in';
-$from_email = 'documents@creditlab.in';
+$from_email = 'doc@creditlab.in';
 $from_name = 'CreditLab Reports';
 
 // Check for test/force mode (allows running on any day for testing)
@@ -518,8 +518,8 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
     $mail->Host = 'smtp.hostinger.com';
     $mail->Port = 465;
     $mail->SMTPAuth = true;
-    $mail->Username = 'documents@creditlab.in';
-    $mail->Password = 'Sc13olnh&';
+    $mail->Username = 'doc@creditlab.in';
+    $mail->Password = 'New@cred0*!bh';
     $mail->SMTPSecure = 'ssl';
     $mail->From = $from_email;
     $mail->FromName = $from_name;

@@ -50,10 +50,10 @@ if(isset($_GET['email']))
 	$mail->Host = 'smtp.hostinger.com';		//Sets the SMTP hosts of your Email hosting, this for Godaddy
 	$mail->Port = '465';								//Sets the default SMTP server port
 	$mail->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
-	$mail->Username = 'documents@creditlab.in';					//Sets SMTP username
-	$mail->Password = 'Sc13olnh&';					//Sets SMTP password
+	$mail->Username = 'doc@creditlab.in';					//Sets SMTP username
+	$mail->Password = 'New@cred0*!bh';					//Sets SMTP password
 	$mail->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
-	$mail->From = 'documents@creditlab.in';			//Sets the From email address for the message
+	$mail->From = 'doc@creditlab.in';			//Sets the From email address for the message
 	$mail->FromName = 'CreditLab';			//Sets the From name of the message
 	$mail->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
@@ -122,10 +122,10 @@ if(isset($_GET['email']))
 	$mail2->Host = 'smtp.hostinger.com';		//Sets the SMTP hosts of your Email hosting, this for Godaddy
 	$mail2->Port = '465';								//Sets the default SMTP server port
 	$mail2->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
-	$mail2->Username = 'documents@creditlab.in';					//Sets SMTP username
-	$mail2->Password = 'Sc13olnh&';					//Sets SMTP password
+	$mail2->Username = 'doc@creditlab.in';					//Sets SMTP username
+	$mail2->Password = 'New@cred0*!bh';					//Sets SMTP password
 	$mail2->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
-	$mail2->From = 'documents@creditlab.in';			//Sets the From email address for the message
+	$mail2->From = 'doc@creditlab.in';			//Sets the From email address for the message
 	$mail2->FromName = 'CreditLab';			//Sets the From name of the message
 	$mail2->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail2->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
@@ -196,10 +196,10 @@ if(isset($_GET['email']))
 	$mail2->Host = 'smtp.hostinger.com';		//Sets the SMTP hosts of your Email hosting, this for Godaddy
 	$mail2->Port = '465';								//Sets the default SMTP server port
 	$mail2->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
-	$mail2->Username = 'documents@creditlab.in';					//Sets SMTP username
-	$mail2->Password = 'Sc13olnh&';					//Sets SMTP password
+	$mail2->Username = 'doc@creditlab.in';					//Sets SMTP username
+	$mail2->Password = 'New@cred0*!bh';					//Sets SMTP password
 	$mail2->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
-	$mail2->From = 'documents@creditlab.in';			//Sets the From email address for the message
+	$mail2->From = 'doc@creditlab.in';			//Sets the From email address for the message
 	$mail2->FromName = 'CreditLab';			//Sets the From name of the message
 	$mail2->AddAddress($_GET['email'], 'Name');		//Adds a "To" address
 	$mail2->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
