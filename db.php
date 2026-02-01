@@ -280,17 +280,55 @@ function calculateLoanDays($applied_date, $salary_date = null) {
     // Calculate due date first (to get actual date), then calculate days
     $due_date = clone $applied;
     
-    if ($gap < 16) {
-        // Gap < 16 days: due date = next month's salary date
-        $due_date->modify('+1 month');
-        $year = (int)date_format($due_date, 'Y');
-        $month = (int)date_format($due_date, 'n');
+    // Get current month's last day
+    $current_month_last_day = (int)date_format($applied, 't');
+    
+    // Special handling: If salary_date is 30 or 31 and current month has fewer days
+    // (e.g., February with 28/29 days), use last day of current month instead of next month
+    if ($salary_day >= 30 && $salary_day > $current_month_last_day) {
+        // Salary date doesn't exist in current month (e.g., Feb 30/31)
+        // Use last day of current month (e.g., Feb 28/29)
+        $gap_to_last_day = $current_month_last_day - $applied_day;
         
-        // Handle months with fewer days (e.g., Feb 31 -> Feb 28/29)
-        $last_day_of_month = (int)date_format($due_date, 't');
-        $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+        // Only use last day of current month if it gives us at least 1 day
+        // Otherwise, move to next month
+        if ($gap_to_last_day >= 0) {
+            $year = (int)date_format($applied, 'Y');
+            $month = (int)date_format($applied, 'n');
+            $due_date->setDate($year, $month, $current_month_last_day);
+        } else {
+            // Applied after last day (shouldn't happen, but handle it)
+            $due_date->modify('+1 month');
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            $last_day_of_month = (int)date_format($due_date, 't');
+            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            $due_date->setDate($year, $month, $actual_salary_day);
+        }
+    } else if ($gap < 16) {
+        // Gap < 16 days: Check if we can use last day of current month first
+        // (e.g., Feb 1-15 with salary_date 30 should use Feb 28, not March 30)
+        $gap_to_last_day = $current_month_last_day - $applied_day;
         
-        $due_date->setDate($year, $month, $actual_salary_day);
+        // If using last day of current month gives us >= 16 days, use it
+        // Otherwise, move to next month
+        if ($gap_to_last_day >= 15) {
+            // Use last day of current month (e.g., Feb 28/29)
+            $year = (int)date_format($applied, 'Y');
+            $month = (int)date_format($applied, 'n');
+            $due_date->setDate($year, $month, $current_month_last_day);
+        } else {
+            // Gap to last day < 16: due date = next month's salary date
+            $due_date->modify('+1 month');
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            
+            // Handle months with fewer days (e.g., Feb 31 -> Feb 28/29)
+            $last_day_of_month = (int)date_format($due_date, 't');
+            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            
+            $due_date->setDate($year, $month, $actual_salary_day);
+        }
     } else {
         // Gap >= 16 days: due date = next salary date (same month if possible, else next month)
         if ($salary_day >= $applied_day) {
@@ -379,17 +417,55 @@ function calculateLoanDueDate($applied_date, $salary_date = null) {
     // Calculate due date
     $due_date = clone $applied;
     
-    if ($gap < 16) {
-        // Gap < 16 days: due date = next month's salary date
-        $due_date->modify('+1 month');
-        $year = (int)date_format($due_date, 'Y');
-        $month = (int)date_format($due_date, 'n');
+    // Get current month's last day
+    $current_month_last_day = (int)date_format($applied, 't');
+    
+    // Special handling: If salary_date is 30 or 31 and current month has fewer days
+    // (e.g., February with 28/29 days), use last day of current month instead of next month
+    if ($salary_day >= 30 && $salary_day > $current_month_last_day) {
+        // Salary date doesn't exist in current month (e.g., Feb 30/31)
+        // Use last day of current month (e.g., Feb 28/29)
+        $gap_to_last_day = $current_month_last_day - $applied_day;
         
-        // Handle months with fewer days (e.g., Feb 31 -> Feb 28/29)
-        $last_day_of_month = (int)date_format($due_date, 't');
-        $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+        // Only use last day of current month if it gives us at least 1 day
+        // Otherwise, move to next month
+        if ($gap_to_last_day >= 0) {
+            $year = (int)date_format($applied, 'Y');
+            $month = (int)date_format($applied, 'n');
+            $due_date->setDate($year, $month, $current_month_last_day);
+        } else {
+            // Applied after last day (shouldn't happen, but handle it)
+            $due_date->modify('+1 month');
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            $last_day_of_month = (int)date_format($due_date, 't');
+            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            $due_date->setDate($year, $month, $actual_salary_day);
+        }
+    } else if ($gap < 16) {
+        // Gap < 16 days: Check if we can use last day of current month first
+        // (e.g., Feb 1-15 with salary_date 30 should use Feb 28, not March 30)
+        $gap_to_last_day = $current_month_last_day - $applied_day;
         
-        $due_date->setDate($year, $month, $actual_salary_day);
+        // If using last day of current month gives us >= 16 days, use it
+        // Otherwise, move to next month
+        if ($gap_to_last_day >= 15) {
+            // Use last day of current month (e.g., Feb 28/29)
+            $year = (int)date_format($applied, 'Y');
+            $month = (int)date_format($applied, 'n');
+            $due_date->setDate($year, $month, $current_month_last_day);
+        } else {
+            // Gap to last day < 16: due date = next month's salary date
+            $due_date->modify('+1 month');
+            $year = (int)date_format($due_date, 'Y');
+            $month = (int)date_format($due_date, 'n');
+            
+            // Handle months with fewer days (e.g., Feb 31 -> Feb 28/29)
+            $last_day_of_month = (int)date_format($due_date, 't');
+            $actual_salary_day = ($salary_day > $last_day_of_month) ? $last_day_of_month : $salary_day;
+            
+            $due_date->setDate($year, $month, $actual_salary_day);
+        }
     } else {
         // Gap >= 16 days: due date = next salary date (same month if possible, else next month)
         if ($salary_day >= $applied_day) {
