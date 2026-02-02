@@ -7,6 +7,10 @@
  * 
  * Run: http://localhost/creditlab/fix_pending_disbursal.php?mode=preview
  * Execute: http://localhost/creditlab/fix_pending_disbursal.php?mode=execute
+ * 
+ * Optional filters:
+ * - from=2026-01-01 (only loans applied on or after this date)
+ * - status=disbursal (only specific status: disbursal, pending, follow up)
  */
 
 include 'db.php';
@@ -14,17 +18,35 @@ include 'db.php';
 $mode = isset($_GET['mode']) ? $_GET['mode'] : 'preview';
 $isExecute = ($mode === 'execute');
 
+// Optional date filter (default: 2026-01-01)
+$fromDate = isset($_GET['from']) ? $_GET['from'] : '2026-01-01';
+
+// Optional status filter
+$statusFilter = isset($_GET['status']) ? $_GET['status'] : null;
+
 echo "<pre>";
 echo "=== Fix Pending Disbursal Loan Days ===\n";
 echo "Mode: " . strtoupper($mode) . "\n";
-echo "Date: " . date('Y-m-d H:i:s') . "\n\n";
+echo "Date: " . date('Y-m-d H:i:s') . "\n";
+echo "Filter: Loans applied from $fromDate onwards\n";
+if ($statusFilter) {
+    echo "Status filter: $statusFilter\n";
+}
+echo "\n";
 
 if (!$isExecute) {
     echo "*** PREVIEW MODE - No changes will be made ***\n";
     echo "*** Add ?mode=execute to apply changes ***\n\n";
 }
 
+// Build status filter
+$statusCondition = "la.status IN ('disbursal', 'pending', 'follow up')";
+if ($statusFilter && in_array($statusFilter, ['disbursal', 'pending', 'follow up'])) {
+    $statusCondition = "la.status = '$statusFilter'";
+}
+
 // Find loan_apply records waiting for disbursal with valid salary_date
+// Only loans applied from $fromDate onwards
 $query = "
     SELECT 
         la.id as loan_apply_id,
@@ -37,7 +59,8 @@ $query = "
         u.approvenew
     FROM loan_apply la
     INNER JOIN user u ON la.uid = u.id
-    WHERE la.status IN ('disbursal', 'pending', 'follow up')
+    WHERE $statusCondition
+    AND DATE(la.apply_date) >= '$fromDate'
     AND (u.approvenew = 0 OR u.approvenew IS NULL)  -- Non-EMI only
     AND u.salary_date IS NOT NULL 
     AND u.salary_date != '' 
@@ -133,5 +156,15 @@ echo "\n=== End of Script ===\n";
 if (!$isExecute && $needsFixing > 0) {
     echo "\nTo apply changes: ?mode=execute\n";
 }
+
+echo "\n=== Available Filters ===\n";
+echo "?mode=preview (default) - Show changes without applying\n";
+echo "?mode=execute - Apply the changes\n";
+echo "?from=2026-01-01 (default) - Only loans applied from this date\n";
+echo "?status=disbursal - Only disbursal status (or: pending, follow up)\n";
+echo "\nExamples:\n";
+echo "?mode=preview&from=2026-02-01 - Preview loans from Feb 2026\n";
+echo "?mode=execute&status=disbursal - Execute only disbursal loans\n";
+echo "?mode=preview&from=2025-01-01 - Include 2025 loans in preview\n";
 
 echo "</pre>";
