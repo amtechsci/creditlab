@@ -416,12 +416,12 @@ if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
                     $template_id = '1407175016580415506'; // autodebit bounce template ID
                     $mobile = $user_details['mobile'];
                     $payment_link = $base_url . '/user';
-                    $message = "Auto-debit of Creditlab.in loan of Rs. {$amount} got bounced due to insufficient funds. Close it now {$payment_link} to avoid further debits/bounce charges & legal action";
+                    // $message = "Auto-debit of Creditlab.in loan of Rs. {$amount} got bounced due to insufficient funds. Close it now {$payment_link} to avoid further debits/bounce charges & legal action";
                     
-                    if (file_exists('send_sms.php')) {
-                        include 'send_sms.php';
-                    }
-                    writeWebhookLog("Autodebit bounce SMS sent for loan CLL$loan_lid to $mobile", $log_file);
+                    // if (file_exists('send_sms.php')) {
+                    //     include 'send_sms.php';
+                    // }
+                    // writeWebhookLog("Autodebit bounce SMS sent for loan CLL$loan_lid to $mobile", $log_file);
                 } else {
                     writeWebhookLog("ERROR: User not found for failed auto-debit on loan CLL$loan_lid", $log_file);
                 }
