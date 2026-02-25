@@ -69,10 +69,10 @@ foreach ($unique_rows as $row) {
     $date_opened = date('dmY', strtotime($row['processed_date']));
 
     $gst = ($row['processing_fees']*0.18);
-    $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
+    $totalamount = round($row['amount'] + $row['processing_fees'] + $gst); // CIBIL: whole numbers only
     
     // Use service_charge from loan table (already calculated and updated per day)
-    $current_balance = $totalamount + (float)$row['service_charge'];
+    $current_balance = round($totalamount + (float)$row['service_charge']); // CIBIL: whole numbers only
     $state_code = $row['state_code'];
     if ($state_code >= 1 && $state_code <= 9) {
         $state_code = "\t0" . $state_code;

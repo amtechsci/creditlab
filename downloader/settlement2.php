@@ -50,9 +50,9 @@ while ($row = towfetch($result)) {
     $gender_map = ['female' => 1, 'male' => 2, 'transgender' => 3];
     $gender = isset($gender_map[$row['gender']]) ? $gender_map[$row['gender']] : 0;
 
-    // Calculate financial details
-    $high_credit = $row['amount']; // Loan amount is the high credit
-    $current_balance = $row['amount'] + $row['transaction_amount']; // Add settlement amount to the loan amount
+    // Calculate financial details (CIBIL: whole numbers only)
+    $high_credit = round($row['amount']);
+    $current_balance = round($row['amount'] + $row['transaction_amount']);
 
     // Create the array for CSV row
     $data = [

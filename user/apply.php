@@ -139,11 +139,11 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
 	$mail2->Host = 'smtp.hostinger.com';		//Sets the SMTP hosts of your Email hosting, this for Godaddy
 	$mail2->Port = '465';								//Sets the default SMTP server port
 	$mail2->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
-	$mail2->Username = 'no-reply@creditlab.in';					//Sets SMTP username
-	$mail2->Password = 'No-reply@123';					//Sets SMTP password
+	$mail2->Username = 'Note@creditlab.in';					//Sets SMTP username
+	$mail2->Password = 'SMPL@Cred@8978';					//Sets SMTP password
 	$mail2->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
-	$mail2->From = 'no-reply@creditlab.in';			//Sets the From email address for the message
-	$mail2->FromName = 'no-reply';			//Sets the From name of the message
+	$mail2->From = 'Note@creditlab.in';			//Sets the From email address for the message
+	$mail2->FromName = 'CreditLab';			//Sets the From name of the message
 	$mail2->AddAddress($user_email, $user_name);		//Adds a "To" address
 	$mail2->WordWrap = 50;							//Sets word wrapping on the body of the message to a given number of characters
 	$mail2->IsHTML(true);							//Sets message type to HTML				

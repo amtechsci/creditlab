@@ -91,7 +91,7 @@ foreach ($unique_rows as $row) {
     $current_balance = (float)$row['amount'] + (float)$row['service_charge'];
     
     $gst = ((float)$row['processing_fees']*0.18);
-    $totalamount = (float)$row['amount'] + (float)$row['processing_fees'] + $gst;
+    $totalamount = round((float)$row['amount'] + (float)$row['processing_fees'] + $gst); // CIBIL: whole numbers only
     
     // Total Outstanding = Principal + Processing Fees + GST + Service Charge + Penalty Charge
     $penalty_charge = isset($row['penality_charge']) ? (float)$row['penality_charge'] : 0;
@@ -125,30 +125,26 @@ foreach ($unique_rows as $row) {
     // Total Outstanding = Principal + Processing Fees + GST + Service Charge + Penalty Charge
     // Settlement Amount = Amount paid in settlement transaction
     
-    // Written-off Amount (Total) = Total Outstanding - Settlement Amount
+    // Written-off Amount (Total) = Total Outstanding - Settlement Amount (CIBIL: whole numbers only)
     $written_off_total = $total_outstanding - $settlement_amount;
     if ($written_off_total < 0) {
         $written_off_total = 0;
     }
-    // Round to next number (ceiling)
-    $written_off_total = ceil($written_off_total);
+    $written_off_total = round($written_off_total);
     
     // Get total paid amount (all payments including settlement) for principal calculation
     $paid_query = towquery("SELECT SUM(transaction_amount) as total_paid FROM transaction_details WHERE cllid = " . (int)$row['lid'] . " AND transaction_flow IN ('part', 'renew', 'full', 'settlement')");
     $paid_data = towfetch($paid_query);
     $total_paid = isset($paid_data['total_paid']) ? (float)$paid_data['total_paid'] : 0;
     
-    // Written-off Principal Amount = Principal Amount - Total Paid (including settlement)
+    // Written-off Principal Amount = Principal Amount - Total Paid (CIBIL: whole numbers only)
     $principal_amount = (float)$row['amount'];
     $written_off_principal = $principal_amount - $total_paid;
     
-    // If result is negative or zero, force value to 1
-    // If result is positive, keep the calculated value
     if ($written_off_principal <= 0) {
         $written_off_principal = 1;
     } else {
-        // Round to next number (ceiling) if positive
-        $written_off_principal = ceil($written_off_principal);
+        $written_off_principal = round($written_off_principal);
     }
     
     // Create the array for CSV row
@@ -224,7 +220,7 @@ foreach ($unique_rows as $row) {
         '',                         // EMI Amount
         $written_off_total,                         // Written-off Amount (Total)
         $written_off_principal,                         // Written-off Principal Amount
-        $row['transaction_amount'],                         // Settlement Amt
+        round($settlement_amount),                          // Settlement Amt (CIBIL whole number)
         '',                         // Payment Frequency
         '',                         // Actual Payment Amt
         '',                         // Occupation Code

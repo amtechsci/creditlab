@@ -4,7 +4,7 @@ if (isset($_POST['email'])) {
     $ext = towrealarray($_POST); extract($ext);
  $headers = "MIME-Version: 1.0" . "\r\n";
 $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-$headers .= 'From: <Rush4cash docs@rush4cash.in>' . "\r\n";
+$headers .= 'From: <CreditLab Note@creditlab.in>' . "\r\n";
 $to=$email;
 mail($to,$subject,$message,$headers);          
 }

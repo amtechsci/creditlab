@@ -59,9 +59,9 @@ while ($row = towfetch($result)) {
     $gender_map = ['female' => 1, 'male' => 2, 'transgender' => 3];
     $gender = isset($gender_map[$row['gender']]) ? $gender_map[$row['gender']] : 0;
 
-    // Calculate financial details
-    $high_credit = $row['amount']; // Loan amount is the high credit
-    $current_balance = $row['amount'] + $row['transaction_amount']; // Add part payment to the loan amount
+    // Calculate financial details (CIBIL: whole numbers only)
+    $high_credit = round($row['amount']);
+    $current_balance = round($row['amount'] + $row['transaction_amount']);
     $state_code = $row['state_code'];
     if ($state_code >= 1 && $state_code <= 9) {
         $state_code = "\t0" . $state_code;
@@ -133,7 +133,7 @@ while ($row = towfetch($result)) {
         '',                         // Written-off Principal Amount
         '',                         // Settlement Amt
         '',                         // Payment Frequency
-        $row['transaction_amount'], // Actual Payment Amt (Part payment amount)
+        round($row['transaction_amount']), // Actual Payment Amt (Part payment amount) - CIBIL whole number
         '',                         // Occupation Code
         '',                         // Income
         '',                         // Net/Gross Income Indicator

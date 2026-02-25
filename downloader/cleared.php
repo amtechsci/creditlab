@@ -90,12 +90,11 @@ foreach ($unique_rows as $row) {
     $gender = isset($gender_map[strtolower($row['marital_status'])]) ? $gender_map[strtolower($row['marital_status'])] : 0;
     // $gender = $row['marital_status'];
 
-    // Calculate financial details
-    $high_credit = $row['amount']; // Loan amount is the high credit
-    $current_balance = $row['amount'] + $row['service_charge'];
-    
+    // Calculate financial details (CIBIL: whole numbers only)
+    $high_credit = $row['amount'];
     $gst = ($row['processing_fees']*0.18);
-    $totalamount = $row['amount'] + $row['processing_fees'] + $gst;
+    $totalamount = round($row['amount'] + $row['processing_fees'] + $gst);
+    $current_balance = round($row['amount'] + $row['service_charge']);
     
     // Fetch loan days from loan_apply table
     $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id=" . (int)$row['lid']));

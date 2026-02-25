@@ -106,10 +106,10 @@ foreach ($unique_default_loans as $row) {
     $amount = isset($row['processed_amount']) ? (float)$row['processed_amount'] : (isset($row['amount']) ? (float)$row['amount'] : 0);
     
     $gst = $processing_fees * 0.18;
-    $totalamount = $amount + $processing_fees + $gst;
+    $totalamount = round($amount + $processing_fees + $gst); // CIBIL: whole numbers only
     $service_charge = isset($row['service_charge']) ? (float)$row['service_charge'] : 0;
     $penality_charge = isset($row['penality_charge']) ? (float)$row['penality_charge'] : 0;
-    $current_balance = $totalamount + $service_charge + $penality_charge;
+    $current_balance = round($totalamount + $service_charge + $penality_charge); // CIBIL: whole numbers only
     
     // Suit Filed: 01 if DPD > 60
     $suit_filed = ($dpd > 60) ? '01' : '';
@@ -144,8 +144,8 @@ foreach ($unique_default_loans as $row) {
         '',                                                   // Date Closed
         "\t".date('dmY'),                                     // Date Reported
         $totalamount,                                         // High Credit/Sanctioned Amt
-        ceil($current_balance),                               // Current Balance
-        ceil($current_balance),                                // Amt Overdue
+        $current_balance,                                     // Current Balance (already rounded)
+        $current_balance,                                     // Amt Overdue (already rounded)
         $dpd,                                                 // No of Days Past Due
         '', '', '', '', '',                                   // Old member fields
         $suit_filed,                                          // Suit Filed / Wilful Default

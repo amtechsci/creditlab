@@ -58,11 +58,11 @@ while ($row = towfetch($result)) {
     $gst_on_processing_fees = $row['transaction_flow'] === 'part' ? 'P.P' : ($row['processing_fees'] * GST_RATE);
     
     $principal_amt = (float)$row['principal_amount'];
-    $disbursed_amount = (float)$row['processed_amount'];
+    $disbursed_amount = round((float)$row['processed_amount']); // Whole numbers for reporting
     
     $pf_numeric = is_numeric($row['processing_fees']) ? (float)$row['processing_fees'] : 0;
     $gst_inclusive_pf = $pf_numeric + ($pf_numeric * GST_RATE);
-    $sanctioned_amount = $principal_amt + $gst_inclusive_pf;
+    $sanctioned_amount = round($principal_amt + $gst_inclusive_pf); // Whole numbers for CIBIL/reporting
 
     $interest_collected = 0;
     $penalty = 0;
@@ -112,7 +112,7 @@ while ($row = towfetch($result)) {
         $voucher_no,
         date('d-m-Y', strtotime($row['loan_start_date'])),
         $exhausted_days, // This will now have the correct value for all rows
-        number_format($sanctioned_amount, 2, '.', ''),
+        $sanctioned_amount,
         $disbursed_amount,
         'REPAYMENT DONE',
         $row['transaction_number'],
@@ -129,7 +129,7 @@ while ($row = towfetch($result)) {
         number_format($interest_collected, 2, '.', ''),
         number_format($penalty, 2, '.', ''),
         number_format($gst_on_penalty, 2, '.', ''),
-        number_format($repayment_amt, 2, '.', '')
+        round($repayment_amt)
     ];
 
     fputcsv($output, $data);

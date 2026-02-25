@@ -60,8 +60,8 @@ if(isset($_POST["action"]))
  $mail->Host = 'smtpout.secureserver.net';  //Sets the SMTP hosts of your Email hosting, this for Godaddy
  $mail->Port = '80';        //Sets the default SMTP server port
  $mail->SMTPAuth = true;       //Sets SMTP authentication. Utilizes the Username and Password variables
- $mail->Username = 'xxxxxxxxxx';     //Sets SMTP username
- $mail->Password = 'xxxxxxxxxx';     //Sets SMTP password
+ $mail->Username = 'Note@creditlab.in';     //Sets SMTP username
+ $mail->Password = 'SMPL@Cred@8978';     //Sets SMTP password
  $mail->SMTPSecure = '';       //Sets connection prefix. Options are "", "ssl" or "tls"
  $mail->From = 'info@webslesson.info';   //Sets the From email address for the message
  $mail->FromName = 'Webslesson.info';   //Sets the From name of the message
