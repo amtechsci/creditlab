@@ -11,111 +11,39 @@ if (isset($_GET['pageno'])) {
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
         
-        $today = date('Y-m-d H:i:s', strtotime( date('Y-m-d H:i:s') . " -64 day"));
-        
-        // --- PROCESS DAILY TAB DATA ---
-        $daily_ids = [];
-        $daily_query = mysqli_query($db,"SELECT id FROM `loan_apply` WHERE `status`='account manager' AND status_date > '{$today}' ORDER BY id ASC");
-        while($row = towfetch($daily_query)) { $daily_ids[] = $row['id']; }
-        
+        // Single source: all account-manager loans (same as download). Split by DPD so no IDs are missing.
         $daily_loans_all = [];
-        if (!empty($daily_ids)) {
-            $ids_str = implode(',', array_unique($daily_ids));
-            $q = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE loan.lid IN ($ids_str)");
-            while($b = towfetch($q)) {
-                if (!empty($b['processed_date'])) {
-                    $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                    $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                    $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                    $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                    $dpd = $tday - $loan_days;
-                    // Daily tab: only loans with DPD less than 35 (0–34)
-                    if ($dpd < 35) {
-                        $b['calculated_dpd'] = $dpd;
-                        $daily_loans_all[] = $b;
-                    }
-                }
-            }
-            usort($daily_loans_all, function($a, $b) { return $b['calculated_dpd'] <=> $a['calculated_dpd']; });
-        }
-        $total_rows_daily = count($daily_loans_all);
-        $total_pages_daily = ceil($total_rows_daily / $no_of_records_per_page);
-        $daily_loans_paged = array_slice($daily_loans_all, ($active_tab == 'daily' ? $offset : 0), $no_of_records_per_page);
-
-        // --- PROCESS DEFAULT TAB DATA ---
         $default_loans_all = [];
-        
-        // 1. Get loans older than 64 days
-        $old_query = mysqli_query($db,"SELECT id FROM `loan_apply` WHERE `status`='account manager' AND status_date <= '{$today}' ORDER BY id ASC");
-        $old_ids = [];
-        while($row = towfetch($old_query)) { $old_ids[] = $row['id']; }
-        
-        if (!empty($old_ids)) {
-            $ids_str = implode(',', array_unique($old_ids));
-            $q = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE loan.lid IN ($ids_str)");
-            while($b = towfetch($q)) {
-                if (!empty($b['processed_date'])) {
-                    $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                    $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                    $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                    $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                    $b['calculated_dpd'] = $tday - $loan_days;
+        $all_am_query = towquery("SELECT loan_apply.id as laid, user.id as uid FROM loan_apply INNER JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status = 'account manager'");
+        $all_am_uids = [];
+        while ($r = towfetch($all_am_query)) { $all_am_uids[] = $r['uid']; }
+        $all_am_uids = array_unique($all_am_uids);
+
+        foreach ($all_am_uids as $uid) {
+            $q = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$uid AND loan.status_log='account manager'");
+            while ($b = towfetch($q)) {
+                if (empty($b['processed_date'])) continue;
+                $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                $dpd = $tday - $loan_days;
+                $b['calculated_dpd'] = $dpd;
+                if ($dpd <= 35) {
+                    $daily_loans_all[] = $b;
+                } else {
                     $default_loans_all[] = $b;
                 }
             }
         }
-        
-        // 2. Also check if any "new" loans (from daily) have DPD >= 35 (though the query for default_loans_all above might miss them if they are > today)
-        // Actually, the logic in the original file for Tab 2 was:
-        // $renewloanquery = SELECT FROM loan_apply WHERE status_date < $today
-        // Then it loops over these UIDs and fetches ALL loans for that user that are 'account manager'.
-        // This is a bit complex. Let's simplify and make it robust:
-        
-        // Re-calculate Tab 2 logic based on what was there:
-        // Original Tab 2 fetched UIDs from loans older than 64 days.
-        // Then for each UID, it fetched ALL their 'account manager' loans and filtered for DPD >= 35.
-        
-        // Let's refine:
-        $default_loans_all = [];
-        $all_am_query = towquery("SELECT loan_apply.id as laid, user.id as uid FROM loan_apply INNER JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status = 'account manager'");
-        $potential_default_uids = [];
-        while($r = towfetch($all_am_query)) { $potential_default_uids[] = $r['uid']; }
-        $potential_default_uids = array_unique($potential_default_uids);
-        
-        foreach($potential_default_uids as $uid) {
-            $q = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days, loan_apply.status_date FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$uid AND loan.status_log='account manager'");
-            while($b = towfetch($q)) {
-                if (!empty($b['processed_date'])) {
-                    $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                    $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                    $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                    $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                    $dpd = $tday - $loan_days;
-                    
-                    // Default tab: only loans with DPD 35 or greater (35+), so no loans fall between tabs
-                    if ($dpd >= 35) {
-                        $b['calculated_dpd'] = $dpd;
-                        $default_loans_all[] = $b;
-                    }
-                }
-            }
-        }
-        
-        // Remove duplicates if any (though there shouldn't be with this logic)
-        $unique_default_loans = [];
-        $seen_lids = [];
-        foreach($default_loans_all as $l) {
-            if (!in_array($l['lid'], $seen_lids)) {
-                $unique_default_loans[] = $l;
-                $seen_lids[] = $l['lid'];
-            }
-        }
-        $default_loans_all = $unique_default_loans;
-        
+
+        usort($daily_loans_all, function($a, $b) { return $b['calculated_dpd'] <=> $a['calculated_dpd']; });
         usort($default_loans_all, function($a, $b) { return $a['calculated_dpd'] <=> $b['calculated_dpd']; });
+
+        $total_rows_daily = count($daily_loans_all);
+        $total_pages_daily = ceil($total_rows_daily / $no_of_records_per_page);
+        $daily_loans_paged = array_slice($daily_loans_all, ($active_tab == 'daily' ? $offset : 0), $no_of_records_per_page);
         
         $total_rows_default = count($default_loans_all);
         $total_pages_default = ceil($total_rows_default / $no_of_records_per_page);
