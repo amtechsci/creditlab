@@ -5,14 +5,47 @@ if (isset($_GET['pageno'])) {
         } else {
             $pageno = 1;
         }
+        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'daily';
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = mysqli_query($db,"SELECT uid FROM `loan_apply` WHERE `status`='account manager' ORDER BY id ASC");
-        $today = date('Y-m-d H:i:s', strtotime( date('Y-m-d H:i:s') . " -64 day"));
-        $newloanquery =  mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' AND status_date > '{$today}' ORDER BY id ASC ");
-        $renewloanquery =  mysqli_query($db,"SELECT uid,id FROM `loan_apply` WHERE `status`='account manager' AND status_date < '{$today}' ORDER BY id ASC");
-        $total_rows = mysqli_num_rows($ress);
-        $total_pages = ceil($total_rows / $no_of_records_per_page);
+
+        // Single source: all account-manager loans (same as admin/account_manager.php). Split by DPD so no IDs are missing.
+        $daily_loans_all = [];
+        $default_loans_all = [];
+        $all_am_query = towquery("SELECT loan_apply.id as laid, user.id as uid FROM loan_apply INNER JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status = 'account manager'");
+        $all_am_uids = [];
+        while ($r = towfetch($all_am_query)) { $all_am_uids[] = $r['uid']; }
+        $all_am_uids = array_unique($all_am_uids);
+
+        foreach ($all_am_uids as $uid) {
+            $q = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$uid AND loan.status_log='account manager'");
+            while ($b = towfetch($q)) {
+                if (empty($b['processed_date'])) continue;
+                $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
+                $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
+                $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
+                $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
+                $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+                $dpd = $tday - $loan_days;
+                $b['calculated_dpd'] = $dpd;
+                if ($dpd <= 35) {
+                    $daily_loans_all[] = $b;
+                } else {
+                    $default_loans_all[] = $b;
+                }
+            }
+        }
+
+        usort($daily_loans_all, function($a, $b) { return $b['calculated_dpd'] <=> $a['calculated_dpd']; });
+        usort($default_loans_all, function($a, $b) { return $a['calculated_dpd'] <=> $b['calculated_dpd']; });
+
+        $total_rows_daily = count($daily_loans_all);
+        $total_pages_daily = ceil($total_rows_daily / $no_of_records_per_page);
+        $daily_loans_paged = array_slice($daily_loans_all, ($active_tab == 'daily' ? $offset : 0), $no_of_records_per_page);
+
+        $total_rows_default = count($default_loans_all);
+        $total_pages_default = ceil($total_rows_default / $no_of_records_per_page);
+        $default_loans_paged = array_slice($default_loans_all, ($active_tab == 'default' ? $offset : 0), $no_of_records_per_page);
 ?>
 <body>
     <?php
@@ -50,12 +83,12 @@ if (isset($_GET['pageno'])) {
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
                             <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active"><a href="#description">Daily follow ups (less than 35 DPD)</a></li>
-                                <li><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
+                                <li class="<?= $active_tab == 'daily' ? 'active' : '' ?>"><a href="#description">Daily follow ups (less than 35 DPD)</a></li>
+                                <li class="<?= $active_tab == 'default' ? 'active' : '' ?>"><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
                             </ul>
                             <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
                             <div id="myTabContent" class="tab-content custom-product-edit">
-                                <div class="product-tab-list tab-pane fade active in" id="description">
+                                <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
@@ -87,48 +120,9 @@ if (isset($_GET['pageno'])) {
         </thead>
         <tbody>
                   
-                                   <?php 
-                                   $seauserid = array();
-                                   $i = 0;
-                                   while($a = towfetch($newloanquery)){
-                                       $seauserid[$i] = $a['id'];
-                                       $i++;
-                                   }
-                                   $seauserid = array_unique($seauserid);
-                                   $ii=1;
-                                   $zz = [];
-                                   foreach($seauserid as $value){
-                                       $zz[] = $value;
-                                   }
-                                   $val = implode(',',$zz);
-                                   if (!empty($val)) {
-                                       $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan_apply.follow_up_date, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid  WHERE loan.lid IN ($val)");
-                                       $loans_with_dpd = [];
-                                       while($b = towfetch($a)){
-                                           if (!empty($b['processed_date'])) {
-                                               $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                                               if ($processed_date_str !== false) {
-                                                   $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                                                   $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                                                   $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                                                   $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                                                   $dpd = $tday - $loan_days;
-                                                   // Daily tab: only loans with DPD less than 35 (0–34)
-                                                   if ($dpd < 35) {
-                                                       $b['calculated_dpd'] = $dpd;
-                                                       $loans_with_dpd[] = $b;
-                                                   }
-                                               }
-                                           }
-                                       }
-                                       usort($loans_with_dpd, function($a, $b) {
-                                           return $b['calculated_dpd'] <=> $a['calculated_dpd'];
-                                       });
-                                       $loans_with_dpd = array_slice($loans_with_dpd, $offset, $no_of_records_per_page);
-                                   } else {
-                                       $loans_with_dpd = [];
-                                   }
-                                   foreach($loans_with_dpd as $b){
+                                   <?php
+                                   $ii = 1;
+                                   foreach($daily_loans_paged as $b){
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                 //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC"));
                                    ?>
@@ -214,16 +208,16 @@ switch ((int)$user_member) {
 							<nav aria-label="Page navigation example">
   <ul class="pagination">
     <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">
+      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1)."&tab=daily"; } ?>" aria-label="Previous">
         <span aria-hidden="true">&laquo;</span>
         <span class="sr-only">Previous</span>
       </a>
     </li>
-    <?php $i = 1; while($i <= $total_pages){?>
-    <li class="page-item"><a class="page-link" href="?pageno=<?=$i;?>"><?=$i;?></a></li>
+    <?php $i = 1; while($i <= $total_pages_daily){?>
+    <li class="page-item <?= ($pageno == $i) ? 'active' : '' ?>"><a class="page-link" href="?pageno=<?=$i;?>&tab=daily"><?=$i;?></a></li>
     <?php $i++; }?>
     <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages){ echo '#'; } else { echo "?pageno=".($pageno + 1); } ?>" aria-label="Next">
+      <a class="page-link" href="<?php if($pageno >= $total_pages_daily){ echo '#'; } else { echo "?pageno=".($pageno + 1)."&tab=daily"; } ?>" aria-label="Next">
         <span aria-hidden="true">&raquo;</span>
         <span class="sr-only">Next</span>
       </a>
@@ -238,7 +232,7 @@ switch ((int)$user_member) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="product-tab-list tab-pane fade" id="INFORMATION">
+                                <div class="product-tab-list tab-pane fade <?= $active_tab == 'default' ? 'active in' : '' ?>" id="INFORMATION">
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
@@ -271,42 +265,9 @@ switch ((int)$user_member) {
         </thead>
         <tbody>
                   
-                                   <?php 
-                                   $reseauserid = array();
-                                   $i = 0;
-                                   while($aa = towfetch($renewloanquery)){
-                                       $reseauserid[$i] = $aa['uid'];
-                                       $i++;
-                                   }
-                                   $reseauserid = array_unique($reseauserid);
-                                   $loans_with_dpd = [];
-                                   foreach($reseauserid as $value){
-                                   $a = towquery("SELECT user.*, loan.lid, loan.uid, loan.processed_date, loan.processed_amount, loan.exhausted_period, loan.p_fee, loan.service_charge, loan.penality_charge, loan.total_amount, loan.status_log, loan.action, loan.follow_up_mess, loan.advance_amount, loan.total_time, loan.femi, loan.semi, loan.is_emi, loan_apply.days as loan_apply_days FROM user INNER JOIN loan ON loan.uid=user.id INNER JOIN loan_apply ON loan_apply.id=loan.lid WHERE user.id=$value AND loan.status_log='account manager'");
-                                   if(townum($a) > 0){
-                                   while($b = towfetch($a)){
-                                       if (!empty($b['processed_date'])) {
-                                           $processed_date_str = date('Y-m-d', strtotime($b['processed_date'] . " -1 day"));
-                                           if ($processed_date_str !== false) {
-                                               $tday = ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / (60 * 60 * 24));
-                                               $loan_days_raw = isset($b['loan_apply_days']) ? (int)$b['loan_apply_days'] : 30;
-                                               $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
-                                               $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-                                               $dpd = $tday - $loan_days;
-                                               // Default tab: DPD 35 or greater (35+), so no loans fall between tabs
-                                               if ($dpd >= 35) {
-                                                   $b['calculated_dpd'] = $dpd;
-                                                   $loans_with_dpd[] = $b;
-                                               }
-                                           }
-                                       }
-                                   }
-                                   }
-                                   }
-                                   usort($loans_with_dpd, function($a, $b) {
-                                       return $a['calculated_dpd'] <=> $b['calculated_dpd'];
-                                   });
-                                   $loans_with_dpd = array_slice($loans_with_dpd, $offset, $no_of_records_per_page);
-                                   foreach($loans_with_dpd as $b){
+                                   <?php
+                                   $ii = 1;
+                                   foreach($default_loans_paged as $b){
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                 //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC"));
                                    ?>
@@ -392,16 +353,16 @@ switch ((int)$user_member) {
 							<nav aria-label="Page navigation example">
   <ul class="pagination">
     <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">
+      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1)."&tab=default"; } ?>" aria-label="Previous">
         <span aria-hidden="true">&laquo;</span>
         <span class="sr-only">Previous</span>
       </a>
     </li>
-    <?php $i = 1; while($i <= $total_pages){?>
-    <li class="page-item"><a class="page-link" href="?pageno=<?=$i;?>"><?=$i;?></a></li>
+    <?php $i = 1; while($i <= $total_pages_default){?>
+    <li class="page-item <?= ($pageno == $i) ? 'active' : '' ?>"><a class="page-link" href="?pageno=<?=$i;?>&tab=default"><?=$i;?></a></li>
     <?php $i++; }?>
     <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages){ echo '#'; } else { echo "?pageno=".($pageno + 1); } ?>" aria-label="Next">
+      <a class="page-link" href="<?php if($pageno >= $total_pages_default){ echo '#'; } else { echo "?pageno=".($pageno + 1)."&tab=default"; } ?>" aria-label="Next">
         <span aria-hidden="true">&raquo;</span>
         <span class="sr-only">Next</span>
       </a>
