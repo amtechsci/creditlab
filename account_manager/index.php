@@ -292,8 +292,8 @@ switch ((int)$user_member) {
                                                $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
                                                $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
                                                $dpd = $tday - $loan_days;
-                                               // Default tab: only loans with DPD greater than 35 (36+)
-                                               if ($dpd > 35) {
+                                               // Default tab: DPD 35 or greater (35+), so no loans fall between tabs
+                                               if ($dpd >= 35) {
                                                    $b['calculated_dpd'] = $dpd;
                                                    $loans_with_dpd[] = $b;
                                                }
