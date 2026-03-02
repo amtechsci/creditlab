@@ -114,7 +114,7 @@ if (isset($_GET['pageno'])) {
         }
         $default_loans_all = $unique_default_loans;
         
-        usort($default_loans_all, function($a, $b) { return $b['calculated_dpd'] <=> $a['calculated_dpd']; });
+        usort($default_loans_all, function($a, $b) { return $a['calculated_dpd'] <=> $b['calculated_dpd']; });
         
         $total_rows_default = count($default_loans_all);
         $total_pages_default = ceil($total_rows_default / $no_of_records_per_page);
