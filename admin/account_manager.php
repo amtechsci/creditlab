@@ -30,6 +30,7 @@ if (isset($_GET['pageno'])) {
                     $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
                     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
                     $dpd = $tday - $loan_days;
+                    // Daily tab: only loans with DPD less than 35 (0–34)
                     if ($dpd < 35) {
                         $b['calculated_dpd'] = $dpd;
                         $daily_loans_all[] = $b;

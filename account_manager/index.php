@@ -113,6 +113,7 @@ if (isset($_GET['pageno'])) {
                                                    $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
                                                    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
                                                    $dpd = $tday - $loan_days;
+                                                   // Daily tab: only loans with DPD less than 35 (0–34)
                                                    if ($dpd < 35) {
                                                        $b['calculated_dpd'] = $dpd;
                                                        $loans_with_dpd[] = $b;
@@ -291,7 +292,8 @@ switch ((int)$user_member) {
                                                $loan_is_emi = isset($b['is_emi']) ? (int)$b['is_emi'] : 0;
                                                $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
                                                $dpd = $tday - $loan_days;
-                                               if ($dpd >= 35) {
+                                               // Default tab: only loans with DPD greater than 35 (36+)
+                                               if ($dpd > 35) {
                                                    $b['calculated_dpd'] = $dpd;
                                                    $loans_with_dpd[] = $b;
                                                }
@@ -301,7 +303,7 @@ switch ((int)$user_member) {
                                    }
                                    }
                                    usort($loans_with_dpd, function($a, $b) {
-                                       return $b['calculated_dpd'] <=> $a['calculated_dpd'];
+                                       return $a['calculated_dpd'] <=> $b['calculated_dpd'];
                                    });
                                    $loans_with_dpd = array_slice($loans_with_dpd, $offset, $no_of_records_per_page);
                                    foreach($loans_with_dpd as $b){
