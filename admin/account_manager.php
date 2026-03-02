@@ -94,8 +94,8 @@ if (isset($_GET['pageno'])) {
                     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
                     $dpd = $tday - $loan_days;
                     
-                    // Default logic: (Older than 64 days) OR (DPD >= 35)
-                    if ($b['status_date'] < $today || $dpd >= 35) {
+                    // Default tab: only loans with DPD greater than 35
+                    if ($dpd > 35) {
                         $b['calculated_dpd'] = $dpd;
                         $default_loans_all[] = $b;
                     }
