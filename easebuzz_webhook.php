@@ -43,12 +43,10 @@ $logData .= $rawBody . "\n";
 file_put_contents($filename, $logData, FILE_APPEND);
 
 
-// --- 1. ESTABLISH ONE DATABASE CONNECTION ---
-// This is more efficient and allows us to use the connection variable everywhere.
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+require_once __DIR__ . '/lib/database.php';
+$db = creditlab_db_connect();
 
-// Always check for connection errors
-if (mysqli_connect_errno()) {
+if (!$db) {
     $error_msg = "Database connection failed: " . mysqli_connect_error();
     error_log($error_msg);
     writeWebhookLog("FATAL ERROR: $error_msg", $log_file);

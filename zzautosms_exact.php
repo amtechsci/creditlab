@@ -43,7 +43,8 @@ try {
     logMessage("Starting complete automated SMS process - IST: " . date('Y-m-d H:i:s'));
     
     $username="finwin";
-    $password="kiran@100";
+    require_once __DIR__ . '/lib/env.php';
+    $password = env('SMS_API_PASSWORD');
     $sender="CREDLB";
 
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
@@ -51,7 +52,8 @@ try {
         $working_template_id = "1407174844163241940"; // OTP-2 template that works
         $final_template_id = $working_template_id; // Always use working template
         
-        $url = "https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$final_template_id";
+        require_once __DIR__ . '/config/sms.php';
+        $url = "https://sms.smswala.in/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$final_template_id";
         
         $curl = curl_init();
         curl_setopt_array($curl, array(

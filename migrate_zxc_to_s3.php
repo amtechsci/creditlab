@@ -1,5 +1,6 @@
 <?php
-require_once 'lib/s3_aws_sdk.php';
+require_once __DIR__ . '/lib/guard_cli.php';
+require_once __DIR__ . '/lib/s3_aws_sdk.php';
 
 echo "Starting migration of zxc/uploads/ files to S3...\n";
 echo "Bucket: " . S3_BUCKET . "\n";

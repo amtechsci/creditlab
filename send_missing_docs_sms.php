@@ -6,6 +6,7 @@
 
 session_start();
 include_once '../db.php';
+require_once __DIR__ . '/config/sms.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin'])) {
@@ -126,7 +127,7 @@ if ($sent_count > 0) {
 
 // Function to send SMS with template
 function sendSMSWithTemplate($mobile, $message, $template_id, $sender) {
-    $url = "https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
+    $url = "https://sms.smswala.in/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
 
     $curl = curl_init();
     curl_setopt_array($curl, array(

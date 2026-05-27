@@ -6,9 +6,10 @@ include '../db.php';
 include_once('easebuzz-lib/easebuzz_payment_gateway.php');
 
 // Merchant Credentials
-$MERCHANT_KEY = "9BIB9D914T"; // Replace with live Merchant Key
-$SALT = "GGW1QF6ONH";         // Replace with live Salt Key
-$ENV = "prod";                // Use "prod" for production
+require_once __DIR__ . '/../config/easebuzz.php';
+$MERCHANT_KEY = EASEBUZZ_MERCHANT_KEY;
+$SALT = EASEBUZZ_SALT;
+$ENV = EASEBUZZ_ENV;
 
 // Initialize Easebuzz Object
 $easebuzzObj = new Easebuzz($MERCHANT_KEY, $SALT, $ENV);

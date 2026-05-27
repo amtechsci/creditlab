@@ -2,18 +2,21 @@
 /**
  * Get Download Links from Database
  * 
- * This script can be used to retrieve download links from the database
- * in case email delivery fails.
- * 
  * Usage:
- * - Access via browser: http://yourdomain.com/cron/get_download_links.php
- * - Or via command line: php cron/get_download_links.php
+ * - Command line: php cron/get_download_links.php
+ * - Browser (admin): use /admin/report_downloads.php instead
  * 
  * Query Parameters:
  * - date: Filter by report_date (format: Y-m-d)
  * - type: Filter by report_type
  * - email_sent: Filter by email_sent status (0 or 1)
  */
+
+if (php_sapi_name() !== 'cli') {
+	header('HTTP/1.1 403 Forbidden');
+	header('Location: /admin/report_downloads.php');
+	exit;
+}
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';

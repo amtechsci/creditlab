@@ -6,10 +6,10 @@ if (!empty($_POST) && sizeof($_POST) > 0) {
     // Get the API name
     $apiname = trim(htmlentities($_GET['api_name'], ENT_QUOTES));
 
-    // Merchant Credentials
-    $MERCHANT_KEY = "9BIB9D914T"; // Replace with your Merchant Key
-    $SALT = "GGW1QF6ONH";         // Replace with your Salt Key
-    $ENV = "prod";                // Use "prod" for production
+    require_once __DIR__ . '/../config/easebuzz.php';
+    $MERCHANT_KEY = EASEBUZZ_MERCHANT_KEY;
+    $SALT = EASEBUZZ_SALT;
+    $ENV = EASEBUZZ_ENV;
 
     // Initialize Easebuzz Object
     $easebuzzObj = new Easebuzz($MERCHANT_KEY, $SALT, $ENV);

@@ -51,7 +51,8 @@ if(isset($_GET['email']))
 	$mail->Port = '465';								//Sets the default SMTP server port
 	$mail->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
 	$mail->Username = 'Note@creditlab.in';					//Sets SMTP username
-	$mail->Password = 'SMPL@Cred@8978';					//Sets SMTP password
+	require_once __DIR__ . '/../config/mail.php';
+	$mail->Password = MAIL_SMTP_PASSWORD;
 	$mail->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
 	$mail->From = 'Note@creditlab.in';			//Sets the From email address for the message
 	$mail->FromName = 'CreditLab';			//Sets the From name of the message
@@ -123,7 +124,7 @@ if(isset($_GET['email']))
 	$mail2->Port = '465';								//Sets the default SMTP server port
 	$mail2->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
 	$mail2->Username = 'Note@creditlab.in';					//Sets SMTP username
-	$mail2->Password = 'SMPL@Cred@8978';					//Sets SMTP password
+	$mail2->Password = MAIL_SMTP_PASSWORD;
 	$mail2->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
 	$mail2->From = 'Note@creditlab.in';			//Sets the From email address for the message
 	$mail2->FromName = 'CreditLab';			//Sets the From name of the message
@@ -197,7 +198,7 @@ if(isset($_GET['email']))
 	$mail2->Port = '465';								//Sets the default SMTP server port
 	$mail2->SMTPAuth = true;							//Sets SMTP authentication. Utilizes the Username and Password variables
 	$mail2->Username = 'Note@creditlab.in';					//Sets SMTP username
-	$mail2->Password = 'SMPL@Cred@8978';					//Sets SMTP password
+	$mail2->Password = MAIL_SMTP_PASSWORD;
 	$mail2->SMTPSecure = 'ssl';							//Sets connection prefix. Options are "", "ssl" or "tls"
 	$mail2->From = 'Note@creditlab.in';			//Sets the From email address for the message
 	$mail2->FromName = 'CreditLab';			//Sets the From name of the message

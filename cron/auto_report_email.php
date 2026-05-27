@@ -519,7 +519,8 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
     $mail->Port = 465;
     $mail->SMTPAuth = true;
     $mail->Username = 'Note@creditlab.in';
-    $mail->Password = 'SMPL@Cred@8978';
+    require_once __DIR__ . '/../config/mail.php';
+    $mail->Password = MAIL_SMTP_PASSWORD;
     $mail->SMTPSecure = 'ssl';
     $mail->From = $from_email;
     $mail->FromName = $from_name;

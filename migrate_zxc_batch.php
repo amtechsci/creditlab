@@ -1,5 +1,6 @@
 <?php
-require_once 'lib/s3_aws_sdk.php';
+require_once __DIR__ . '/lib/guard_cli.php';
+require_once __DIR__ . '/lib/s3_aws_sdk.php';
 
 // Configuration
 $batchSize = 50; // Process 50 files at a time

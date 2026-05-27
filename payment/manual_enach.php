@@ -272,8 +272,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
 
     // This function remains unchanged.
     function initiateEasebuzzDirectDebit(array $postParams): string {
-        $key = '9BIB9D914T';
-        $salt = 'GGW1QF6ONH';
+        require_once __DIR__ . '/../config/easebuzz.php';
+        $key = EASEBUZZ_MERCHANT_KEY;
+        $salt = EASEBUZZ_SALT;
         $txnid = uniqid("txn_");
         $base_url = getAppUrl();
         $surl = $base_url . "/payment/cb_auto.php";

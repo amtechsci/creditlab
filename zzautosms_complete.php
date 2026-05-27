@@ -37,25 +37,30 @@ function logMessage($message) {
 // =============================================================================
 // == DATABASE CONNECTION AND HELPERS (INTEGRATED) ==
 // =============================================================================
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+require_once __DIR__ . '/lib/env.php';
+require_once __DIR__ . '/lib/database.php';
 
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-mysqli_set_charset($db,'utf8');
-mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+if (env_bool('APP_DEBUG', false)) {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+}
+
+$db = creditlab_db_connect();
+if (!$db) {
+    logMessage('FATAL: Database connection failed. Check .env DB_* settings.');
+    exit(1);
+}
 
 function ensure_db_connection() {
     global $db;
     if (!isset($db) || !@mysqli_ping($db)) {
         logMessage("Database connection lost. Attempting to reconnect...");
-        $db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+        $db = creditlab_db_connect();
         if (!$db) {
-            logMessage("FATAL: Database reconnection failed: " . mysqli_connect_error());
+            logMessage("FATAL: Database reconnection failed");
             return false;
         }
-        @mysqli_set_charset($db,'utf8');
-        @mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
         logMessage("Database reconnected successfully.");
     }
     return true;
@@ -246,7 +251,8 @@ try {
 
     function sendSMS($mobile, $message, $template_id, $sender = "CREDLB"){
         global $dry_run;
-        $url = "https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
+        require_once __DIR__ . '/config/sms.php';
+        $url = "https://sms.smswala.in/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
         
         if ($dry_run) {
             logMessage("DRY RUN: [SIMULATED] SMS to $mobile (Template: $template_id): $message");

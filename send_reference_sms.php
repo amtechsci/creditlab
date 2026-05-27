@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/config/sms.php';
 /**
  * Reference Message SMS Handler
  * Sends SMS to reference numbers when admin clicks "Send SMS" button
@@ -86,7 +87,7 @@ $sender = "CREDLB";
 $template_id = "1407175291100618275"; // Reference Message template ID from CSV
 
 // Send SMS
-$url = "https://sms.smswala.in/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$reference_mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
+$url = "https://sms.smswala.in/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$reference_mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id";
 
 $curl = curl_init();
 curl_setopt_array($curl, array(

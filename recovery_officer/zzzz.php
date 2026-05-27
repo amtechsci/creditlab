@@ -61,7 +61,8 @@ if(isset($_POST["action"]))
  $mail->Port = '80';        //Sets the default SMTP server port
  $mail->SMTPAuth = true;       //Sets SMTP authentication. Utilizes the Username and Password variables
  $mail->Username = 'Note@creditlab.in';     //Sets SMTP username
- $mail->Password = 'SMPL@Cred@8978';     //Sets SMTP password
+ require_once __DIR__ . '/../config/mail.php';
+ $mail->Password = MAIL_SMTP_PASSWORD;
  $mail->SMTPSecure = '';       //Sets connection prefix. Options are "", "ssl" or "tls"
  $mail->From = 'info@webslesson.info';   //Sets the From email address for the message
  $mail->FromName = 'Webslesson.info';   //Sets the From name of the message

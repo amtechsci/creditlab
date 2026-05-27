@@ -1,13 +1,12 @@
 <?php
-// --- DATABASE CONNECTION ---
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+require_once __DIR__ . '/lib/database.php';
+$db = creditlab_db_connect();
 
-if (mysqli_connect_errno()) {
+if (!$db) {
     error_log("Database connection failed: " . mysqli_connect_error());
     http_response_code(500);
     die("Database connection failed.");
 }
-mysqli_set_charset($db, 'utf8');
 
 // --- DATABASE FUNCTIONS ---
 function towquery($db, $query) {

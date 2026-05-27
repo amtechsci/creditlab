@@ -11,6 +11,7 @@
     // Authentication processing
 
     include_once 'head.php';
+    require_once __DIR__ . '/../config/sms.php';
 
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
@@ -399,7 +400,7 @@
             
             // Send to primary mobile
             if (!empty($userpro_mobile) && strlen($userpro_mobile) >= 10) {
-                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$userpro_mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$userpro_mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
                 
                 $curl = curl_init();
                 curl_setopt_array($curl, array(
@@ -425,7 +426,7 @@
             
             // Send to alternate mobile if available and different
             if (!empty($userpro_altmobile) && strlen($userpro_altmobile) >= 10 && $userpro_altmobile != $userpro_mobile) {
-                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$userpro_altmobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+                $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$userpro_altmobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
                 
                 $curl = curl_init();
                 curl_setopt_array($curl, array(
@@ -959,7 +960,7 @@
         $test_message = "Test SMS from CreditLab - Portal verification successful!";
         $template_id = '1107165683325768963';
         
-        $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$test_mobile&senderid=CREDLB&msg=".urlencode($test_message)."&template_id=$template_id&pe_id=1401337620000065797";
+        $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$test_mobile&senderid=CREDLB&msg=".urlencode($test_message)."&template_id=$template_id&pe_id=1401337620000065797";
         
         $curl = curl_init();
         curl_setopt_array($curl, array(

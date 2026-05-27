@@ -3,9 +3,10 @@ if (!function_exists('towquery')) {
     include_once '../db.php';
 }
 
-$MERCHANT_KEY = "9BIB9D914T"; // Replace with actual key
-$SALT = "GGW1QF6ONH";         // Replace with actual salt
-$ENV = "prod";               // Set to "test" or "prod"
+require_once __DIR__ . '/../config/easebuzz.php';
+$MERCHANT_KEY = EASEBUZZ_MERCHANT_KEY;
+$SALT = EASEBUZZ_SALT;
+$ENV = EASEBUZZ_ENV;
 
 $bankcode = towquery("SELECT * FROM `bank_name`");
 $bankCodes = [];

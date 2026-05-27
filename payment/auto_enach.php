@@ -6,7 +6,11 @@
 set_time_limit(0); 
 
 // --- DATABASE CONNECTION ---
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+require_once __DIR__ . '/../lib/database.php';
+$db = creditlab_db_connect();
+if (!$db) {
+    die('Database connection failed.');
+}
 
 if (mysqli_connect_errno()) {
     error_log("Database connection failed: " . mysqli_connect_error());
@@ -83,8 +87,9 @@ function initiateEasebuzzDirectDebit(array $postParams): string
     // --- Credentials ---
     // IMPORTANT: Store these securely. Do not hardcode them in a production environment.
     // Consider using environment variables (.env file) or a secure configuration management system.
-    $key = '9BIB9D914T';
-    $salt = 'GGW1QF6ONH';
+    require_once __DIR__ . '/../config/easebuzz.php';
+    $key = EASEBUZZ_MERCHANT_KEY;
+    $salt = EASEBUZZ_SALT;
 
     // --- Static & Required Data ---
     $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request
@@ -401,7 +406,8 @@ function writeLog($message, $log_file) {
 
 // Function to send SMS
 function sendSMS($mobile, $message, $template_id, $sender = "CREDLB") {
-    $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=2683C705E7CB39&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
+    require_once __DIR__ . '/../config/sms.php';
+    $url = "https://sms.k7marketinghub.com/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY) . "&campaign=16613&routeid=30&type=text&contacts=$mobile&senderid=$sender&msg=".urlencode($message)."&template_id=$template_id&pe_id=1401337620000065797";
     
     $curl = curl_init();
     curl_setopt_array($curl, array(

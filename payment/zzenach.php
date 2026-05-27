@@ -228,8 +228,9 @@ function initiateEasebuzzDirectDebit(array $postParams): string
     // --- Credentials ---
     // IMPORTANT: Store these securely. Do not hardcode them in a production environment.
     // Consider using environment variables (.env file) or a secure configuration management system.
-    $key = '9BIB9D914T';
-    $salt = 'GGW1QF6ONH';
+    require_once __DIR__ . '/../config/easebuzz.php';
+    $key = EASEBUZZ_MERCHANT_KEY;
+    $salt = EASEBUZZ_SALT;
 
     // --- Static & Required Data ---
     $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request

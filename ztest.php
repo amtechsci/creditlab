@@ -1,7 +1,11 @@
 <?php
+if (php_sapi_name() !== 'cli') {
+	http_response_code(403);
+	exit('Forbidden');
+}
 
-// --- DATABASE CONNECTION (use main `credit` DB, like old code) ---
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+require_once __DIR__ . '/lib/database.php';
+$db = creditlab_db_connect();
 if (mysqli_connect_errno()) {
     error_log("ztest.php DB connection failed: " . mysqli_connect_error());
     die("Database connection failed.");

@@ -1,13 +1,23 @@
 <?php
-session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-$db = mysqli_connect("localhost", "root", "Atul@1012#", "credit");
-mysqli_set_charset($db,'utf8');
+require_once __DIR__ . '/lib/env.php';
+require_once __DIR__ . '/lib/database.php';
 
-// Disable SQL strict mode to prevent syntax errors
-mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+session_start();
+
+if (env_bool('APP_DEBUG', false)) {
+	ini_set('display_errors', '1');
+	ini_set('display_startup_errors', '1');
+	error_reporting(E_ALL);
+} else {
+	ini_set('display_errors', '0');
+	ini_set('display_startup_errors', '0');
+	error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+}
+
+$db = creditlab_db_connect();
+if (!$db) {
+	die('Database connection failed. Check DB_* settings in .env');
+}
 
 // Helper function to ensure database connection is valid
 function ensure_db_connection() {
@@ -49,15 +59,12 @@ function ensure_db_connection() {
 		$db = null;
 		unset($db);
 		
-		// Create new connection
-		$db = @mysqli_connect("localhost", "root", "Atul@1012#", "credit");
+		$db = creditlab_db_connect();
 		if (!$db) {
-			error_log("Database reconnection failed: " . mysqli_connect_error());
+			error_log("Database reconnection failed");
 			$checking = false;
 			return false;
 		}
-		@mysqli_set_charset($db,'utf8');
-		@mysqli_query($db, "SET sql_mode = 'NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
 	}
 	
 	$checking = false;
