@@ -99,26 +99,29 @@ if (isset($loanf['uid']) && $loanf['uid'] != '') {
 
 // print_r($us_bank);exit;
 function convertImageToBase64($imageUrl, $altText = 'Image') {
-    // Check if it's a local file path and convert to S3 proxy URL
+    require_once __DIR__ . '/../lib/file_access.php';
+
     if (strpos($imageUrl, 'user/uploads/') !== false) {
         $filename = basename($imageUrl);
-        $imageUrl = getAppUrl() . "/user/file.php?f=" . $filename;
+        list($ok, $imageData,) = creditlab_fetch_upload_file($filename);
+        if (!$ok || $imageData === '') {
+            return '<div style="width:200px;height:50px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#666;">Signature Not Available</div>';
+        }
+        $temp = tempnam(sys_get_temp_dir(), 'img');
+        file_put_contents($temp, $imageData);
+        $imageInfo = @getimagesize($temp);
+        @unlink($temp);
+        $mimeType = $imageInfo ? $imageInfo['mime'] : 'image/png';
+        $base64 = base64_encode($imageData);
+    } else {
+        $imageData = @file_get_contents($imageUrl);
+        if ($imageData === false) {
+            return '<div style="width:200px;height:50px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#666;">Signature Not Available</div>';
+        }
+        $base64 = base64_encode($imageData);
+        $imageInfo = @getimagesize($imageUrl);
+        $mimeType = $imageInfo ? $imageInfo['mime'] : 'image/png';
     }
-    
-    // Get the image content
-    $imageData = @file_get_contents($imageUrl);
-    
-    // Check if the image was successfully fetched
-    if ($imageData === false) {
-        return '<div style="width:200px;height:50px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#666;">Signature Not Available</div>';
-    }
-
-    // Encode the image content to Base64
-    $base64 = base64_encode($imageData);
-
-    // Get the MIME type of the image
-    $imageInfo = @getimagesize($imageUrl);
-    $mimeType = $imageInfo ? $imageInfo['mime'] : 'image/png';
 
     // Create the Base64 image string for HTML
     $base64Image = 'data:' . $mimeType . ';base64,' . $base64;
