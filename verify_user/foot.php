@@ -47,13 +47,7 @@
 		============================================ -->
     <script src="/admin/js/metisMenu/metisMenu.min.js"></script>
     <script src="/admin/js/metisMenu/metisMenu-active.js"></script>
-    <!-- morrisjs JS
-		============================================ -->
-    <script src="/admin/js/morrisjs/raphael-min.js"></script>
-    <script src="/admin/js/morrisjs/morris.js"></script>
-    <script src="/admin/js/morrisjs/morris-active.js"></script>
-    <!-- morrisjs JS
-		============================================ -->
+    <!-- morris charts not loaded globally (see admin/foot.php) -->
     <script src="/admin/js/sparkline/jquery.sparkline.min.js"></script>
     <script src="/admin/js/sparkline/jquery.charts-sparkline.js"></script>
     <script src="/admin/js/sparkline/sparkline-active.js"></script>

@@ -101,16 +101,35 @@ function bankverify_is_json($string)
 	return is_string($string) && is_array(json_decode($string, true));
 }
 
+function bankverify_profile_redirect(int $userId, string $message): void
+{
+	print_r("<script>alert('" . addslashes($message) . "');window.location.replace('/admin/profile.php?id=" . $userId . "');</script>");
+	exit;
+}
+
 if (bankverify_is_json($response)) {
 	$response = json_decode($response, true);
-	if (isset($response['data']['name_at_bank']) && !empty($response['data']['name_at_bank'])) {
+	$apiCode = isset($response['code']) ? (int) $response['code'] : 0;
+	$apiMsg = '';
+	if (!empty($response['message']) && is_string($response['message'])) {
+		$apiMsg = $response['message'];
+	} elseif (!empty($response['data']['message']) && is_string($response['data']['message'])) {
+		$apiMsg = $response['data']['message'];
+	}
+
+	if ($apiCode !== 200) {
+		error_log('bankverify.php verify failed: ' . $apiMsg . ' (HTTP API code ' . $apiCode . ')');
+		bankverify_profile_redirect((int) $f['id'], $apiMsg !== '' ? $apiMsg : 'Bank verification failed.');
+	}
+
+	if (isset($response['data']['name_at_bank']) && $response['data']['name_at_bank'] !== '') {
 		$name = towreal($response['data']['name_at_bank']);
 		towquery("UPDATE `user_bank` SET `ac_name`='$name',`verify`=1 WHERE `id`=" . $bank_id);
 	} else {
 		towquery("UPDATE `user_bank` SET `verify`=1 WHERE `id`=" . $bank_id);
 	}
-	$msg = isset($response['data']['message']) ? $response['data']['message'] : 'Verified';
-	print_r("<script>alert('" . addslashes($msg) . "');window.location.replace('/admin/profile.php?id=" . (int) $f['id'] . "');</script>");
-} else {
-	print_r("<script>alert('Not Verify');window.location.replace('/admin/profile.php?id=" . (int) $f['id'] . "');</script>");
+	$msg = $apiMsg !== '' ? $apiMsg : 'Verified';
+	bankverify_profile_redirect((int) $f['id'], $msg);
 }
+
+bankverify_profile_redirect((int) $f['id'], 'Bank verification failed. No response from API.');
