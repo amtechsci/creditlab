@@ -45,20 +45,34 @@ curl_setopt_array($curl, [
 	CURLOPT_HTTPHEADER => [
 		'x-api-key: ' . BANK_API_KEY,
 		'x-api-secret: ' . BANK_API_SECRET,
-		'x-api-version: 1.0',
+		'x-api-version: 1.0.0',
+		'Accept: application/json',
 	],
 ]);
 
 $response = curl_exec($curl);
+$curlErr = curl_error($curl);
+$httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
 curl_close($curl);
-$response = json_decode($response, true);
+$response = is_string($response) ? json_decode($response, true) : null;
 
-if (empty($response['access_token'])) {
-	print_r("<script>alert('Bank API authentication failed');window.location.replace('/admin/profile.php?id=" . (int) $f['id'] . "');</script>");
-	exit;
+$access_token = null;
+if (is_array($response)) {
+	$access_token = $response['data']['access_token'] ?? $response['access_token'] ?? null;
 }
 
-$access_token = $response['access_token'];
+if ($access_token === null || $access_token === '') {
+	$apiMsg = is_array($response) ? ($response['message'] ?? '') : '';
+	if ($curlErr !== '') {
+		error_log('bankverify.php authenticate curl error: ' . $curlErr);
+	}
+	if ($apiMsg !== '') {
+		error_log('bankverify.php authenticate API: ' . $apiMsg . ' (HTTP ' . $httpCode . ')');
+	}
+	$alert = $apiMsg !== '' ? $apiMsg : 'Bank API authentication failed. Check BANK_API_KEY and BANK_API_SECRET in .env.';
+	print_r("<script>alert('" . addslashes($alert) . "');window.location.replace('/admin/profile.php?id=" . (int) $f['id'] . "');</script>");
+	exit;
+}
 $url = 'https://api.sandbox.co.in/bank/' . $f['ifsc_code'] . '/accounts/' . $f['ac_no'] . '/verify?name=' . urlencode($f['name']) . '&mobile=' . urlencode($f['mobile']);
 
 $curl = curl_init();
@@ -72,9 +86,10 @@ curl_setopt_array($curl, [
 	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
 	CURLOPT_CUSTOMREQUEST => 'GET',
 	CURLOPT_HTTPHEADER => [
-		'Authorization: ' . $access_token,
+		'authorization: ' . $access_token,
 		'x-api-key: ' . BANK_API_KEY,
-		'x-api-version: 1.0',
+		'x-api-version: 1.0.0',
+		'Accept: application/json',
 	],
 ]);
 

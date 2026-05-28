@@ -43,7 +43,7 @@
                                                      
                                                     <a href="#" data-toggle="dropdown" role="button" aria-expanded="false" class="nav-link dropdown-toggle">
                                                         
-                                                            <img src="img/product/pro4.jpg" alt="" />
+                                                            <i class="fa fa-user-circle" style="font-size:28px;vertical-align:middle;" aria-hidden="true"></i>
                                                             <span class="admin-name"><?= htmlspecialchars($user_name ?? '', ENT_QUOTES, 'UTF-8') ?></span>
                                                             <i class="fa fa-angle-down edu-icon edu-down-arrow"></i>
                                                         </a>

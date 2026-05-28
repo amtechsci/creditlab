@@ -2297,7 +2297,7 @@ function aaaa() {
 </script>
 
 <script>
-$('textarea').onchange(function () {
+$('textarea').on('change', function () {
   this.setAttribute('style', 'height:' + (this.scrollHeight) + 'px;overflow-y:hidden;');
 }).on('input', function () {
     if((this.scrollHeight) == 0){
