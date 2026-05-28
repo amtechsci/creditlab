@@ -1,6 +1,6 @@
 <?php
 include '../db.php';
-require_once __DIR__ . '/../lib/sms_queue.php';
+require_once __DIR__ . '/../lib/sms_otp_deliver.php';
 
 /**
  * Pick the staff member with the fewest assigned users (single GROUP BY query).
@@ -43,17 +43,10 @@ if (isset($_POST['mobile'])) {
 	$result = towquery("SELECT id FROM user WHERE mobile ='$mobile' LIMIT 1");
 
 	if ($result && townum($result) === 1) {
-		if ($resend === 1) {
-			$message = $otp . ' is the OTP for your Mobile verification. This is usable once and valid for 2mins from the request. PLS DON"T SHARE WITH ANYONE -CREDITLAB';
-			$template_id = '1407175016441663626';
-		} else {
-			$message = "$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
-			$template_id = '1407174844163241940';
-		}
+		$message = "$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
+		$template_id = '1407174844163241940';
 		towquery("UPDATE user SET otp='$otp' WHERE mobile ='$mobile'");
-		creditlab_queue_sms($mobile, $message, $template_id);
-		header("location:../account/confirm.php?id=$mobile");
-		exit;
+		creditlab_otp_redirect_and_send("../account/confirm.php?id=$mobile", $mobile, $message, $template_id);
 	}
 
 	$assign_account = creditlab_pick_least_assigned('account_manager', 'assign_account_manager');
@@ -79,9 +72,7 @@ if (isset($_POST['mobile'])) {
 
 	$message = "$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
 	$template_id = '1407174844163241940';
-	creditlab_queue_sms($mobile, $message, $template_id);
-	header("location:../account/confirm.php?id=$mobile");
-	exit;
+	creditlab_otp_redirect_and_send("../account/confirm.php?id=$mobile", $mobile, $message, $template_id);
 }
 
 echo "<script>window.location.replace('" . $app_url . "account/');</script>";

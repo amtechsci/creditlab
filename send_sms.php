@@ -51,6 +51,12 @@ curl_setopt_array($curl, [
 $response = curl_exec($curl);
 if ($response === false) {
 	error_log('send_sms.php: SMS gateway request failed: ' . curl_error($curl));
+} elseif (
+	is_string($response)
+	&& stripos($response, 'SMS-SHOOT-ID') === false
+	&& stripos($response, 'NOT sent') !== false
+) {
+	error_log('send_sms.php: gateway rejected SMS: ' . substr($response, 0, 300));
 }
 curl_close($curl);
 // print_r($url);

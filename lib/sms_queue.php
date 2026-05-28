@@ -12,12 +12,16 @@ function creditlab_queue_sms(string $mobile, string $message, string $template_i
 		'template_id' => $template_id,
 	], JSON_UNESCAPED_UNICODE));
 
-	$phpBin = defined('PHP_BINARY') && PHP_BINARY !== '' ? PHP_BINARY : 'php';
+	$phpBin = getenv('CREDITLAB_PHP_CLI') ?: '/usr/bin/php';
+	if (!is_executable($phpBin)) {
+		$phpBin = defined('PHP_BINARY') && PHP_BINARY !== '' ? PHP_BINARY : 'php';
+	}
 	$worker = __DIR__ . '/sms_queue_worker.php';
+	$errLog = dirname(__DIR__) . '/logs/sms_worker.err';
 
 	if (function_exists('exec')) {
-		$cmd = escapeshellarg($phpBin) . ' ' . escapeshellarg($worker) . ' ' . escapeshellarg($payload)
-			. ' > /dev/null 2>&1 &';
+		$cmd = 'nohup ' . escapeshellarg($phpBin) . ' ' . escapeshellarg($worker) . ' ' . escapeshellarg($payload)
+			. ' >> ' . escapeshellarg($errLog) . ' 2>&1 &';
 		@exec($cmd);
 		return true;
 	}
