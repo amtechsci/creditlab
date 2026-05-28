@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+$loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manager'");
 ?>
 <body>
     <?php

@@ -40,7 +40,11 @@ $logData .= $headersFormatted . "\n";
 $logData .= $getData . "\n";
 $logData .= $postData . "\n";
 $logData .= $rawBody . "\n";
-file_put_contents($filename, $logData, FILE_APPEND);
+$rawLogFile = __DIR__ . '/logs/webhook_raw.txt';
+if (!is_dir(dirname($rawLogFile))) {
+	@mkdir(dirname($rawLogFile), 0755, true);
+}
+@file_put_contents($rawLogFile, $logData, FILE_APPEND | LOCK_EX);
 
 
 require_once __DIR__ . '/lib/database.php';
@@ -369,7 +373,7 @@ if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
                     $mobile = $user_details['mobile'];
                     $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                     define('CREDITLAB_SMS_INCLUDE', true);
-                    include 'send_sms.php';
+                    include __DIR__ . '/send_sms.php';
                     writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
                     
                 } else {
@@ -598,7 +602,7 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
             $mobile = $user_details['mobile'];
             $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
             define('CREDITLAB_SMS_INCLUDE', true);
-            include '../send_sms.php';
+            include __DIR__ . '/send_sms.php';
 
             // FIX: The query now includes the defined $payment_method variable
             $payment_method_escaped = mysqli_real_escape_string($db, $payment_method);

@@ -39,7 +39,7 @@ if (isset($_GET['pageno'])) {
                             <a href="users.php"><div class="analytics-content">
                                 <h5>Verify Users</h5>
                                 
-                                <h2><span class="counter"><?=townum($verifyquery);?></span></span></h2>
+                                <h2><span class="counter"><?= (int) ($verifyquery_count ?? 0) ?></span></h2>
                                 </div></a>
                         </div>
                     </div>
@@ -48,7 +48,7 @@ if (isset($_GET['pageno'])) {
                             <a href="newusers.php"><div class="analytics-content">
                                 <h5>New Users</h5>
                                 
-                                <h2><?=townum($newquery);?></h2>
+                                <h2><?= (int) ($newquery_count ?? 0) ?></h2>
                                 
                             </div></a>
                         </div>
@@ -62,7 +62,7 @@ if (isset($_GET['pageno'])) {
                         <div class="analytics-sparkle-line table-mg-t-pro dk-res-t-pro-30">
                             <a href="loan.php"><div class="analytics-content">
                                 <h5>Loan Approved</h5>
-                                <h2><?=townum($loanquery);?></h2>
+                                <h2><?= (int) ($loanquery_count ?? 0) ?></h2>
                             </div></a>
                         </div>
                     </div>
@@ -71,7 +71,7 @@ if (isset($_GET['pageno'])) {
                         <div class="analytics-sparkle-line table-mg-t-pro dk-res-t-pro-30">
                             <a href="newloan.php"><div class="analytics-content">
                                 <h5>New Loan Applied</h5>
-                                <h2><?=townum($newloanquery);?></h2>
+                                <h2><?= (int) ($newloanquery_count ?? 0) ?></h2>
                             </div></a>
                         </div>
                     </div>

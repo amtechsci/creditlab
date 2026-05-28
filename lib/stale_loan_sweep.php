@@ -40,12 +40,28 @@ function creditlab_sweep_stale_loans(): void
 	}
 }
 
+function creditlab_sql_count(string $sql): int
+{
+	if (!function_exists('towquery') || !function_exists('towfetch')) {
+		return 0;
+	}
+	$result = towquery($sql);
+	if (!$result) {
+		return 0;
+	}
+	$row = towfetch($result);
+	if (!$row) {
+		return 0;
+	}
+	return (int) reset($row);
+}
+
 function creditlab_staff_head_count_queries(): array
 {
 	return [
-		'verifyquery' => towquery("SELECT id FROM `user` WHERE `active`=1 AND `verify`=1"),
-		'newquery' => towquery("SELECT id FROM `user` WHERE `active`=1 AND `verify`=0"),
-		'loanquery' => towquery("SELECT id FROM `loan_apply` WHERE `status`='account manager'"),
-		'newloanquery' => towquery("SELECT id FROM `loan_apply` WHERE `status`='pending' OR `status`='follow up'"),
+		'verifyquery_count' => creditlab_sql_count("SELECT COUNT(*) FROM `user` WHERE `active`=1 AND `verify`=1"),
+		'newquery_count' => creditlab_sql_count("SELECT COUNT(*) FROM `user` WHERE `active`=1 AND `verify`=0"),
+		'loanquery_count' => creditlab_sql_count("SELECT COUNT(*) FROM `loan_apply` WHERE `status`='account manager'"),
+		'newloanquery_count' => creditlab_sql_count("SELECT COUNT(*) FROM `loan_apply` WHERE `status` IN ('pending','follow up')"),
 	];
 }

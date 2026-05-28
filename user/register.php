@@ -1,5 +1,6 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/sms_queue.php';
 
 /**
  * Pick the staff member with the fewest assigned users (single GROUP BY query).
@@ -50,12 +51,8 @@ if (isset($_POST['mobile'])) {
 			$template_id = '1407174844163241940';
 		}
 		towquery("UPDATE user SET otp='$otp' WHERE mobile ='$mobile'");
+		creditlab_queue_sms($mobile, $message, $template_id);
 		header("location:../account/confirm.php?id=$mobile");
-		if (function_exists('fastcgi_finish_request')) {
-			fastcgi_finish_request();
-		}
-		define('CREDITLAB_SMS_INCLUDE', true);
-		include '../send_sms.php';
 		exit;
 	}
 
@@ -82,12 +79,8 @@ if (isset($_POST['mobile'])) {
 
 	$message = "$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
 	$template_id = '1407174844163241940';
+	creditlab_queue_sms($mobile, $message, $template_id);
 	header("location:../account/confirm.php?id=$mobile");
-	if (function_exists('fastcgi_finish_request')) {
-		fastcgi_finish_request();
-	}
-	define('CREDITLAB_SMS_INCLUDE', true);
-	include '../send_sms.php';
 	exit;
 }
 

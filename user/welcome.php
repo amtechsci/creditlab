@@ -25,7 +25,9 @@
                                     <div class="col-lg-6 col-md-7 col-sm-6 col-xs-12">
                                         <div class="header-top-menu tabl-d-n">
                                             <p style="font-size:20px; color:#fff;margin:0px;">
-                                                <?php if(in_array($page_state,[1,2,3,4,5,6,7,8,9])){
+                                                <?php
+                                                $page_state = isset($page_state) ? (int) $page_state : 0;
+                                                if(in_array($page_state,[1,2,3,4,5,6,7,8,9])){
                                                     $n = 1;
                                                 }elseif(in_array($page_state,[12,13,14,15,16,17])){
                                                     $n = 2;
