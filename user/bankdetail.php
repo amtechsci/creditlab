@@ -5,6 +5,7 @@ if(isset($_POST['bank_name'])){
         $message="Dear {$user_name}, Your bank account is now associated with us. Name : {$bank_name}, No: {$ac_no}. -Creditlab";
         $template_id='1107165683279440796';
         $mobile = $user_mobile;
+        define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';
     (towquery("INSERT INTO `user_bank`(`uid`, `ac_no`, `ifsc_code`, `bank_name`, `verify`) VALUES ('$user_id','$ac_no','".strtoupper($ifsc_code)."','$bank_name', 1)") and
     print_r("<script> window.location.replace('index.php');</script>")) or print_r("<script>window.location.replace('index.php');</script>");

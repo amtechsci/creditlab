@@ -138,11 +138,13 @@ if ($_POST) {
                 error_log("TRANSACTION COMMITTED SUCCESSFULLY for txnid=$txnid");
                 
                 // Send No Due certificate email
-                file_get_contents("https://creditlab.in/zxc/?url3=https://creditlab.in/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);
+                require_once __DIR__ . '/../lib/zxc_mail.php';
+                file_get_contents(creditlab_zxc_mail_url('https://creditlab.in', $user_details['email'], null, null, 'https://creditlab.in/no-due-certificate2.php?id=' . $loan_details['lid']));
 
                 $template_id='1107165683325768963';
                 $mobile = $user_details['mobile'];
                 $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. https://creditlab.in/ -Creditlab";
+                define('CREDITLAB_SMS_INCLUDE', true);
                 include '../send_sms.php';
                 
             } catch (Exception $e) {

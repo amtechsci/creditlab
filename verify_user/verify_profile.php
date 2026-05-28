@@ -79,6 +79,7 @@ if(isset($_POST['validation'])){
         $template_id = '1107165683293779914';
         $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to https://creditlab.in & accept the agreement and get the money in minutes.';
         $mobile = $userpro_mobile;
+        define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';
         }
     }

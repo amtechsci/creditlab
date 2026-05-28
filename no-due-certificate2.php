@@ -1,7 +1,18 @@
 <?php
 include 'db.php';
-if(isset($_GET['id'])){
-    $id = towreal($_GET['id']);
+require_once __DIR__ . '/lib/auth.php';
+
+if (!isset($_GET['id'])) {
+	http_response_code(400);
+	exit('Missing id');
+}
+
+$id = (int) towreal($_GET['id']);
+if ($id < 1 || !creditlab_can_access_loan_apply($id)) {
+	http_response_code(403);
+	exit('Forbidden');
+}
+
 $loan  = towquery("SELECT loan_apply.*,user.name,user.present_address,user.permanent_address,user.father_name,user.permanent_address,user.mobile,user.altmobile,user.email,user.pan,user.signature,user.personaldocument,user.conpanydocument,user.marital_status FROM `loan_apply` INNER JOIN user
       ON loan_apply.uid=user.id WHERE loan_apply.id='$id'");
 $loanf = towfetch($loan);
@@ -48,7 +59,6 @@ $b = $loanf;
                  $tint = $dint*65;
                 //  print_r($tint);exit;
 
-}
 function convertImageToBase64($imageUrl, $altText = 'Image') {
     // Get the image content
     $imageData = file_get_contents($imageUrl);

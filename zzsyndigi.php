@@ -1,12 +1,18 @@
 <?php
+require_once __DIR__ . '/config/signzy.php';
+
 function createDigilockerUrl($adharNumber)
 {
+    if (SIGNZY_API_KEY === '' || SIGNZY_API_SECRET === '') {
+        return null;
+    }
+
     $signzy_url = 'https://api.signzy.com/digilocker/createUrl';
 
     $headers = [
         'Content-Type: application/json',
-        'x-api-key: 23028df6-386f-4b34-835f-f4e97f845cc4',
-        'x-api-secret: jJrnSFk1jFeqbjKrCLpIn6xW7D8TIpLU'
+        'x-api-key: ' . SIGNZY_API_KEY,
+        'x-api-secret: ' . SIGNZY_API_SECRET,
     ];
 
     $data = [

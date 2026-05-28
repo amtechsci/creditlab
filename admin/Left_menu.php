@@ -112,6 +112,9 @@ $counts_data = towfetch($counts);
                     <li>
                         <a href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
                     </li>
+                    <li>
+                        <a href="smtp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/smtp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-envelope"></i> <span class="mini-click-non">SMTP Settings</span></a>
+                    </li>
                 </ul>
             </nav>
         </div>

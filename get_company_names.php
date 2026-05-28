@@ -1,5 +1,16 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/auth.php';
+
+if (!isset($db) || !@mysqli_ping($db)) {
+	require_once __DIR__ . '/lib/database.php';
+	creditlab_db_connection_failed();
+}
+
+if (!creditlab_is_staff_logged_in()) {
+	http_response_code(403);
+	exit;
+}
 
 $query = isset($_GET['query']) ? towreal($_GET['query']) : '';
 $options = '';
@@ -11,4 +22,5 @@ if ($result && townum($result) > 0) {
 	}
 }
 
+header('Content-Type: text/html; charset=utf-8');
 echo $options;

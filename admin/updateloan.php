@@ -21,7 +21,8 @@ if($status == "cleared"){
 towquery("UPDATE `loan` SET `action`='$status',`status_log`='$status',`cleard_date`='".date('Y-m-d')."' WHERE `id`=".$a['id']."");
 towquery("UPDATE `user` SET `status`='$status' WHERE id=".$a['uid']."");
 $base_url = getAppUrl();
-file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$a['lid']."&email=$email");
+require_once __DIR__ . '/../lib/zxc_mail.php';
+file_get_contents(creditlab_zxc_mail_url($base_url, $email, null, null, $base_url . '/no-due-certificate2.php?id=' . $a['lid']));
 // towquery("DELETE FROM `loan_apply` WHERE id=".$a['lid']."");
 header('location: profile.php?id='.$a['uid'].'');
 ?>

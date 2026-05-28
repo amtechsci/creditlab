@@ -515,13 +515,13 @@ function sendEmailWithAttachments($to_email, $from_email, $from_name, $report_pe
     
     $mail = new PHPMailer();
     $mail->IsSMTP();
-    $mail->Host = 'smtp.hostinger.com';
-    $mail->Port = 465;
-    $mail->SMTPAuth = true;
-    $mail->Username = 'Note@creditlab.in';
     require_once __DIR__ . '/../config/mail.php';
+    $mail->Host = MAIL_SMTP_HOST;
+    $mail->Port = (string) MAIL_SMTP_PORT;
+    $mail->SMTPAuth = true;
+    $mail->Username = MAIL_SMTP_USER;
     $mail->Password = MAIL_SMTP_PASSWORD;
-    $mail->SMTPSecure = 'ssl';
+    $mail->SMTPSecure = MAIL_SMTP_SECURE;
     $mail->From = $from_email;
     $mail->FromName = $from_name;
     $mail->AddAddress($to_email);

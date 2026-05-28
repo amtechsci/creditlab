@@ -14,6 +14,8 @@
  */
 
 include 'db.php';
+require_once __DIR__ . '/lib/auth.php';
+creditlab_require_staff();
 
 $mode = isset($_GET['mode']) ? $_GET['mode'] : 'preview';
 $isExecute = ($mode === 'execute');

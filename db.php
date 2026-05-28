@@ -16,7 +16,7 @@ if (env_bool('APP_DEBUG', false)) {
 
 $db = creditlab_db_connect();
 if (!$db) {
-	die('Database connection failed. Check DB_* settings in .env');
+	creditlab_db_connection_failed('Database connection failed. Check DB_* settings in .env');
 }
 
 // Helper function to ensure database connection is valid

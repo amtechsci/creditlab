@@ -9,6 +9,7 @@ if(isset($_POST['salarystatus'])){
         $message="Dear Creditlab.in user, Your loan is a few steps away from disbursal. Just complete the KYC & withdraw your funds : " . $base_url;
         $template_id='1107169453425832956';
         $mobile=$user_mobile;
+        define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';
         $work_from = isset($work_from) ? $work_from : '';
     (towquery("UPDATE `user` SET `salary`='".$extract['salary']."',`salarystatus`='".$extract['salarystatus']."',`verify`=1,`status`='Approved',`get_salary`='".$extract['get_salary']."',`designation`='".$extract['designation']."',`work_from`='$work_from',`loan_limit`='$loan_limit' WHERE mobile='$user'") and

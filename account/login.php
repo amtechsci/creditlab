@@ -1,5 +1,6 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/auth.php';
 if(isset($_POST['email'])){
     extract(towrealarray2($_POST));
 function get_client_ip() {
@@ -39,57 +40,66 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
  else
    $userbrowser = 'Unknown';
    $login_time = date('Y-m-d H:i:s');
-    $result=towquery("SELECT * FROM user WHERE email ='$email' AND password='$password'");
-    if (townum($result)==1) {
+    $result=towquery("SELECT * FROM user WHERE email ='$email' LIMIT 1");
+    if ($result && townum($result)==1) {
    $aa = towfetch($result);
+        if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         if($aa['active'] == 1){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
         $_SESSION['user'] = $email;
-        setcookie('user', $email, time() + (86400 * 30), "/");
+        creditlab_set_auth_cookie('user', $email);
         header("location:../../user/");
+        exit;
     }elseif($aa['active'] == 2){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
         $_SESSION['admin'] = $email;
-        setcookie('admin', $email, time() + (86400 * 30), "/");
+        creditlab_set_auth_cookie('admin', $email);
         header("location:../../admin/");
+        exit;
     }
-    }else{
-        $sqll="SELECT * FROM verify_user WHERE email ='$email' AND password='$password'";
+        }
+    }
+        $sqll="SELECT * FROM verify_user WHERE email ='$email' LIMIT 1";
         $result=towquery($sqll);
-    if(townum($result)==1){
+    if($result && townum($result)==1){
         // print_r(11);exit;
         $aa = towfetch($result);
+        if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (700$id,'$userbrowser','$userip','$login_time')");
         $_SESSION['verify_user'] = $email;
+        creditlab_set_auth_cookie('verify_user', $email);
         header("location:/verify_user/");
         exit;
-    }else{
-        // print_r(22);exit;
-        $sqll="SELECT * FROM account_manager WHERE email ='$email' AND password='$password'";
+        }
+    }
+        $sqll="SELECT * FROM account_manager WHERE email ='$email' LIMIT 1";
     $result=towquery($sqll);
-    if(townum($result)==1){
-        // print_r($_POST);exit;
+    if($result && townum($result)==1){
         $aa = towfetch($result);
+        if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (100$id,'$userbrowser','$userip','$login_time')");
         $_SESSION['account_manager'] = $email;
+        creditlab_set_auth_cookie('account_manager', $email);
         header("location:/account_manager/");
         exit;
-    }else{
-    $sqll="SELECT * FROM recovery_officer WHERE email ='$email' AND password='$password'";
-    // print_r($sqll);exit;
+        }
+    }
+    $sqll="SELECT * FROM recovery_officer WHERE email ='$email' LIMIT 1";
     $result=towquery($sqll);
-    if(townum($result)==1){
+    if($result && townum($result)==1){
         $aa = towfetch($result);
+        if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (200$id,'$userbrowser','$userip','$login_time')");
         $_SESSION['recovery_officer'] = $email;
+        creditlab_set_auth_cookie('recovery_officer', $email);
         header("location:/recovery_officer/");
         exit;
-    }}}
-}
+        }
+    }
 }
 include_once 'head.php';
 include_once '../head2.php';

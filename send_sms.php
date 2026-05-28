@@ -1,4 +1,8 @@
 <?php
+if (!defined('CREDITLAB_SMS_INCLUDE')) {
+	http_response_code(403);
+	exit('Forbidden');
+}
 require_once __DIR__ . '/config/sms.php';
 $sender="CREDLB";
 
@@ -32,19 +36,22 @@ $url="https://sms.smswala.in/app/smsapi/index.php?key=" . urlencode(SMS_API_KEY)
 
 // senderid=CREDLB&msg=1542 is OTP for Creditlab login verification %26 valid till 2min. Don't share this OTP with anyone.&template_id=1407174844163241940
 $curl = curl_init();
-curl_setopt_array($curl, array(
-  CURLOPT_URL => $url,
-  CURLOPT_RETURNTRANSFER => true,
-  CURLOPT_ENCODING => '',
-  CURLOPT_MAXREDIRS => 10,
-  CURLOPT_TIMEOUT => 0,
-  CURLOPT_FOLLOWLOCATION => true,
-  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-  CURLOPT_CUSTOMREQUEST => 'GET',
-));
+curl_setopt_array($curl, [
+	CURLOPT_URL => $url,
+	CURLOPT_RETURNTRANSFER => true,
+	CURLOPT_ENCODING => '',
+	CURLOPT_MAXREDIRS => 3,
+	CURLOPT_CONNECTTIMEOUT => 5,
+	CURLOPT_TIMEOUT => 5,
+	CURLOPT_FOLLOWLOCATION => true,
+	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+	CURLOPT_CUSTOMREQUEST => 'GET',
+]);
 
 $response = curl_exec($curl);
-
+if ($response === false) {
+	error_log('send_sms.php: SMS gateway request failed: ' . curl_error($curl));
+}
 curl_close($curl);
 // print_r($url);
 ?>

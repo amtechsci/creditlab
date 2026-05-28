@@ -1,10 +1,12 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/auth.php';
 if(isset($_POST['submit'])){
     $oldpass = towreal($_POST['password']);
     $newpass = towreal($_POST['newpassword']);
-    if($user_password == $oldpass){
-        towquery("UPDATE user SET password='$newpass' WHERE email='$user'");
+    if(creditlab_verify_password($oldpass, $user_password)){
+        $hash = creditlab_hash_password($newpass);
+        towquery("UPDATE user SET password='$hash' WHERE email='$user'");
         print_r("<script>alert('Your data is successfully updated'); window.location.replace('changepassword.php');</script>");
     }
 }

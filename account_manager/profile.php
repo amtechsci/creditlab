@@ -40,6 +40,7 @@ if(isset($_GET['id'])){
     if (!isset($userpro_mobile)) $userpro_mobile = '';
     if (!isset($userpro_email)) $userpro_email = '';
     if (!isset($userpro_id)) $userpro_id = $id;
+    if (!isset($userpro_account_name)) $userpro_account_name = '';
 }else{
     print_r("<script>window.location.replace('index.php');</script>");
 }
@@ -90,6 +91,7 @@ if(isset($_POST['validation'])){
         $base_url = getAppUrl();
         $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to ' . $base_url . ' & accept the agreement and get the money in minutes.';
         $mobile = $userpro_mobile;
+        define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';
         }
     }
@@ -395,7 +397,8 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     $document_password = array();
     $extract = towrealarray($_POST);
     extract($extract);
-    $userpro_document_password = explode("#",$userpro_document_password);
+    $userpro_document_password = explode("#", $userpro_document_password ?? '');
+    $userpro_document_password = array_pad($userpro_document_password, 9, '');
     if(!empty($pan_pass)){$document_password[0] = "pan".$pan_pass."pan";
     }else{$document_password[0] = "$userpro_document_password[0]";}
     if(!empty($aadhar_pass)){$document_password[1] = "aadhar".$aadhar_pass."aadhar";
@@ -1049,7 +1052,10 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <?php $userpro_document_password = explode("#", $userpro_document_password); ?>
+                                                            <?php
+                                                            $userpro_document_password = explode("#", $userpro_document_password ?? '');
+                                                            $userpro_document_password = array_pad($userpro_document_password, 9, '');
+                                                            ?>
                                                             <?php $pan = explode("pan", $userpro_document_password[0]); ?>
                                                             <tr>
                                                                 <td><input type="checkbox" name="reset[]" value="conpanydocument"></td> <!-- Checkbox for Pan -->
@@ -1327,7 +1333,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Account Name</lable>
-                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=$userpro_ac_name?>">
+                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?= htmlspecialchars($userpro_account_name, ENT_QUOTES, 'UTF-8') ?>">
                                                             </div>
                                                         </div>
                                                     </div>

@@ -4,27 +4,7 @@
  */
 
 require_once __DIR__ . '/s3_aws_sdk.php';
-
-function creditlab_is_staff_logged_in(): bool
-{
-    global $admin, $account_manager, $recovery_officer, $verify_user;
-    return !empty($admin) || !empty($account_manager) || !empty($recovery_officer) || !empty($verify_user);
-}
-
-function creditlab_get_logged_in_customer_id(): ?int
-{
-    global $user;
-    if (empty($user)) {
-        return null;
-    }
-    $mobile = towreal($user);
-    $result = towquery("SELECT id FROM user WHERE mobile='$mobile' LIMIT 1");
-    if ($result && townum($result) > 0) {
-        $row = towfetch($result);
-        return (int) $row['id'];
-    }
-    return null;
-}
+require_once __DIR__ . '/auth.php';
 
 function creditlab_is_valid_upload_filename(string $filename): bool
 {

@@ -54,6 +54,8 @@ if (!$db) {
     die("Database connection failed."); // Stop execution if DB is down
 }
 mysqli_set_charset($db, 'utf8');
+require_once __DIR__ . '/lib/auth.php';
+require_once __DIR__ . '/lib/zxc_mail.php';
 
 // Test the connection
 if (!mysqli_ping($db)) {
@@ -246,6 +248,11 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
 // --- 3. MAIN LOGIC ---
 $data = $_POST;
 
+require_once __DIR__ . '/lib/easebuzz_verify.php';
+if (!creditlab_easebuzz_validate_callback($data)) {
+	creditlab_easebuzz_reject_invalid_callback();
+}
+
 // --- FIELD VALIDATION ---
 if (!isset($data['furl']) || empty($data['furl'])) {
     error_log("Missing furl field in webhook request");
@@ -353,7 +360,7 @@ if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
                     $successful_transactions[] = "CLL$loan_lid - ₹$amount";
                     
                     // Generate no-due certificate
-                    $cert_result = file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+                    $cert_result = file_get_contents(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
                     if ($cert_result) {
                         writeWebhookLog("No-due certificate generated for CLL$loan_lid", $log_file);
                     } else {
@@ -364,6 +371,7 @@ if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
                     $template_id = '1107165683325768963';
                     $mobile = $user_details['mobile'];
                     $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
+                    define('CREDITLAB_SMS_INCLUDE', true);
                     include 'send_sms.php';
                     writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
                     
@@ -586,12 +594,13 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
 
             // FIX: $user_details is now defined and can be used here
             $base_url = getAppUrl();
-            file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_details['lid']."&email=".$user_details['email']);
+            file_get_contents(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_details['lid']));
             
             $template_id='1107165683325768963';
             // FIX: $user_details is now defined and can be used here
             $mobile = $user_details['mobile'];
             $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
+            define('CREDITLAB_SMS_INCLUDE', true);
             include '../send_sms.php';
 
             // FIX: The query now includes the defined $payment_method variable

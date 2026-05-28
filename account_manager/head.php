@@ -1,36 +1,44 @@
 <?php
 include '../db.php';
 if(isset($account_manager)){
-    $userquery = towquery("SELECT * FROM account_manager WHERE email='".$account_manager."'");
-    if(townum($userquery) > 0){
+    $userquery = towquery("SELECT * FROM account_manager WHERE email='".$account_manager."' LIMIT 1");
+    if($userquery && townum($userquery) > 0){
         $userfetch = towfetch($userquery);
         extract($userfetch,EXTR_PREFIX_ALL,"user");
+        $user_name = $userfetch['name'] ?? '';
     }else{
         header('location:/user/logout.php');
+        exit;
     }
 }else{
     header('location:/');
+    exit;
 }
-?><?php $verifyquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=1");?>
-<?php $newquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=0");?>
-<?php $loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manager'");?>
-<?php $newloanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='pending' OR `status`='follow up'");
-while($a = towfetch($newloanquery)){
+
+// Cancel stale pending/follow-up loans at most once per hour (avoids row locks on every page load).
+$stale_loan_lock = sys_get_temp_dir() . '/creditlab_stale_loan_sweep.lock';
+if (!is_file($stale_loan_lock) || (time() - filemtime($stale_loan_lock)) >= 3600) {
+    @touch($stale_loan_lock);
     $date = date('Y-m-d H:i:s');
-    $applydate = $a['apply_date'];
-    $applydate = date_create($applydate);
-    
-    $stop_date = date_create($date);
-    $aa = date_diff($stop_date,$applydate); 
-    
-    $az = $aa->format("%a");
-     if($az >= 720){
-         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE `uid`=".$a['uid']." AND id=".$a['id']."");
-         towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0
- WHERE id=".$a['uid']."");
-     }
+    $stale_loans = towquery(
+        "SELECT id, uid FROM `loan_apply`"
+        . " WHERE `status` IN ('pending','follow up')"
+        . " AND `apply_date` <= DATE_SUB(NOW(), INTERVAL 720 DAY)"
+        . " LIMIT 200"
+    );
+    if ($stale_loans) {
+        while ($a = towfetch($stale_loans)) {
+            $loanId = (int) $a['id'];
+            $uid = (int) $a['uid'];
+            towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE id=$loanId");
+            towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0 WHERE id=$uid");
+        }
+    }
 }
-?>
+?><?php $verifyquery = towquery("SELECT id FROM `user` WHERE `active`=1 AND `verify`=1");?>
+<?php $newquery = towquery("SELECT id FROM `user` WHERE `active`=1 AND `verify`=0");?>
+<?php $loanquery = towquery("SELECT id FROM `loan_apply` WHERE `status`='account manager'");?>
+<?php $newloanquery = towquery("SELECT id FROM `loan_apply` WHERE `status`='pending' OR `status`='follow up'");?>
 <!DOCTYPE html>
 <html class="no-js" lang="en">
 

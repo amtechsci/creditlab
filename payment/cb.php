@@ -24,6 +24,7 @@ if (!$db) {
     die("Database connection failed.");
 }
 mysqli_set_charset($db, 'utf8');
+require_once __DIR__ . '/../lib/auth.php';
 
 // --- DATABASE FUNCTIONS ---
 function towquery($db, $query) {
@@ -79,6 +80,11 @@ function getAppUrl() {
 
 // --- MAIN PROCESSING LOGIC ---
 $data = $_POST;
+
+require_once __DIR__ . '/../lib/easebuzz_verify.php';
+if (!creditlab_easebuzz_validate_callback($data)) {
+	creditlab_easebuzz_reject_invalid_callback();
+}
 
 // Validate required fields for auto-debit processing
 if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'success') {
@@ -150,11 +156,13 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
             
             // Generate no-due certificate
             $base_url = getAppUrl();
-            file_get_contents($base_url . "/zxc/?url3=" . $base_url . "/no-due-certificate2.php?id=".$loan_lid."&email=".$user_details['email']);
+            require_once __DIR__ . '/../lib/zxc_mail.php';
+            file_get_contents(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
             
             // Send SMS notification
             $template_id = '1107165683325768963';
             $mobile = $user_details['mobile'];
+            define('CREDITLAB_SMS_INCLUDE', true);
             include '../send_sms.php';
         }
     }
