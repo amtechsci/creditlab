@@ -1,7 +1,10 @@
 <?php
+/**
+ * Staff-only bank verify / reject (no external API).
+ * Verify sets user_bank.verify = 1 after admin review.
+ */
 include 'db.php';
 require_once __DIR__ . '/lib/auth.php';
-require_once __DIR__ . '/config/bank_api.php';
 
 creditlab_require_staff();
 
@@ -10,126 +13,35 @@ if (!isset($_GET['bank_id'])) {
 	exit('Missing bank_id');
 }
 
-if (BANK_API_KEY === '' || BANK_API_SECRET === '') {
-	http_response_code(500);
-	exit('Bank API credentials not configured');
-}
-
-if (isset($_GET['type'])) {
-	$uid = towreal($_GET['user_id']);
-	$bank_id = (int) towreal($_GET['bank_id']);
-	towquery("DELETE FROM `user_bank` WHERE `id`=" . $bank_id);
-	towquery("UPDATE `loan_apply` SET `ubank_id`=2 WHERE uid='$uid' AND status='disbursal'");
-	print_r("<script>alert('Bank record removed');window.location.replace('/admin/profile.php?id=" . (int) $uid . "');</script>");
-	exit;
-}
-
 $bank_id = (int) towreal($_GET['bank_id']);
-$f = towfetch(towquery("SELECT user_bank.`ac_name`, user_bank.`ac_no`, user_bank.`ifsc_code`, user_bank.`ac_type`, user_bank.`branch_name`, user_bank.`bank_name`, user_bank.`date`, user_bank.`verify`, user.* FROM `user_bank` INNER JOIN user ON user_bank.`uid` = user.`id` WHERE user_bank.id=" . $bank_id));
+if ($bank_id <= 0) {
+	http_response_code(400);
+	exit('Invalid bank_id');
+}
 
-if (!$f) {
+$row = towfetch(towquery(
+	"SELECT user_bank.id, user.id AS uid FROM `user_bank`"
+	. " INNER JOIN user ON user_bank.uid = user.id WHERE user_bank.id=" . $bank_id
+));
+
+if (!$row) {
 	http_response_code(404);
 	exit('Bank record not found');
 }
 
-$curl = curl_init();
-curl_setopt_array($curl, [
-	CURLOPT_URL => 'https://api.sandbox.co.in/authenticate',
-	CURLOPT_RETURNTRANSFER => true,
-	CURLOPT_ENCODING => '',
-	CURLOPT_MAXREDIRS => 10,
-	CURLOPT_TIMEOUT => 30,
-	CURLOPT_FOLLOWLOCATION => true,
-	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-	CURLOPT_CUSTOMREQUEST => 'POST',
-	CURLOPT_HTTPHEADER => [
-		'x-api-key: ' . BANK_API_KEY,
-		'x-api-secret: ' . BANK_API_SECRET,
-		'x-api-version: 1.0.0',
-		'Accept: application/json',
-	],
-]);
+$uid = (int) $row['uid'];
 
-$response = curl_exec($curl);
-$curlErr = curl_error($curl);
-$httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-curl_close($curl);
-$response = is_string($response) ? json_decode($response, true) : null;
-
-$access_token = null;
-if (is_array($response)) {
-	$access_token = $response['data']['access_token'] ?? $response['access_token'] ?? null;
-}
-
-if ($access_token === null || $access_token === '') {
-	$apiMsg = is_array($response) ? ($response['message'] ?? '') : '';
-	if ($curlErr !== '') {
-		error_log('bankverify.php authenticate curl error: ' . $curlErr);
-	}
-	if ($apiMsg !== '') {
-		error_log('bankverify.php authenticate API: ' . $apiMsg . ' (HTTP ' . $httpCode . ')');
-	}
-	$alert = $apiMsg !== '' ? $apiMsg : 'Bank API authentication failed. Check BANK_API_KEY and BANK_API_SECRET in .env.';
-	print_r("<script>alert('" . addslashes($alert) . "');window.location.replace('/admin/profile.php?id=" . (int) $f['id'] . "');</script>");
-	exit;
-}
-$url = 'https://api.sandbox.co.in/bank/' . $f['ifsc_code'] . '/accounts/' . $f['ac_no'] . '/verify?name=' . urlencode($f['name']) . '&mobile=' . urlencode($f['mobile']);
-
-$curl = curl_init();
-curl_setopt_array($curl, [
-	CURLOPT_URL => $url,
-	CURLOPT_RETURNTRANSFER => true,
-	CURLOPT_ENCODING => '',
-	CURLOPT_MAXREDIRS => 10,
-	CURLOPT_TIMEOUT => 30,
-	CURLOPT_FOLLOWLOCATION => true,
-	CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-	CURLOPT_CUSTOMREQUEST => 'GET',
-	CURLOPT_HTTPHEADER => [
-		'authorization: ' . $access_token,
-		'x-api-key: ' . BANK_API_KEY,
-		'x-api-version: 1.0.0',
-		'Accept: application/json',
-	],
-]);
-
-$response = curl_exec($curl);
-curl_close($curl);
-
-function bankverify_is_json($string)
-{
-	return is_string($string) && is_array(json_decode($string, true));
-}
-
-function bankverify_profile_redirect(int $userId, string $message): void
+function bankverify_redirect(int $userId, string $message): void
 {
 	print_r("<script>alert('" . addslashes($message) . "');window.location.replace('/admin/profile.php?id=" . $userId . "');</script>");
 	exit;
 }
 
-if (bankverify_is_json($response)) {
-	$response = json_decode($response, true);
-	$apiCode = isset($response['code']) ? (int) $response['code'] : 0;
-	$apiMsg = '';
-	if (!empty($response['message']) && is_string($response['message'])) {
-		$apiMsg = $response['message'];
-	} elseif (!empty($response['data']['message']) && is_string($response['data']['message'])) {
-		$apiMsg = $response['data']['message'];
-	}
-
-	if ($apiCode !== 200) {
-		error_log('bankverify.php verify failed: ' . $apiMsg . ' (HTTP API code ' . $apiCode . ')');
-		bankverify_profile_redirect((int) $f['id'], $apiMsg !== '' ? $apiMsg : 'Bank verification failed.');
-	}
-
-	if (isset($response['data']['name_at_bank']) && $response['data']['name_at_bank'] !== '') {
-		$name = towreal($response['data']['name_at_bank']);
-		towquery("UPDATE `user_bank` SET `ac_name`='$name',`verify`=1 WHERE `id`=" . $bank_id);
-	} else {
-		towquery("UPDATE `user_bank` SET `verify`=1 WHERE `id`=" . $bank_id);
-	}
-	$msg = $apiMsg !== '' ? $apiMsg : 'Verified';
-	bankverify_profile_redirect((int) $f['id'], $msg);
+if (isset($_GET['type'])) {
+	towquery("DELETE FROM `user_bank` WHERE `id`=" . $bank_id);
+	towquery("UPDATE `loan_apply` SET `ubank_id`=2 WHERE uid='$uid' AND status='disbursal'");
+	bankverify_redirect($uid, 'Bank record removed');
 }
 
-bankverify_profile_redirect((int) $f['id'], 'Bank verification failed. No response from API.');
+towquery("UPDATE `user_bank` SET `verify`=1 WHERE `id`=" . $bank_id);
+bankverify_redirect($uid, 'Bank marked as verified');
