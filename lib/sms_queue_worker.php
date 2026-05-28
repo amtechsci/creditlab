@@ -26,3 +26,13 @@ if ($mobile === '' || $message === '' || $template_id === '') {
 
 define('CREDITLAB_SMS_INCLUDE', true);
 require_once dirname(__DIR__) . '/send_sms.php';
+
+$logDir = dirname(__DIR__) . '/logs';
+if (!is_dir($logDir)) {
+	@mkdir($logDir, 0755, true);
+}
+@file_put_contents(
+	$logDir . '/sms_worker.log',
+	'[' . date('Y-m-d H:i:s') . "] queued SMS to {$mobile} template={$template_id}\n",
+	FILE_APPEND | LOCK_EX
+);
