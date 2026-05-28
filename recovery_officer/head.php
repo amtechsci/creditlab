@@ -1,35 +1,23 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/stale_loan_sweep.php';
+
 if(isset($recovery_officer)){
-    $userquery = towquery("SELECT * FROM recovery_officer WHERE email='".$recovery_officer."'");
-    if(townum($userquery) > 0){
+    $userquery = towquery("SELECT * FROM recovery_officer WHERE email='".$recovery_officer."' LIMIT 1");
+    if($userquery && townum($userquery) > 0){
         $userfetch = towfetch($userquery);
         extract($userfetch,EXTR_PREFIX_ALL,"user");
     }else{
         header('location:/user/logout.php');
+        exit;
     }
 }else{
     header('location:/');
+    exit;
 }
-?><?php $verifyquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=1");?>
-<?php $newquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=0");?>
-<?php $loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manager'");?>
-<?php $newloanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='pending' OR `status`='follow up'");
-while($a = towfetch($newloanquery)){
-    $date = date('Y-m-d H:i:s');
-    $applydate = $a['apply_date'];
-    $applydate = date_create($applydate);
-    
-    $stop_date = date_create($date);
-    $aa = date_diff($stop_date,$applydate); 
-    
-    $az = $aa->format("%a");
-     if($az >= 720){
-         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='$date' WHERE `uid`=".$a['uid']." AND id=".$a['id']."");
-         towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0
- WHERE id=".$a['uid']."");
-     }
-}
+
+creditlab_sweep_stale_loans();
+extract(creditlab_staff_head_count_queries());
 ?>
 <!DOCTYPE html>
 <html class="no-js" lang="en">

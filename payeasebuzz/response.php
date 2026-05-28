@@ -139,7 +139,8 @@ if ($_POST) {
                 
                 // Send No Due certificate email
                 require_once __DIR__ . '/../lib/zxc_mail.php';
-                file_get_contents(creditlab_zxc_mail_url('https://creditlab.in', $user_details['email'], null, null, 'https://creditlab.in/no-due-certificate2.php?id=' . $loan_details['lid']));
+                require_once __DIR__ . '/../lib/http_fetch.php';
+                creditlab_zxc_mail_trigger(creditlab_zxc_mail_url('https://creditlab.in', $user_details['email'], null, null, 'https://creditlab.in/no-due-certificate2.php?id=' . $loan_details['lid']));
 
                 $template_id='1107165683325768963';
                 $mobile = $user_details['mobile'];

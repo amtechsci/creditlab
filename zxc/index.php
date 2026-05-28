@@ -6,6 +6,9 @@ include 'pdf.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 require_once __DIR__ . '/../config/mail.php';
 
+ignore_user_abort(true);
+set_time_limit(120);
+
 if (!creditlab_is_staff_logged_in() && !creditlab_validate_internal_token()) {
 	http_response_code(403);
 	exit('Forbidden');

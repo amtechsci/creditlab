@@ -12,6 +12,7 @@
 
     include_once 'head.php';
     require_once __DIR__ . '/../lib/zxc_mail.php';
+    require_once __DIR__ . '/../lib/http_fetch.php';
     require_once __DIR__ . '/../lib/auth.php';
     require_once __DIR__ . '/../config/sms.php';
 
@@ -130,7 +131,7 @@
                             towquery("UPDATE `user` SET `sloan`=`sloan`+1 WHERE id=".$id.""); 
                             towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                             towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                            file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
+                            creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
                             towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                             $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
                         }
@@ -142,7 +143,7 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1 WHERE id=".$id.""); 
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
+                        creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
                         $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
@@ -172,7 +173,7 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$id."");
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
+                        creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
                         $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
@@ -202,7 +203,7 @@
                         towquery("UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point WHERE id=".$id."");
                         towquery("UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='".date('Y-m-d')."' WHERE lid=$cllid");
                         towquery("UPDATE `user` SET `status`='cleared' WHERE id=".$id."");
-                        file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
+                        creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, null, null, $base_url . '/no-due-certificate2.php?id=' . $cllid));
                         towquery("UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$cllid."");
                         towquery("DELETE FROM `pay_ref` WHERE `loan_id`='$cllid'");
                         $message="Dear {$userpro_name}, we acknowledge the repayment of your loan CLL$cllid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
@@ -300,13 +301,11 @@
                 
                 // Send loan agreement email using your old system
                 if($userpro_approvenew == 0){
-                    if(file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, $base_url . '/admin/loan_agreement2.php?id=' . $cllid, $base_url . '/key2.php?id=' . $cllid))){
-                        towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
-                    }
+                    creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, $base_url . '/admin/loan_agreement2.php?id=' . $cllid, $base_url . '/key2.php?id=' . $cllid));
+                    towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
                 }else{
-                    if(file_get_contents(creditlab_zxc_mail_url($base_url, $userpro_email, $base_url . '/admin/loan_agreement.php?id=' . $cllid, $base_url . '/key.php?id=' . $cllid))){
-                        towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
-                    }
+                    creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, $base_url . '/admin/loan_agreement.php?id=' . $cllid, $base_url . '/key.php?id=' . $cllid));
+                    towquery("UPDATE `loan_apply` SET `mail_status`=1 WHERE uid=".$id." AND id=".$cllid."");
                 }
                 
                 // Send SMS notification to account manager

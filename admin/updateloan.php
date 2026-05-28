@@ -22,7 +22,8 @@ towquery("UPDATE `loan` SET `action`='$status',`status_log`='$status',`cleard_da
 towquery("UPDATE `user` SET `status`='$status' WHERE id=".$a['uid']."");
 $base_url = getAppUrl();
 require_once __DIR__ . '/../lib/zxc_mail.php';
-file_get_contents(creditlab_zxc_mail_url($base_url, $email, null, null, $base_url . '/no-due-certificate2.php?id=' . $a['lid']));
+require_once __DIR__ . '/../lib/http_fetch.php';
+creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $email, null, null, $base_url . '/no-due-certificate2.php?id=' . $a['lid']));
 // towquery("DELETE FROM `loan_apply` WHERE id=".$a['lid']."");
 header('location: profile.php?id='.$a['uid'].'');
 ?>

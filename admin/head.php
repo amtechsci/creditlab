@@ -1,6 +1,8 @@
 <?php
 // $admin = "AMPROAPK@GMAIL.COM";
 include '../db.php';
+require_once __DIR__ . '/../lib/stale_loan_sweep.php';
+
 if(isset($admin)){
     $userquery = towquery("SELECT * FROM user WHERE email='".$admin."' LIMIT 1");
     $userfetch = towfetch($userquery);
@@ -9,25 +11,9 @@ if(isset($admin)){
     header('location:/account/login.php');
     exit;
 }
-?><?php $verifyquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=1");?>
-<?php $newquery = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=0");?>
-<?php $loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manager'");?>
-<?php $newloanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='pending' OR `status`='follow up'");
-while($a = towfetch($newloanquery)){
-    $date = date('Y-m-d H:i:s');
-    $applydate = $a['apply_date'];
-    $applydate = date_create($applydate);
-    
-    $stop_date = date_create($date);
-    $aa = date_diff($stop_date,$applydate); 
-    
-    $az = $aa->format("%a");
-     if($az >= 720){
-         towquery("UPDATE `loan_apply` SET `status`='cancel', `status_date`='".$date."' WHERE `uid`=".$a['uid']." AND id=".$a['id']." ");
-         towquery("UPDATE `user` SET `loan`=2,`status`='cancel',`sloan`=0 WHERE id=".$a['uid']." ");
-     }
-}
-#print_r($assign_account." ".$assign_recovery);
+
+creditlab_sweep_stale_loans();
+extract(creditlab_staff_head_count_queries());
 ?>
 <!DOCTYPE html>
 <html class="no-js" lang="en">

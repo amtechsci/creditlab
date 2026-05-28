@@ -104,6 +104,9 @@ $counts_data = towfetch($counts);
                         <a href="report_downloads.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/report_downloads.php" || strpos($_SERVER['REQUEST_URI'], "/admin/report_downloads.php") !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Report Downloads</span></a>
                     </li>
                     <li>
+                        <a href="server_health.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/server_health.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-heartbeat"></i> <span class="mini-click-non">Server Health</span></a>
+                    </li>
+                    <li>
                         <a href="log_viewer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/log_viewer.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Log Viewer</span></a>
                     </li>
                     <li>

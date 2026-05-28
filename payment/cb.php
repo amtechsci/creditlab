@@ -157,7 +157,8 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
             // Generate no-due certificate
             $base_url = getAppUrl();
             require_once __DIR__ . '/../lib/zxc_mail.php';
-            file_get_contents(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
+            require_once __DIR__ . '/../lib/http_fetch.php';
+            creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
             
             // Send SMS notification
             $template_id = '1107165683325768963';

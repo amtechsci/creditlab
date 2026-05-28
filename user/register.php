@@ -50,9 +50,12 @@ if (isset($_POST['mobile'])) {
 			$template_id = '1407174844163241940';
 		}
 		towquery("UPDATE user SET otp='$otp' WHERE mobile ='$mobile'");
+		header("location:../account/confirm.php?id=$mobile");
+		if (function_exists('fastcgi_finish_request')) {
+			fastcgi_finish_request();
+		}
 		define('CREDITLAB_SMS_INCLUDE', true);
 		include '../send_sms.php';
-		header("location:../account/confirm.php?id=$mobile");
 		exit;
 	}
 
@@ -79,9 +82,12 @@ if (isset($_POST['mobile'])) {
 
 	$message = "$otp is OTP for Creditlab login verification & valid till 2min. Don't share this OTP with anyone.";
 	$template_id = '1407174844163241940';
+	header("location:../account/confirm.php?id=$mobile");
+	if (function_exists('fastcgi_finish_request')) {
+		fastcgi_finish_request();
+	}
 	define('CREDITLAB_SMS_INCLUDE', true);
 	include '../send_sms.php';
-	header("location:../account/confirm.php?id=$mobile");
 	exit;
 }
 
