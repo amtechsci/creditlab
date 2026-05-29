@@ -3,7 +3,7 @@
 ## Database setup (run once on XAMPP/MySQL)
 
 ```bash
-php scripts/install_pg_agency_schema.php
+php migrations/20260529_pg_links_and_agency_admin.php
 ```
 
 Or import manually: `sql/20260529_pg_links_and_agency_admin.sql`
