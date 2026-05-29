@@ -1,6 +1,13 @@
 <?php
 ob_start(); // Start output buffering to prevent header issues
-include_once 'head.php';
+if (!empty($GLOBALS['creditlab_profile_include_head'])) {
+    include $GLOBALS['creditlab_profile_include_head'];
+} else {
+    include_once 'head.php';
+}
+require_once __DIR__ . '/../lib/profile_tabs.php';
+require_once __DIR__ . '/../lib/staff_context.php';
+$creditlab_profile_role = $GLOBALS['creditlab_staff_role'] ?? 'account_manager';
 require_once '../lib/s3_upload_helper.php';
 
 // Get base URL from database
@@ -137,8 +144,13 @@ if(isset($_POST['mobile'])){
             $loan_limit = $userpro_loan_limit;
         }
         $fb_url = '';
-        $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
+        if (creditlab_can_view_pan_aadhar()) {
+            $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`pan`='$pan',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
 ,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`aadhar`='$aadhar',`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code' WHERE id='$userpro_id'";
+        } else {
+            $pqu = "UPDATE `user` SET `name`='$name', `pan_name`='$pan_name',`mobile`=$mobile,`altmobile`=$altmobile,`state`='$state',`email`='$email',`altemail`='$altemail',`dob`='$dob',`salary`='$salary',`salarystatus`='$salarystatus',`present_address`='$present_address',`permanent_address`='$permanent_address',`company`='$company',`designation`='$designation'
+,`department`='$department',`verify`=1,`status`='$userpro_status',`get_salary`='$get_salary',`marital_status`='$marital_status',`loan_limit`=$loan_limit,`company_url`='$company_url',`fb_url`='$fb_url',`insta_id`='$insta_id',`father_name`='$father_name',`member`='$member',`approvenew`='$approvenew',`auto_limit`='$auto_limit',`salary_date`='$salary_date',`pincode`='$pincode',`assign_account_manager`='$assign_account_manager',`assign_recovery_officer`='$assign_recovery_officer', `old_loan_limit`='$userpro_loan_limit',`state_code`='$state_code' WHERE id='$userpro_id'";
+        }
 $valid = towquery("SELECT * FROM loan_apply WHERE uid=".$userpro_id." AND (status='pending' OR status='follow up' OR status='disbursal' ) ORDER BY id DESC");
 
 if($approvenew == 1){
@@ -522,9 +534,9 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
 <body onload="adddate('<?=date('Y-m-d')?>')">
     <!-- Start Left menu area -->
     <?php
-    include_once 'Left_menu.php';
-    include_once 'welcome.php';
-    include_once 'm_menu.php';
+    include_once ($GLOBALS['creditlab_left_menu_file'] ?? __DIR__ . '/Left_menu.php');
+    include_once ($GLOBALS['creditlab_welcome_file'] ?? __DIR__ . '/welcome.php');
+    include_once ($GLOBALS['creditlab_m_menu_file'] ?? __DIR__ . '/m_menu.php');
     ?>
             <!-- Mobile Menu end -->
           <div class="breadcome-area">
@@ -576,31 +588,8 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                 <div class="row">
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active" data-toggle="tab" style="margin-bottom:30px;"><a href="#Personal">Personal</a></li>
-                                <!--<li><a h data-toggle="tab"ref="#additional"> additional</a></li>-->
-                                <li><a href="#INFORMATION" data-toggle="tab">Documents</a></li>
-                                <li><a href="#Bank" data-toggle="tab">Bank Information</a></li>
-                                <li><a href="#Reference" data-toggle="tab">Reference</a></li>
-                                <li><a href="#login_data" data-toggle="tab">Login Data</a></li>
-                                <li><a href="#profile_detail" data-toggle="tab">Profile Detail</a></li>
-                                <li><a href="#user_contact" data-toggle="tab">Number Contact</a></li>
-                                <li><a href="#contact" data-toggle="tab">Contact</a></li>
-                                <li><a href="#loan" data-toggle="tab">Apply Loan</a></li>
-                                <li><a href="#oldloan" data-toggle="tab">All Loan</a></li>
-                                <!--<li><a href="#transaction_details" data-toggle="tab">Transaction Details</a></li>-->
-                                <li><a href="#Validation" data-toggle="tab">Validation</a></li>
-                                <li><a href="#follow_up" data-toggle="tab">Follow Up</a></li>
-                                <li><a href="#note" data-toggle="tab">Note</a></li>
-                                <li><a href="#sms" data-toggle="tab">SMS</a></li>
-                                <li><a href="#cibil_analysis" data-toggle="tab">CIBIL ANALYSIS</a></li>
-                                <li><a href="#pan_analysis" data-toggle="tab">PAN ANALYSIS</a></li>
-                                <li><a href="#adhar_analysis" data-toggle="tab">Adhar ANALYSIS</a></li>
-                                <li><a href="#bank_analysis" data-toggle="tab">Bank Statement ANALYSIS</a></li>
-                                <li><a href="#mail" data-toggle="tab">Mail</a></li>
-                                <li><a href="#manager" data-toggle="tab">Account manager</a></li>
-                                <li><a href="#payment" data-toggle="tab">payment</a></li>
-                            </ul>
+                            <?php include __DIR__ . '/../includes/profile_tab_nav.php'; ?>
+                            <?php include __DIR__ . '/../includes/profile_agency_pane_guard.php'; ?>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade active in" id="Personal">
                                     <div class="row">
@@ -811,10 +800,12 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                 <input name="dob" style="width:100% !important; min-width:95%" type="date" class="form-control" placeholder="Date of Birth" value="<?=$userpro_dob?>">
                                                             </div>
                                                             </div>
+                                                            <?php if (creditlab_can_view_pan_aadhar()) { ?>
                                                             <div class="form-group">
                                                                 <lable>PAN <span style="color:red;" id="panmess"></span></lable>
                                                                 <input name="pan" type="text" class="form-control" placeholder="PAN" pattern="^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$" id="panNumber" value="<?=$userpro_pan?>">
                                                             </div>
+                                                            <?php } ?>
                                                             <div class="form-group">
                                                                 <lable>Monthly Net Salary</lable>
                                                                 <input name="salary" type="number" class="form-control" placeholder="Monthly Net Salary" min="10000" value="<?=$userpro_salary?>">
@@ -897,10 +888,12 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                 <lable>Credit History</lable>
                                                                 <input name="experience" type="text" class="form-control" value="<?=$userpro_experience?>" placeholder="Credit History">
                                                             </div>
+                                                            <?php if (creditlab_can_view_pan_aadhar()) { ?>
                                                             <div class="form-group">
                                                                 <lable>Aadhar No</lable> <span style="color:red;" id="aadharmess"></span>
                                                                 <input name="aadhar" type="text" class="form-control" value="<?=$userpro_aadhar?>" placeholder="Aadhar No">
                                                             </div>
+                                                            <?php } ?>
                                                             <div class="form-group">
                                                                 <lable>Insta id</lable>
                                                                 <input name="insta_id" type="text" class="form-control" value="<?=$userpro_insta_id?>" placeholder="Insta id">
@@ -1733,7 +1726,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
             }
 ?>
                                     <form action="" method="post"><tr>
-                                        <td>CLL<?=$usersd_lid?></td>
+                                        <td>CLL<?=$usersd_lid?><?php if (!empty($usersd_paid_via_agency_name)) { echo ' <small class="text-muted">(' . htmlspecialchars($usersd_paid_via_agency_name) . ')</small>'; } ?></td>
                                         <td><?=$usersd_processed_date?></td>
                                         <td>
                                         <?php 
@@ -2093,6 +2086,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                 </table>                           
                                     </div>
                                 </div>
+                                <?php include __DIR__ . '/../includes/profile_pg_link_tab.php'; ?>
                                 <div class="product-tab-list tab-pane fade" id="payment">
                                     <div>
                                 <table class="table table-bordered">
@@ -2131,7 +2125,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
             </div>
         </div>
         <?php
-        include_once 'foot.php';
+        include_once ($GLOBALS['creditlab_foot_file'] ?? __DIR__ . '/foot.php');
         ?>
         <script>
         $(document).ready(function () {

@@ -74,6 +74,9 @@ $counts_data = towfetch($counts);
                         <a href="emi_calculator.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/emi_calculator.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">EMI Calculator</span></a>
                     </li>
                     <li>
+                        <a href="agency_admins.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/agency_admins.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-building"></span> <span class="mini-click-non">Agency admins</span></a>
+                    </li>
+                    <li>
                         <a href="dynamic_search.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/dynamic_search.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Dynamic Search</span></a>
                     </li>
                     <li>

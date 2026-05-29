@@ -223,6 +223,12 @@ if (isset($_SESSION['verify_user'])) {
     $verify_user = towreal($_COOKIE['verify_user']);
 }
 
+if (isset($_SESSION['agency_admin'])) {
+    $agency_admin = towreal($_SESSION['agency_admin']);
+} elseif (isset($_COOKIE['agency_admin'])) {
+    $agency_admin = towreal($_COOKIE['agency_admin']);
+}
+
 date_default_timezone_set('Asia/Kolkata');
 
 function getDateTimeDiff($date){

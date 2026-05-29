@@ -100,6 +100,19 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         exit;
         }
     }
+    $sqll="SELECT agency_admin.*, agency.name AS agency_name FROM agency_admin INNER JOIN agency ON agency.id = agency_admin.agency_id WHERE agency_admin.email ='$email' AND agency_admin.active=1 AND agency.active=1 LIMIT 1";
+    $result=towquery($sqll);
+    if($result && townum($result)==1){
+        $aa = towfetch($result);
+        if (creditlab_verify_password($password, $aa['password'])) {
+        $id = $aa['id'];
+        towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (300$id,'$userbrowser','$userip','$login_time')");
+        $_SESSION['agency_admin'] = $email;
+        creditlab_set_auth_cookie('agency_admin', $email);
+        header("location:/agency_admin/");
+        exit;
+        }
+    }
 }
 include_once 'head.php';
 include_once '../head2.php';

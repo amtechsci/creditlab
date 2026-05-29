@@ -6,8 +6,8 @@ require_once __DIR__ . '/env.php';
 
 function creditlab_is_staff_logged_in(): bool
 {
-    global $admin, $account_manager, $recovery_officer, $verify_user;
-    return !empty($admin) || !empty($account_manager) || !empty($recovery_officer) || !empty($verify_user);
+    global $admin, $account_manager, $recovery_officer, $verify_user, $agency_admin;
+    return !empty($admin) || !empty($account_manager) || !empty($recovery_officer) || !empty($verify_user) || !empty($agency_admin);
 }
 
 function creditlab_require_staff(string $redirect = '/account/login.php'): void
@@ -86,7 +86,9 @@ function creditlab_is_allowed_document_url(string $url): bool
         '/user/',
         '/account_manager/',
         '/recovery_officer/',
+        '/agency_admin/',
         '/verify_user/',
+        '/api/',
         '/zSMPLLOANAGREEMENTFINAL.php',
         '/key2.php',
         '/key2old.php',

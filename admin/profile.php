@@ -1137,6 +1137,7 @@
                                     <li><a href="#bank_analysis" data-toggle="tab">Bank Statement ANALYSIS</a></li>
                                     <li><a href="#mail" data-toggle="tab">Mail</a></li>
                                     <li><a href="#manager" data-toggle="tab">Account manager</a></li>
+                                    <li><a href="#pg_link" data-toggle="tab">PG link</a></li>
                                     <li><a href="#payment" data-toggle="tab">payment</a></li>
                                 </ul>
                                 <div id="myTabContent" class="tab-content custom-product-edit">
@@ -2390,7 +2391,7 @@
                 }
     ?>
                                         <form action="" method="post"><tr>
-                                            <td>CLL<?=$usersd_lid?></td>
+                                            <td>CLL<?=$usersd_lid?><?php if (!empty($usersd_paid_via_agency_name)) { echo ' <small class="text-muted">(' . htmlspecialchars($usersd_paid_via_agency_name) . ')</small>'; } ?></td>
                                             <td>
                                                 <?=$usersd_processed_date?>
                                             </td>
@@ -2807,6 +2808,7 @@
                 </table>                           
                     </div>
                                     </div>
+                                    <?php include __DIR__ . '/../includes/profile_pg_link_tab.php'; ?>
                                     <div class="product-tab-list tab-pane fade" id="payment">
                                         <div>
                                     <table class="table table-bordered">

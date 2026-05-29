@@ -543,78 +543,21 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     }
     
     if (isset($status) && $status == "success") {
-        $txnid_escaped = mysqli_real_escape_string($db, $txnid);
-        $pg_transaction = towquery($db, "SELECT * FROM pg_transaction WHERE txnid='$txnid_escaped' AND `status`!='success'");
-        if (townum($pg_transaction) > 0) {
-            writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
-            $pg_data = towfetch($pg_transaction);
-            $cllid = $pg_data['loan_id'];
-            
-            $cllid_escaped = mysqli_real_escape_string($db, $cllid);
-            $loan_data = towquery($db, "SELECT * FROM loan WHERE id='$cllid_escaped'");
-            $loan_details = towfetch($loan_data);
-            $uid = $loan_details['uid'];
-
-            // Check if loan is already cleared to prevent duplicate processing
-            if ($loan_details['status_log'] == 'cleared') {
-                writeWebhookLog("SKIPPED: Loan CLL{$loan_details['lid']} already cleared for txnid: $txnid", $log_file);
-                $amount_escaped = mysqli_real_escape_string($db, $amount);
-                $payment_method_escaped = mysqli_real_escape_string($db, $payment_method);
-                $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
-                towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount_escaped', `payment_method`='$payment_method_escaped', `bank_reference_number`='$bank_ref_num_escaped' WHERE txnid='$txnid_escaped'");
-                // Skip to next iteration - this is not in a loop, so we'll just exit this block
-                goto end_payment_processing;
-            }
-
-            // FIX: Fetch user details so $user_details is defined
-            $uid_escaped = mysqli_real_escape_string($db, $uid);
-            $user_data_result = towquery($db, "SELECT * FROM user WHERE id='$uid_escaped'");
-            $user_details = towfetch($user_data_result);
-
-            // Fetch loan days from loan_apply table
-            $loan_apply_data_result = towquery($db, "SELECT days FROM loan_apply WHERE id='" . mysqli_real_escape_string($db, $loan_details['lid']) . "'");
-            $loan_apply_data = towfetch($loan_apply_data_result);
-            $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
-
-            $dpd = $loan_details['exhausted_period'] - $loan_days;
-            $point = ($dpd > 0) ? (($dpd > 30) ? -50 : (($dpd > 10) ? -8 : 2)) : 8;
-
-            $point_escaped = mysqli_real_escape_string($db, $point);
-            $current_date_escaped = mysqli_real_escape_string($db, date('Y-m-d'));
-            $loan_id_escaped = mysqli_real_escape_string($db, $loan_details['id']);
-            $loan_lid_escaped = mysqli_real_escape_string($db, $loan_details['lid']);
-            $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
-            $current_datetime_escaped = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
-            $amount_escaped = mysqli_real_escape_string($db, $amount);
-
-            towquery($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point_escaped WHERE id='$uid_escaped'");
-            towquery($db, "UPDATE `loan` SET `action`='cleared', `status_log`='cleared', `cleard_date`='$current_date_escaped' WHERE id='$loan_id_escaped'");
-            towquery($db, "UPDATE `user` SET `status`='cleared' WHERE id='$uid_escaped'");
-            towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id='$loan_lid_escaped'");
-            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', 'full')");
-
-            // FIX: $user_details is now defined and can be used here
-            $base_url = getAppUrl();
-            creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_details['lid']));
-            
-            $template_id='1107165683325768963';
-            // FIX: $user_details is now defined and can be used here
-            $mobile = $user_details['mobile'];
-            $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL{$loan_details['lid']} & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
-            define('CREDITLAB_SMS_INCLUDE', true);
-            include __DIR__ . '/send_sms.php';
-
-            // FIX: The query now includes the defined $payment_method variable
-            $payment_method_escaped = mysqli_real_escape_string($db, $payment_method);
-            towquery($db, "UPDATE `pg_transaction` SET `status`='success', `amount`='$amount_escaped', `payment_method`='$payment_method_escaped', `bank_reference_number`='$bank_ref_num_escaped' WHERE txnid='$txnid_escaped'");
+        require_once __DIR__ . '/lib/pg_link_settlement.php';
+        writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
+        $settle = creditlab_process_pg_payment_success($db, $txnid, (float) $amount, (string) $bank_ref_num, (string) $payment_method);
+        if ($settle['ok']) {
+            writeWebhookLog("SUCCESS: txnid $txnid flow=" . ($settle['flow'] ?? ''), $log_file);
+            $successful_transactions[] = "$txnid - ₹$amount";
+        } else {
+            writeWebhookLog("ERROR: txnid $txnid - " . ($settle['message'] ?? ''), $log_file);
+            $failed_transactions[] = "$txnid - " . ($settle['message'] ?? '');
         }
     } else {
-        $error_msg = isset($result['error_Message']) ? $result['error_Message'] : "Unknown error.";
+        require_once __DIR__ . '/lib/pg_link_settlement.php';
         $txnid_escaped = mysqli_real_escape_string($db, $txnid);
-        towquery($db, "UPDATE `pg_transaction` SET `status`='failure' WHERE txnid='$txnid_escaped'");
+        creditlab_pg_mark_tx_failure($db, $txnid);
     }
-    
-    end_payment_processing:
 }
 
 // --- FINAL SUMMARY LOGGING ---
