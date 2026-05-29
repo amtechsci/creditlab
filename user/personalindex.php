@@ -1,9 +1,12 @@
 <?php
 if(isset($_POST['salarystatus'])){
     $extract = towrealarray2($_POST);
-    extract($extract);
-    if(($extract['salary'] >= 18000) and ($extract['get_salary'] == "bank transfer") and (($extract['salarystatus'] == "Salaried") or ($extract['salarystatus'] == "Self-Employed"))){
-        $loan_limit = $extract['salary'] / 100 *40;
+    $salary = isset($extract['salary']) ? (float) $extract['salary'] : 0;
+    $get_salary = $extract['get_salary'] ?? '';
+    $salarystatus = $extract['salarystatus'] ?? '';
+    $designation = $extract['designation'] ?? '';
+    if(($salary >= 18000) and ($get_salary == "bank transfer") and (($salarystatus == "Salaried") or ($salarystatus == "Self-Employed"))){
+        $loan_limit = $salary / 100 *40;
         $loan_limit = round($loan_limit,-3);
         $base_url = getAppUrl();
         $message="Dear Creditlab.in user, Your loan is a few steps away from disbursal. Just complete the KYC & withdraw your funds : " . $base_url;
@@ -12,9 +15,13 @@ if(isset($_POST['salarystatus'])){
         define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';
         $work_from = isset($work_from) ? $work_from : '';
-    (towquery("UPDATE `user` SET `salary`='".$extract['salary']."',`salarystatus`='".$extract['salarystatus']."',`verify`=1,`status`='Approved',`get_salary`='".$extract['get_salary']."',`designation`='".$extract['designation']."',`work_from`='$work_from',`loan_limit`='$loan_limit' WHERE mobile='$user'") and
+        $designationEsc = towreal($designation);
+        $salaryEsc = towreal((string) $salary);
+        $salarystatusEsc = towreal($salarystatus);
+        $getSalaryEsc = towreal($get_salary);
+    (towquery("UPDATE `user` SET `salary`='$salaryEsc',`salarystatus`='$salarystatusEsc',`verify`=1,`status`='Approved',`get_salary`='$getSalaryEsc',`designation`='$designationEsc',`work_from`='$work_from',`loan_limit`='$loan_limit' WHERE mobile='$user'") and
     print_r("<script>alert('congratulations! your membership has been approved by creditlab.in'); window.location.replace('index.php');</script>")) or print_r("<script>alert(''); window.location.replace('index.php');</script>");
-    }elseif(($extract['salary'] < 18000) and ($extract['salarystatus'] == "Salaried")){
+    }elseif(($salary < 18000) and ($salarystatus == "Salaried")){
         towquery("UPDATE `user` SET `verify`=3,`status`='Hold' WHERE mobile='$user'") and
     print_r("<script>alert('Your membership is on hold. You can reapply after 45 days'); window.location.replace('index.php');</script>");
     }else{

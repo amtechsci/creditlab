@@ -546,9 +546,14 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
         require_once __DIR__ . '/lib/pg_link_settlement.php';
         writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
         $settle = creditlab_process_pg_payment_success($db, $txnid, (float) $amount, (string) $bank_ref_num, (string) $payment_method);
+        $flow = $settle['flow'] ?? '';
         if ($settle['ok']) {
-            writeWebhookLog("SUCCESS: txnid $txnid flow=" . ($settle['flow'] ?? ''), $log_file);
-            $successful_transactions[] = "$txnid - ₹$amount";
+            if ($flow === 'skipped') {
+                writeWebhookLog("SKIPPED (already settled via browser): txnid $txnid", $log_file);
+            } else {
+                writeWebhookLog("SUCCESS: txnid $txnid flow=$flow", $log_file);
+                $successful_transactions[] = "$txnid - ₹$amount";
+            }
         } else {
             writeWebhookLog("ERROR: txnid $txnid - " . ($settle['message'] ?? ''), $log_file);
             $failed_transactions[] = "$txnid - " . ($settle['message'] ?? '');

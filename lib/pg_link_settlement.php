@@ -38,11 +38,14 @@ function creditlab_settle_pg_payment(
     $txnidEsc = mysqli_real_escape_string($db, $txnid);
     $pgLink = creditlab_pg_link_by_txnid($txnid);
 
-    $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' AND status != 'success' LIMIT 1");
+    $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' LIMIT 1");
     if (!$pgTxQ || townum($pgTxQ) < 1) {
-        return ['ok' => false, 'message' => 'Transaction not found or already settled'];
+        return ['ok' => false, 'message' => 'Transaction not found'];
     }
     $pgTx = towfetch($pgTxQ);
+    if (($pgTx['status'] ?? '') === 'success') {
+        return ['ok' => true, 'message' => 'Already settled', 'flow' => 'skipped'];
+    }
 
     $loanInternalId = (int) $pgTx['loan_id'];
     $loan = creditlab_fetch_loan_by_internal_id($loanInternalId);
@@ -192,11 +195,14 @@ function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, stri
 {
     global $db;
     $txnidEsc = mysqli_real_escape_string($db, $txnid);
-    $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' AND status != 'success' LIMIT 1");
+    $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' LIMIT 1");
     if (!$pgTxQ || townum($pgTxQ) < 1) {
         return ['ok' => false, 'message' => 'Not found'];
     }
     $pgTx = towfetch($pgTxQ);
+    if (($pgTx['status'] ?? '') === 'success') {
+        return ['ok' => true, 'message' => 'Already settled', 'flow' => 'skipped'];
+    }
     $loan = creditlab_fetch_loan_by_internal_id((int) $pgTx['loan_id']);
     if (!$loan || $loan['status_log'] === 'cleared') {
         towquery("UPDATE pg_transaction SET status='success' WHERE txnid='$txnidEsc'");

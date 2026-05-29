@@ -43,7 +43,11 @@ function creditlab_zxc_mail_trigger(string $url, int $timeoutSeconds = 3): void
 	]);
 	$response = curl_exec($curl);
 	if ($response === false) {
-		error_log('creditlab_zxc_mail_trigger: ' . curl_error($curl) . ' url=' . $url);
+		$errno = curl_errno($curl);
+		// Short timeout is intentional: /zxc/ continues with ignore_user_abort after we disconnect.
+		if ($errno !== CURLE_OPERATION_TIMEDOUT) {
+			error_log('creditlab_zxc_mail_trigger: ' . curl_error($curl) . ' url=' . $url);
+		}
 	}
 	curl_close($curl);
 }
