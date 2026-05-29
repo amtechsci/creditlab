@@ -28,6 +28,11 @@ if(isset($_GET['id'])){
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
+    $is_agency_profile = ($creditlab_profile_role === 'agency_admin');
+    $agency_profile_active_tab = ($is_agency_profile && $tab === 'Reference') ? 'Reference' : 'pg_link';
+    if ($is_agency_profile && !in_array($tab, ['pg_link', 'Reference'], true)) {
+        $tab = 'pg_link';
+    }
     
     $limit_percentage = null;
     $limit_percentage_display = 'N/A';
@@ -544,6 +549,9 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                     <div class="row">
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                             <div class="breadcome-list">
+                                <?php if (($creditlab_profile_role ?? '') === 'agency_admin') {
+                                    include __DIR__ . '/../includes/profile_agency_header.php';
+                                } else { ?>
                                 <div class="row">
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                    <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
@@ -577,6 +585,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                    <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
                                                      if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
                 </div></div>
+                                <?php } ?>
                             </div>
                         </div>
                     </div>
@@ -591,7 +600,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                             <?php include __DIR__ . '/../includes/profile_tab_nav.php'; ?>
                             <?php include __DIR__ . '/../includes/profile_agency_pane_guard.php'; ?>
                             <div id="myTabContent" class="tab-content custom-product-edit">
-                                <div class="product-tab-list tab-pane fade active in" id="Personal">
+                                <div class="product-tab-list tab-pane fade<?= $is_agency_profile ? '' : ' active in' ?>" id="Personal">
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
@@ -1392,7 +1401,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
     </table>                           
                                     </div>
                                 </div>
-                                <div class="product-tab-list tab-pane fade" id="Reference">
+                                <div class="product-tab-list tab-pane fade<?= ($is_agency_profile && $agency_profile_active_tab === 'Reference') ? ' active in' : '' ?>" id="Reference">
                                     <div class="table-responsive">
         <form action="" method="post" id="referralForm">
     <table class="table table-bordered" id="referralTable">

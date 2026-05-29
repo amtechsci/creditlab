@@ -12,7 +12,11 @@ if (!creditlab_can_create_pg_link()) {
 $activeLoans = creditlab_active_loans_for_user((int) $userpro_id);
 $pgLinksQ = towquery("SELECT * FROM pg_payment_link WHERE uid=" . (int) $userpro_id . " ORDER BY id DESC LIMIT 100");
 ?>
-<div class="product-tab-list tab-pane fade" id="pg_link">
+<?php
+$pgPaneActive = (($creditlab_profile_role ?? '') === 'agency_admin')
+    && (!isset($tab) || $tab !== 'Reference');
+?>
+<div class="product-tab-list tab-pane fade<?= $pgPaneActive ? ' active in' : '' ?>" id="pg_link">
     <div class="review-content-section">
         <h4>Create PG link</h4>
         <div class="row" style="margin-bottom:20px;">
