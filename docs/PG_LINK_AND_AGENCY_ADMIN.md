@@ -3,8 +3,11 @@
 ## Database setup (run once on XAMPP/MySQL)
 
 ```bash
-php migrations/20260529_pg_links_and_agency_admin.php
+cd /var/www/creditlab.in
+sudo -u www-data php migrations/20260529_pg_links_and_agency_admin.php
 ```
+
+Use `www-data` if `.env` is not readable by your SSH user. Ensure `/var/www/creditlab.in/.env` has correct `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
 
 Or import manually: `sql/20260529_pg_links_and_agency_admin.sql`
 
