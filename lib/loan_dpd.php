@@ -10,15 +10,39 @@ function creditlab_loan_days_from_row(array $loanRow): int
     return creditlab_loan_tenure_days($loanRow, $loan_days_raw);
 }
 
+/**
+ * Due date aligned with admin profile (processed_date + inclusive tenure - 1 day).
+ */
+function creditlab_loan_due_date(array $loanRow): ?string
+{
+    if (empty($loanRow['processed_date'])) {
+        return null;
+    }
+    $tenure = creditlab_loan_days_from_row($loanRow);
+    return date('Y-m-d', strtotime($loanRow['processed_date'] . ' +' . ($tenure - 1) . ' day'));
+}
+
 function creditlab_calculate_dpd(array $loanRow): int
 {
     if (empty($loanRow['processed_date'])) {
         return 0;
     }
+
+    $status = $loanRow['status_log'] ?? '';
+    if ($status === 'cleared' && !empty($loanRow['cleard_date'])) {
+        $due = creditlab_loan_due_date($loanRow);
+        if ($due === null) {
+            return 0;
+        }
+        $clearTs = strtotime(date('Y-m-d', strtotime($loanRow['cleard_date'])));
+        $dueTs = strtotime($due);
+        return max(0, (int) round(($clearTs - $dueTs) / 86400));
+    }
+
     $processed_date_str = date('Y-m-d', strtotime($loanRow['processed_date'] . ' -1 day'));
     $tday = (int) ceil((strtotime(date('Y-m-d')) - strtotime($processed_date_str)) / 86400);
     $loan_days = creditlab_loan_days_from_row($loanRow);
-    return $tday - $loan_days;
+    return max(0, $tday - $loan_days);
 }
 
 function creditlab_account_manager_loan_rows(): array

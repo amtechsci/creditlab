@@ -6,6 +6,7 @@ if (!empty($GLOBALS['creditlab_profile_include_head'])) {
     include_once 'head.php';
 }
 require_once __DIR__ . '/../lib/profile_tabs.php';
+require_once __DIR__ . '/../lib/loan_dpd.php';
 require_once __DIR__ . '/../lib/staff_context.php';
 $creditlab_profile_role = $GLOBALS['creditlab_staff_role'] ?? 'account_manager';
 require_once '../lib/s3_upload_helper.php';
@@ -1774,7 +1775,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td <?php if($usersd_action == "no data"){ ?>class="bg-success" <?php }?>><?=$usersd_status_log?></td>
                                         <td><?php $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); $paid_amtf = towfetch($paid_amt); echo $paid_amtf['paid_amt'] ? $paid_amtf['paid_amt'] : 0;?></td>
                                         <td><?=$usersd_cleard_date?></td>
-                                        <td><?php $dpd = $usersd_exhausted_period-$loan_days; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
+                                        <td><?php $dpd = creditlab_calculate_dpd(['processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days, 'status_log' => $usersd_status_log, 'cleard_date' => $usersd_cleard_date ?? '']); echo $dpd; ?></td>
                                         <td><?php 
                                         if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
                                             echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';

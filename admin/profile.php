@@ -2453,7 +2453,7 @@
                                             echo isset($paid_amtf['paid_amt']) ? $paid_amtf['paid_amt'] : 0;
                                             ?></td>
                                             <td><?=$usersd_cleard_date?></td>
-                                            <td><?php $dpd = creditlab_calculate_dpd(['processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days]); echo $dpd > 0 ? $dpd : 0; ?></td>
+                                            <td><?php $dpd = creditlab_calculate_dpd(['processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days, 'status_log' => $usersd_status_log, 'cleard_date' => $usersd_cleard_date ?? '']); echo $dpd; ?></td>
                                             <td><?php 
                                             if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
                                                 echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';
