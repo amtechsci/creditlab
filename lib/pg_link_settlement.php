@@ -5,6 +5,41 @@
 require_once __DIR__ . '/loan_outstanding.php';
 require_once __DIR__ . '/zxc_mail.php';
 require_once __DIR__ . '/http_fetch.php';
+require_once __DIR__ . '/sms_loan_cleared.php';
+
+/** Payment tolerance (₹) for rounding / gateway amount strings. */
+function creditlab_pg_amount_tolerance(): float
+{
+    return 2.0;
+}
+
+/**
+ * Full close when customer paid the link/initiated amount or current outstanding.
+ */
+function creditlab_pg_payment_is_full_settlement(array $loan, array $pgTx, ?array $pgLink, float $amountPaid): bool
+{
+    $tolerance = creditlab_pg_amount_tolerance();
+    $outstanding = creditlab_loan_outstanding_amount($loan);
+    $linkType = $pgLink['link_type'] ?? ($pgTx['link_type'] ?? '');
+
+    if ($linkType === 'total_outstanding') {
+        $linkAmount = (float) ($pgLink['amount'] ?? $pgTx['amount'] ?? 0);
+        if ($linkAmount > 0 && $amountPaid + $tolerance >= $linkAmount) {
+            return true;
+        }
+    }
+
+    // Customer autopay (TXN_*): full close when paid amount matches checkout, even if penalty rose after page load
+    $txnid = (string) ($pgTx['txnid'] ?? '');
+    if ($pgLink === null && strpos($txnid, 'PG_') !== 0) {
+        $initiated = (float) ($pgTx['amount'] ?? 0);
+        if ($initiated > 0 && $amountPaid + $tolerance >= $initiated) {
+            return true;
+        }
+    }
+
+    return $amountPaid + $tolerance >= $outstanding;
+}
 
 function creditlab_pg_link_by_txnid(string $txnid): ?array
 {
@@ -43,10 +78,6 @@ function creditlab_settle_pg_payment(
         return ['ok' => false, 'message' => 'Transaction not found'];
     }
     $pgTx = towfetch($pgTxQ);
-    if (($pgTx['status'] ?? '') === 'success') {
-        return ['ok' => true, 'message' => 'Already settled', 'flow' => 'skipped'];
-    }
-
     $loanInternalId = (int) $pgTx['loan_id'];
     $loan = creditlab_fetch_loan_by_internal_id($loanInternalId);
     if (!$loan) {
@@ -56,8 +87,6 @@ function creditlab_settle_pg_payment(
     $uid = (int) $loan['uid'];
     $loanLid = (int) $loan['lid'];
     $linkType = $pgLink['link_type'] ?? ($pgTx['link_type'] ?? 'total_outstanding');
-    $outstanding = creditlab_loan_outstanding_amount($loan);
-    $tolerance = 1.0;
 
     $userQ = towquery("SELECT * FROM user WHERE id=$uid LIMIT 1");
     if (!$userQ || townum($userQ) < 1) {
@@ -70,11 +99,19 @@ function creditlab_settle_pg_payment(
         return ['ok' => true, 'message' => 'Already cleared', 'flow' => 'skipped'];
     }
 
+    $pgAlreadySuccess = (($pgTx['status'] ?? '') === 'success');
+    if ($pgAlreadySuccess) {
+        error_log("PG repair: txnid=$txnid success but loan CLL$loanLid still {$loan['status_log']}");
+    }
+
     $agencyId = $pgLink['agency_id'] ?? $pgTx['agency_id'] ?? null;
     $agencyName = $pgLink['agency_name'] ?? $pgTx['agency_name'] ?? null;
     $pgLinkId = $pgLink['id'] ?? null;
 
-    $isFull = ($linkType === 'total_outstanding') || ($amount + $tolerance >= $outstanding);
+    $isFull = creditlab_pg_payment_is_full_settlement($loan, $pgTx, $pgLink, $amount);
+    if (!$isFull) {
+        error_log("PG part settlement: txnid=$txnid CLL$loanLid paid=$amount outstanding=" . creditlab_loan_outstanding_amount($loan) . " initiated=" . ($pgTx['amount'] ?? ''));
+    }
 
     mysqli_autocommit($db, false);
     try {
@@ -135,7 +172,8 @@ function creditlab_settle_pg_payment(
             }
             $flow = 'part';
             $mobile = $userDetails['mobile'] ?? '';
-            if ($mobile !== '' && file_exists(__DIR__ . '/../send_sms.php')) {
+            if ($mobile !== '') {
+                $template_id = '1107169454135117024';
                 $message = "We got a part payment of Rs {$amount} w.r.t your Creditlab.in loan CLL{$loanLid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
                 define('CREDITLAB_SMS_INCLUDE', true);
                 include __DIR__ . '/../send_sms.php';
@@ -148,12 +186,12 @@ function creditlab_settle_pg_payment(
         if ($isFull) {
             $base = creditlab_get_base_url();
             creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base, $userDetails['email'], null, null, $base . '/no-due-certificate2.php?id=' . $loanLid));
-            $mobile = $userDetails['mobile'] ?? '';
-            if ($mobile !== '' && file_exists(__DIR__ . '/../send_sms.php')) {
-                $message = "Dear {$userDetails['name']}, we acknowledge the repayment of your loan CLL{$loanLid} & it's cleared. You can apply again. {$base}/ -Creditlab";
-                define('CREDITLAB_SMS_INCLUDE', true);
-                include __DIR__ . '/../send_sms.php';
-            }
+            creditlab_send_loan_cleared_sms(
+                (string) ($userDetails['mobile'] ?? ''),
+                (string) ($userDetails['name'] ?? 'Customer'),
+                $loanLid,
+                $base
+            );
         }
 
         return ['ok' => true, 'message' => 'Settled', 'flow' => $flow];
@@ -200,13 +238,16 @@ function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, stri
         return ['ok' => false, 'message' => 'Not found'];
     }
     $pgTx = towfetch($pgTxQ);
-    if (($pgTx['status'] ?? '') === 'success') {
-        return ['ok' => true, 'message' => 'Already settled', 'flow' => 'skipped'];
-    }
     $loan = creditlab_fetch_loan_by_internal_id((int) $pgTx['loan_id']);
-    if (!$loan || $loan['status_log'] === 'cleared') {
+    if (!$loan) {
+        return ['ok' => false, 'message' => 'Loan not found'];
+    }
+    if ($loan['status_log'] === 'cleared') {
         towquery("UPDATE pg_transaction SET status='success' WHERE txnid='$txnidEsc'");
-        return ['ok' => true, 'message' => 'skipped', 'flow' => 'skipped'];
+        return ['ok' => true, 'message' => 'Already cleared', 'flow' => 'skipped'];
+    }
+    if (($pgTx['status'] ?? '') === 'success') {
+        error_log("PG legacy repair: txnid=$txnid loan still active");
     }
 
     $uid = (int) $loan['uid'];
@@ -251,6 +292,12 @@ function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, stri
         if (!empty($userDetails['email'])) {
             creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base, $userDetails['email'], null, null, $base . '/no-due-certificate2.php?id=' . $loanLid));
         }
+        creditlab_send_loan_cleared_sms(
+            (string) ($userDetails['mobile'] ?? ''),
+            (string) ($userDetails['name'] ?? 'Customer'),
+            $loanLid,
+            $base
+        );
         return ['ok' => true, 'message' => 'legacy full', 'flow' => 'full'];
     } catch (Exception $e) {
         mysqli_rollback($db);

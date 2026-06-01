@@ -61,6 +61,7 @@ mysqli_set_charset($db, 'utf8');
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/zxc_mail.php';
 require_once __DIR__ . '/lib/http_fetch.php';
+require_once __DIR__ . '/lib/sms_loan_cleared.php';
 
 // Test the connection
 if (!mysqli_ping($db)) {
@@ -368,13 +369,11 @@ if ($data['furl'] == $base_url . '/payment/cb_auto.php') {
                     creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
                     writeWebhookLog("No-due certificate mail triggered for CLL$loan_lid", $log_file);
                     
-                    // Send SMS notification
-                    $template_id = '1107165683325768963';
-                    $mobile = $user_details['mobile'];
-                    $message = "Dear {$user_details['name']}, we acknowledge the repayment of your loan CLL$loan_lid & it's cleared. You can apply again. " . $base_url . "/ -Creditlab";
-                    define('CREDITLAB_SMS_INCLUDE', true);
-                    include __DIR__ . '/send_sms.php';
-                    writeWebhookLog("SMS notification sent for CLL$loan_lid to $mobile", $log_file);
+                    if (creditlab_send_loan_cleared_sms((string) $user_details['mobile'], (string) $user_details['name'], (int) $loan_lid, $base_url)) {
+                        writeWebhookLog("SMS notification sent for CLL$loan_lid to {$user_details['mobile']}", $log_file);
+                    } else {
+                        writeWebhookLog("SMS not sent for CLL$loan_lid (missing mobile or gateway)", $log_file);
+                    }
                     
                 } else {
                     $error_msg = "Failed to process loan clearance for CLL$loan_lid";
@@ -502,7 +501,7 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
         }
     }
 
-} elseif (isset($data['furl']) && $data['furl'] == $base_url . '/payeasebuzz/response.php') {
+} elseif (isset($data['furl']) && strpos($data['furl'], 'payeasebuzz/response.php') !== false) {
     // Validate required fields for payment response processing
     $required_fields = ['txnid', 'status', 'amount', 'bank_ref_num'];
     $missing_fields = [];
