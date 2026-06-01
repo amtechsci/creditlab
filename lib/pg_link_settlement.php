@@ -6,6 +6,7 @@ require_once __DIR__ . '/loan_outstanding.php';
 require_once __DIR__ . '/zxc_mail.php';
 require_once __DIR__ . '/http_fetch.php';
 require_once __DIR__ . '/sms_loan_cleared.php';
+require_once __DIR__ . '/pg_db_bootstrap.php';
 
 /** Payment tolerance (₹) for rounding / gateway amount strings. */
 function creditlab_pg_amount_tolerance(): float
@@ -60,17 +61,17 @@ function creditlab_is_staff_pg_txnid(string $txnid): bool
  * @return array{ok:bool,message:string,flow?:string}
  */
 function creditlab_settle_pg_payment(
-    $db,
+    $mysqliConn,
     string $txnid,
     float $amount,
     string $bankRef,
     string $paymentMethod = 'easebuzz'
 ): array {
-    global $db;
-    if (!$db) {
+    creditlab_pg_bind_mysqli($mysqliConn);
+    if (!$mysqliConn) {
         return ['ok' => false, 'message' => 'Database unavailable'];
     }
-    $txnidEsc = mysqli_real_escape_string($db, $txnid);
+    $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
     $pgLink = creditlab_pg_link_by_txnid($txnid);
 
     $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' LIMIT 1");
@@ -95,7 +96,7 @@ function creditlab_settle_pg_payment(
     $userDetails = towfetch($userQ);
 
     if ($loan['status_log'] === 'cleared') {
-        creditlab_pg_mark_tx_success($db, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
+        creditlab_pg_mark_tx_success($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
         return ['ok' => true, 'message' => 'Already cleared', 'flow' => 'skipped'];
     }
 
@@ -113,12 +114,12 @@ function creditlab_settle_pg_payment(
         error_log("PG part settlement: txnid=$txnid CLL$loanLid paid=$amount outstanding=" . creditlab_loan_outstanding_amount($loan) . " initiated=" . ($pgTx['amount'] ?? ''));
     }
 
-    mysqli_autocommit($db, false);
+    mysqli_autocommit($mysqliConn, false);
     try {
-        $amountEsc = mysqli_real_escape_string($db, (string) $amount);
-        $bankEsc = mysqli_real_escape_string($db, $bankRef);
-        $dt = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
-        $dateOnly = mysqli_real_escape_string($db, date('Y-m-d'));
+        $amountEsc = mysqli_real_escape_string($mysqliConn, (string) $amount);
+        $bankEsc = mysqli_real_escape_string($mysqliConn, $bankRef);
+        $dt = mysqli_real_escape_string($mysqliConn, date('Y-m-d H:i:s'));
+        $dateOnly = mysqli_real_escape_string($mysqliConn, date('Y-m-d'));
 
         if ($isFull) {
             $loanApplyQ = towquery("SELECT days FROM loan_apply WHERE id=$loanLid LIMIT 1");
@@ -135,16 +136,16 @@ function creditlab_settle_pg_payment(
                 $point = 8;
             }
 
-            $loanIdEsc = mysqli_real_escape_string($db, (string) $loanInternalId);
-            $loanLidEsc = mysqli_real_escape_string($db, (string) $loanLid);
-            $uidEsc = mysqli_real_escape_string($db, (string) $uid);
+            $loanIdEsc = mysqli_real_escape_string($mysqliConn, (string) $loanInternalId);
+            $loanLidEsc = mysqli_real_escape_string($mysqliConn, (string) $loanLid);
+            $uidEsc = mysqli_real_escape_string($mysqliConn, (string) $uid);
 
             if (!towquery("UPDATE user SET sloan=sloan+1, credit_score=credit_score+$point, status='cleared' WHERE id='$uidEsc'")) {
                 throw new Exception('Failed to update user');
             }
             $agencySet = '';
             if ($agencyName) {
-                $an = mysqli_real_escape_string($db, $agencyName);
+                $an = mysqli_real_escape_string($mysqliConn, $agencyName);
                 $ai = $agencyId ? (int) $agencyId : 'NULL';
                 $pl = $pgLinkId ? (int) $pgLinkId : 'NULL';
                 $agencySet = ", paid_via_agency_id=$ai, paid_via_agency_name='$an', paid_via_pg_link_id=$pl";
@@ -161,9 +162,9 @@ function creditlab_settle_pg_payment(
             }
             $flow = 'full';
         } else {
-            $loanIdEsc = mysqli_real_escape_string($db, (string) $loanInternalId);
-            $loanLidEsc = mysqli_real_escape_string($db, (string) $loanLid);
-            $uidEsc = mysqli_real_escape_string($db, (string) $uid);
+            $loanIdEsc = mysqli_real_escape_string($mysqliConn, (string) $loanInternalId);
+            $loanLidEsc = mysqli_real_escape_string($mysqliConn, (string) $loanLid);
+            $uidEsc = mysqli_real_escape_string($mysqliConn, (string) $uid);
             if (!towquery("UPDATE loan SET advance_amount='$amountEsc' WHERE id='$loanIdEsc'")) {
                 throw new Exception('Failed to update advance_amount');
             }
@@ -180,8 +181,8 @@ function creditlab_settle_pg_payment(
             }
         }
 
-        creditlab_pg_mark_tx_success($db, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
-        mysqli_commit($db);
+        creditlab_pg_mark_tx_success($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
+        mysqli_commit($mysqliConn);
 
         if ($isFull) {
             $base = creditlab_get_base_url();
@@ -196,21 +197,21 @@ function creditlab_settle_pg_payment(
 
         return ['ok' => true, 'message' => 'Settled', 'flow' => $flow];
     } catch (Exception $e) {
-        mysqli_rollback($db);
+        mysqli_rollback($mysqliConn);
         error_log('PG settlement failed: ' . $e->getMessage());
         return ['ok' => false, 'message' => $e->getMessage()];
     } finally {
-        mysqli_autocommit($db, true);
+        mysqli_autocommit($mysqliConn, true);
     }
 }
 
-function creditlab_pg_mark_tx_success($db, string $txnid, float $amount, string $bankRef, string $paymentMethod, ?array $pgLink): void
+function creditlab_pg_mark_tx_success($mysqliConn, string $txnid, float $amount, string $bankRef, string $paymentMethod, ?array $pgLink): void
 {
-    global $db;
-    $txnidEsc = mysqli_real_escape_string($db, $txnid);
-    $amountEsc = mysqli_real_escape_string($db, (string) $amount);
-    $bankEsc = mysqli_real_escape_string($db, $bankRef);
-    $pmEsc = mysqli_real_escape_string($db, $paymentMethod);
+    creditlab_pg_bind_mysqli($mysqliConn);
+    $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
+    $amountEsc = mysqli_real_escape_string($mysqliConn, (string) $amount);
+    $bankEsc = mysqli_real_escape_string($mysqliConn, $bankRef);
+    $pmEsc = mysqli_real_escape_string($mysqliConn, $paymentMethod);
     towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'");
     if ($pgLink) {
         $id = (int) $pgLink['id'];
@@ -218,10 +219,10 @@ function creditlab_pg_mark_tx_success($db, string $txnid, float $amount, string 
     }
 }
 
-function creditlab_pg_mark_tx_failure($db, string $txnid): void
+function creditlab_pg_mark_tx_failure($mysqliConn, string $txnid): void
 {
-    global $db;
-    $txnidEsc = mysqli_real_escape_string($db, $txnid);
+    creditlab_pg_bind_mysqli($mysqliConn);
+    $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
     towquery("UPDATE pg_transaction SET status='failure' WHERE txnid='$txnidEsc'");
     towquery("UPDATE pg_payment_link SET status='failed' WHERE txnid='$txnidEsc' AND status='created'");
 }
@@ -229,10 +230,10 @@ function creditlab_pg_mark_tx_failure($db, string $txnid): void
 /**
  * Legacy user autopay full clearance (non-PG_ txn without pg_payment_link row).
  */
-function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, string $bankRef, string $paymentMethod = 'easebuzz'): array
+function creditlab_settle_legacy_pg_full($mysqliConn, string $txnid, float $amount, string $bankRef, string $paymentMethod = 'easebuzz'): array
 {
-    global $db;
-    $txnidEsc = mysqli_real_escape_string($db, $txnid);
+    creditlab_pg_bind_mysqli($mysqliConn);
+    $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
     $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' LIMIT 1");
     if (!$pgTxQ || townum($pgTxQ) < 1) {
         return ['ok' => false, 'message' => 'Not found'];
@@ -270,23 +271,23 @@ function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, stri
         $point = 8;
     }
 
-    mysqli_autocommit($db, false);
+    mysqli_autocommit($mysqliConn, false);
     try {
-        $amountEsc = mysqli_real_escape_string($db, (string) $amount);
-        $bankEsc = mysqli_real_escape_string($db, $bankRef);
-        $dt = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
-        $dateOnly = mysqli_real_escape_string($db, date('Y-m-d'));
-        $loanIdEsc = mysqli_real_escape_string($db, (string) $loanInternalId);
-        $loanLidEsc = mysqli_real_escape_string($db, (string) $loanLid);
-        $uidEsc = mysqli_real_escape_string($db, (string) $uid);
-        $pmEsc = mysqli_real_escape_string($db, $paymentMethod);
+        $amountEsc = mysqli_real_escape_string($mysqliConn, (string) $amount);
+        $bankEsc = mysqli_real_escape_string($mysqliConn, $bankRef);
+        $dt = mysqli_real_escape_string($mysqliConn, date('Y-m-d H:i:s'));
+        $dateOnly = mysqli_real_escape_string($mysqliConn, date('Y-m-d'));
+        $loanIdEsc = mysqli_real_escape_string($mysqliConn, (string) $loanInternalId);
+        $loanLidEsc = mysqli_real_escape_string($mysqliConn, (string) $loanLid);
+        $uidEsc = mysqli_real_escape_string($mysqliConn, (string) $uid);
+        $pmEsc = mysqli_real_escape_string($mysqliConn, $paymentMethod);
 
         towquery("UPDATE user SET sloan=sloan+1, credit_score=credit_score+$point, status='cleared' WHERE id='$uidEsc'");
         towquery("UPDATE loan SET action='cleared', status_log='cleared', cleard_date='$dateOnly' WHERE id='$loanIdEsc'");
         towquery("UPDATE loan_apply SET status='cleared' WHERE id='$loanLidEsc'");
         towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full')");
         towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'");
-        mysqli_commit($db);
+        mysqli_commit($mysqliConn);
 
         $base = creditlab_get_base_url();
         if (!empty($userDetails['email'])) {
@@ -300,17 +301,18 @@ function creditlab_settle_legacy_pg_full($db, string $txnid, float $amount, stri
         );
         return ['ok' => true, 'message' => 'legacy full', 'flow' => 'full'];
     } catch (Exception $e) {
-        mysqli_rollback($db);
+        mysqli_rollback($mysqliConn);
         return ['ok' => false, 'message' => $e->getMessage()];
     } finally {
-        mysqli_autocommit($db, true);
+        mysqli_autocommit($mysqliConn, true);
     }
 }
 
-function creditlab_process_pg_payment_success($db, string $txnid, float $amount, string $bankRef, string $paymentMethod = 'easebuzz'): array
+function creditlab_process_pg_payment_success($mysqliConn, string $txnid, float $amount, string $bankRef, string $paymentMethod = 'easebuzz'): array
 {
+    creditlab_pg_bind_mysqli($mysqliConn);
     if (creditlab_is_staff_pg_txnid($txnid) || creditlab_pg_link_by_txnid($txnid)) {
-        return creditlab_settle_pg_payment($db, $txnid, $amount, $bankRef, $paymentMethod);
+        return creditlab_settle_pg_payment($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod);
     }
-    return creditlab_settle_legacy_pg_full($db, $txnid, $amount, $bankRef, $paymentMethod);
+    return creditlab_settle_legacy_pg_full($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod);
 }

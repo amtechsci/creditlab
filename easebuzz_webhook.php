@@ -542,7 +542,9 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     }
     
     if (isset($status) && $status == "success") {
+        require_once __DIR__ . '/lib/pg_db_bootstrap.php';
         require_once __DIR__ . '/lib/pg_link_settlement.php';
+        creditlab_ensure_app_db_helpers($db);
         writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
         $settle = creditlab_process_pg_payment_success($db, $txnid, (float) $amount, (string) $bank_ref_num, (string) $payment_method);
         $flow = $settle['flow'] ?? '';
@@ -558,7 +560,9 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
             $failed_transactions[] = "$txnid - " . ($settle['message'] ?? '');
         }
     } else {
+        require_once __DIR__ . '/lib/pg_db_bootstrap.php';
         require_once __DIR__ . '/lib/pg_link_settlement.php';
+        creditlab_ensure_app_db_helpers($db);
         $txnid_escaped = mysqli_real_escape_string($db, $txnid);
         creditlab_pg_mark_tx_failure($db, $txnid);
     }
