@@ -5,9 +5,9 @@
 
 function creditlab_loan_days_from_row(array $loanRow): int
 {
+    require_once __DIR__ . '/loan_charge_calc.php';
     $loan_days_raw = isset($loanRow['loan_apply_days']) ? (int) $loanRow['loan_apply_days'] : 30;
-    $loan_is_emi = isset($loanRow['is_emi']) ? (int) $loanRow['is_emi'] : 0;
-    return ($loan_is_emi === 1) ? 30 : ($loan_days_raw > 0 ? $loan_days_raw : 30);
+    return creditlab_loan_tenure_days($loanRow, $loan_days_raw);
 }
 
 function creditlab_calculate_dpd(array $loanRow): int

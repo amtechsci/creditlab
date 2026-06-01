@@ -8,6 +8,16 @@
 // Set timezone to IST
 date_default_timezone_set('Asia/Kolkata');
 
+if (php_sapi_name() === 'cli') {
+	foreach ($argv as $arg) {
+		if ($arg === '--schedule' || $arg === '--slots') {
+			require_once __DIR__ . '/lib/sms_cron_schedule.php';
+			creditlab_print_sms_cron_schedule();
+			exit(0);
+		}
+	}
+}
+
 // Set time limit and memory
 set_time_limit(300); // 5 minutes
 ini_set("memory_limit", "256M");
@@ -120,6 +130,84 @@ function markAsSent($loan_id, $template_name) {
         }
         $sent_today_cache[$key] = true;
     }
+}
+
+/**
+ * Which SMS rule blocks can run at this HH:MM (IST). Empty = cron run does nothing.
+ */
+function creditlab_sms_windows_for_time(string $current_time): array
+{
+    $w = [];
+    if ($current_time >= '00:00' && $current_time < '00:05') {
+        $w[] = 'daily_cleanup';
+    }
+    if ($current_time >= '11:45' && $current_time < '11:50') {
+        $w[] = 'cibil_drop_alert';
+    }
+    if (($current_time >= '08:30' && $current_time < '08:35') || ($current_time >= '16:35' && $current_time < '16:40')) {
+        $w[] = 'dpd_1_5';
+    }
+    if (($current_time >= '08:30' && $current_time < '08:35') || ($current_time >= '18:00' && $current_time < '18:05')) {
+        $w[] = 'dpd_6_10';
+    }
+    if (($current_time >= '08:00' && $current_time < '08:05') || ($current_time >= '11:45' && $current_time < '11:50') || ($current_time >= '18:35' && $current_time < '18:40')) {
+        $w[] = 'dpd_11_15';
+    }
+    if (($current_time >= '10:00' && $current_time < '10:05') || ($current_time >= '17:00' && $current_time < '17:05')) {
+        $w[] = 'initial_reminder_alt';
+    }
+    if (($current_time >= '09:00' && $current_time < '09:05') || ($current_time >= '16:30' && $current_time < '16:35')) {
+        $w[] = 'preclose_morning';
+    }
+    if (($current_time >= '08:00' && $current_time < '08:05') || ($current_time >= '16:00' && $current_time < '16:05')) {
+        $w[] = 'salary_day';
+    }
+    if (($current_time >= '14:00' && $current_time < '14:05') || ($current_time >= '18:30' && $current_time < '18:35') || ($current_time >= '20:00' && $current_time < '20:05')) {
+        $w[] = 'preclose_multi';
+    }
+    if ($current_time >= '15:00' && $current_time < '15:05') {
+        $w[] = '45th_day_reminder';
+    }
+    if ($current_time >= '14:35' && $current_time < '14:40') {
+        $w[] = 'field_recovery';
+    }
+    if ($current_time >= '19:35' && $current_time < '19:40') {
+        $w[] = 'legal_notice';
+    }
+    if ($current_time >= '14:35' && $current_time < '14:40') {
+        $w[] = 'final_alert';
+    }
+    if ($current_time >= '15:00' && $current_time < '15:05') {
+        $w[] = 'cibil_dip';
+    }
+    if ($current_time >= '16:00' && $current_time < '16:05') {
+        $w[] = 'legal_suit';
+    }
+    if ($current_time >= '19:30' && $current_time < '19:35') {
+        $w[] = 'written_off';
+    }
+    if ($current_time >= '14:10' && $current_time < '14:15') {
+        $w[] = 'waive_off';
+    }
+    if ($current_time >= '14:45' && $current_time < '14:50') {
+        $w[] = 'attention';
+    }
+    if ($current_time >= '13:30' && $current_time < '13:35') {
+        $w[] = 'were_to_pay';
+    }
+    if ($current_time >= '13:45' && $current_time < '13:50') {
+        $w[] = 'due_date_missed';
+    }
+    if ($current_time >= '14:00' && $current_time < '14:05') {
+        $w[] = 'enach_reminder';
+    }
+    if ($current_time >= '16:00' && $current_time < '16:05') {
+        $w[] = 'autodebit_bounce';
+    }
+    if (($current_time >= '08:00' && $current_time < '08:05') || ($current_time >= '12:50' && $current_time < '12:55') || ($current_time >= '16:00' && $current_time < '16:05')) {
+        $w[] = 'limit_increase';
+    }
+    return array_values(array_unique($w));
 }
 
 // Check if script is already running
@@ -368,6 +456,13 @@ try {
     $errors = 0;
     $total_loans = $loan_query ? townum($loan_query) : 0;
     
+    $active_windows = creditlab_sms_windows_for_time($current_time);
+    if (empty($active_windows)) {
+        logMessage("Active SMS windows at $current_time: NONE (no template fires this minute; e.g. 12:10 has no slot — limit_increase is 12:50-12:54 only)");
+    } else {
+        logMessage('Active SMS windows at ' . $current_time . ': ' . implode(', ', $active_windows));
+    }
+
     logMessage("Processing $total_loans loans for SMS");
 
     if ($total_loans > 0) {

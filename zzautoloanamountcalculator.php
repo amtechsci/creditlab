@@ -25,6 +25,7 @@ date_default_timezone_set('Asia/Kolkata');
 
 // Include the existing database configuration
 require_once 'db.php';
+require_once __DIR__ . '/lib/loan_charge_calc.php';
 
 // --- Database Connection ---
 
@@ -70,7 +71,7 @@ $date = date('Y-m-d');
 // OPTIMIZATION: Combined two queries into one using an INNER JOIN.
 // This fetches all required loan and user data in a single, efficient database call,
 // eliminating the "N+1 query problem" from the original script.
-$loan_data_query = "
+$loan_data_query_template = "
     SELECT
         loan.*,
         loan_apply.interest_percentage,
@@ -86,117 +87,64 @@ $loan_data_query = "
     AND
         (loan.last_cal_date IS NULL OR loan.last_cal_date < '$date')
     ORDER BY
-        loan.id DESC
-    LIMIT 100";
-
-// Execute the main query using the single database connection.
-$loan_data = cron_query($loan_data_query);
-
-if (!$loan_data) {
-    error_log("Cron Job Error: Main loan query failed at " . date('Y-m-d H:i:s'));
-    exit(1);
-}
+        COALESCE(loan.last_cal_date, '1970-01-01') ASC,
+        loan.id ASC
+    LIMIT 500";
 
 // Log start of processing
 error_log("Cron Job: Starting loan calculation at " . date('Y-m-d H:i:s'));
 
 $processed_count = 0;
 
-// Loop through each loan to perform calculations.
-while ($loan_fetch = cron_fetch($loan_data)) {
-    // Extract variables with a 'users_' prefix (e.g., $users_id, $users_uid, etc.)
-    // This now includes $users_approvenew and $users_star_member directly from the JOIN.
-    extract($loan_fetch, EXTR_PREFIX_ALL, "users");
-
-    // --- Core Calculation Logic (Copied from original script) ---
-    $stop_date = date_create($users_processed_date);
-    $sa = date_create(date('Y-m-d 23:59:59'));
-    $aa = date_diff($stop_date, $sa);
-    $days = $aa->format("%a");
-    $t = $users_processed_amount + $users_p_fee + ($users_p_fee * 0.18);
-    $days++;
-    $day =  $days;
-    $service_charge = 0;
-
-    // Get loan days from database (default to 30 for old loans)
-    $loan_days = isset($users_days) && $users_days > 0 ? (int)$users_days : 30;
-    
-    if ($users_interest_percentage == 1) {
-        if ($days >= 3) {
-            $fee = $t * 3 / 100 * 0;
-            $interest = "0%";
-            $days = $days - 3;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $days / 100 * 0;
-            $interest = "0%";
-            $days = 0;
-            $service_charge += $fee;
-        }
-        if (($days) >= 7) {
-            $fee = $t * 7 / 100 * 0.1;
-            $interest = "0.1%";
-            $days = $days - 7;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $days / 100 * 0.1;
-            $interest = "0.1%";
-            $days = 0;
-            $service_charge += $fee;
-        }
-        if (($days) >= 20) {
-            $fee = $t * 20 / 100 * 0.115;
-            $interest = "0.115%";
-            $days = $days - 20;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $days / 100 * 0.115;
-            $interest = "0.115%";
-            $days = 0;
-            $service_charge += $fee;
-        }
-        if (($days) >= 1) {
-            $fee = $t * $days / 100 * 0.1;
-            $interest = "0.1%";
-            $service_charge += $fee;
-            $days = 0;
-        }
-    } else {
-        $fee = $t * $day / 100 * $users_interest_percentage;
-        $interest = "$users_interest_percentage%";
-        $service_charge += $fee;
+// Process all loans due today (batched); oldest last_cal_date first so overdue loans are not starved.
+do {
+    $batch_count = 0;
+    $loan_data = cron_query($loan_data_query_template);
+    if (!$loan_data) {
+        error_log("Cron Job Error: Main loan query failed at " . date('Y-m-d H:i:s'));
+        exit(1);
     }
 
-    // Calculate penalty based on actual loan days (not hardcoded 30)
-    // Penalty starts AFTER the loan due date
-    if ($day > $loan_days) {
-        $penalitydays = $day - $loan_days;
-        $penalitydays--;
-        $penality = (($t) / 100) * 4;
-        $atnp = ((($t) / 100) * 0.2) * $penalitydays;
-        $penality = $penality + $atnp;
-    } else {
-        $penality = 0;
-    }
-    $penality = ($penality + ($penality * 0.18));
+    while ($loan_fetch = cron_fetch($loan_data)) {
+        extract($loan_fetch, EXTR_PREFIX_ALL, 'users');
 
-    // --- Update the loan record in the database ---
-    $update_query = "UPDATE `loan` SET
+        $loan_apply_days = isset($users_days) && $users_days > 0 ? (int) $users_days : 30;
+        $loan_row = [
+            'is_emi' => isset($users_is_emi) ? $users_is_emi : 0,
+            'total_time' => isset($users_total_time) ? $users_total_time : 0,
+        ];
+
+        $calc = creditlab_calculate_loan_charges(
+            (string) $users_processed_date,
+            (float) $users_processed_amount,
+            (float) $users_p_fee,
+            $users_interest_percentage,
+            $loan_apply_days,
+            $loan_row
+        );
+
+        $day = $calc['exhausted_period'];
+        $service_charge = $calc['service_charge'];
+        $penality = $calc['penality_charge'];
+        $users_id = (int) $users_id;
+
+        $update_query = "UPDATE `loan` SET
                         `exhausted_period` = '$day',
                         `service_charge` = '$service_charge',
                         `penality_charge` = '$penality',
                         `last_cal_date` = '$date'
                     WHERE `id` = '$users_id'";
 
-    // Execute the update query and check for success.
-    $update_result = cron_query($update_query);
-    if ($update_result) {
-        $processed_count++;
-        error_log("Cron Job: Updated loan ID $users_id - Service Charge: $service_charge, Penalty: $penality");
-    } else {
-        error_log("Cron Job Error: Failed to update loan ID $users_id");
+        $update_result = cron_query($update_query);
+        if ($update_result) {
+            $processed_count++;
+            $batch_count++;
+            error_log("Cron Job: Updated loan ID $users_id lid $users_lid DPD {$calc['dpd']} - Service: $service_charge, Penalty: $penality");
+        } else {
+            error_log("Cron Job Error: Failed to update loan ID $users_id");
+        }
     }
-}
+} while ($batch_count >= 500);
 
 // --- Cleanup ---
 

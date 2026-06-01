@@ -18,6 +18,7 @@
 
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
+    require_once __DIR__ . '/../lib/loan_dpd.php';
     
     // Get base URL from database
     $base_url = getAppUrl();
@@ -155,7 +156,12 @@
                         // Fetch loan days from loan_apply table
                         $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id='$cllid'"));
                         $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
-                        $dpd = $udpd['exhausted_period']-$loan_days; 
+                        $dpd = creditlab_calculate_dpd([
+                            'processed_date' => $udpd['processed_date'],
+                            'is_emi' => $udpd['is_emi'] ?? 0,
+                            'total_time' => $udpd['total_time'] ?? 0,
+                            'loan_apply_days' => $loan_days,
+                        ]);
                         if($dpd > 0){
                             if($dpd > 30){
                                 $point = -50;
@@ -185,7 +191,12 @@
                         // Fetch loan days from loan_apply table
                         $loan_apply_data = towfetch(towquery("SELECT days FROM loan_apply WHERE id='$cllid'"));
                         $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
-                        $dpd = $udpd['exhausted_period']-$loan_days; 
+                        $dpd = creditlab_calculate_dpd([
+                            'processed_date' => $udpd['processed_date'],
+                            'is_emi' => $udpd['is_emi'] ?? 0,
+                            'total_time' => $udpd['total_time'] ?? 0,
+                            'loan_apply_days' => $loan_days,
+                        ]);
                         if($dpd > 0){
                             if($dpd > 30){
                                 $point = -50;
@@ -2442,7 +2453,7 @@
                                             echo isset($paid_amtf['paid_amt']) ? $paid_amtf['paid_amt'] : 0;
                                             ?></td>
                                             <td><?=$usersd_cleard_date?></td>
-                                            <td><?php $dpd = $usersd_exhausted_period-$loan_days; if($dpd > 0){echo $dpd;}else{echo 0;} ?></td>
+                                            <td><?php $dpd = creditlab_calculate_dpd(['processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days]); echo $dpd > 0 ? $dpd : 0; ?></td>
                                             <td><?php 
                                             if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
                                                 echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';
