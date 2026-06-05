@@ -49,14 +49,13 @@ curl_setopt_array($curl, [
 ]);
 
 $response = curl_exec($curl);
+$creditlab_sms_ok = ($response !== false && is_string($response) && stripos($response, 'SMS-SHOOT-ID') !== false);
+$GLOBALS['creditlab_last_sms_ok'] = $creditlab_sms_ok;
+$GLOBALS['creditlab_last_sms_response'] = is_string($response) ? $response : '';
 if ($response === false) {
 	error_log('send_sms.php: SMS gateway request failed: ' . curl_error($curl));
-} elseif (
-	is_string($response)
-	&& stripos($response, 'SMS-SHOOT-ID') === false
-	&& stripos($response, 'NOT sent') !== false
-) {
-	error_log('send_sms.php: gateway rejected SMS: ' . substr($response, 0, 300));
+} elseif (!$creditlab_sms_ok && stripos((string) $response, 'NOT sent') !== false) {
+	error_log('send_sms.php: gateway rejected SMS: ' . substr((string) $response, 0, 300));
 }
 curl_close($curl);
 // print_r($url);

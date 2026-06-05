@@ -2,7 +2,9 @@
 require_once __DIR__ . '/lib/env.php';
 require_once __DIR__ . '/lib/database.php';
 
-session_start();
+if (!defined('CREDITLAB_SKIP_SESSION')) {
+	session_start();
+}
 
 if (env_bool('APP_DEBUG', false)) {
 	ini_set('display_errors', '1');
@@ -14,9 +16,17 @@ if (env_bool('APP_DEBUG', false)) {
 	error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 }
 
-$db = creditlab_db_connect();
-if (!$db) {
-	creditlab_db_connection_failed('Database connection failed. Check DB_* settings in .env');
+if (!isset($GLOBALS['db']) || !($GLOBALS['db'] instanceof mysqli)) {
+	$db = creditlab_db_connect();
+	if (!$db) {
+		if (defined('CREDITLAB_DB_BOOTSTRAP')) {
+			error_log('creditlab db bootstrap: connection failed (webhook should pass mysqli)');
+		} else {
+			creditlab_db_connection_failed('Database connection failed. Check DB_* settings in .env');
+		}
+	}
+} else {
+	$db = $GLOBALS['db'];
 }
 
 // Helper function to ensure database connection is valid

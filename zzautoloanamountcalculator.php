@@ -23,6 +23,23 @@
 // Set the correct timezone for date calculations.
 date_default_timezone_set('Asia/Kolkata');
 
+if (php_sapi_name() === 'cli' && !defined('CREDITLAB_SKIP_SESSION')) {
+    define('CREDITLAB_SKIP_SESSION', true);
+}
+
+$autocalc_log_file = __DIR__ . '/logs/autocalculator_cron.log';
+function autocalc_log(string $message): void
+{
+    global $autocalc_log_file;
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message;
+    error_log($line);
+    $dir = dirname($autocalc_log_file);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    @file_put_contents($autocalc_log_file, $line . "\n", FILE_APPEND | LOCK_EX);
+}
+
 // Include the existing database configuration
 require_once 'db.php';
 require_once __DIR__ . '/lib/loan_charge_calc.php';
@@ -31,7 +48,7 @@ require_once __DIR__ . '/lib/loan_charge_calc.php';
 
 // Use the existing database connection from db.php
 if (!isset($db) || !$db) {
-    error_log("Cron Job Error: Database connection failed at " . date('Y-m-d H:i:s'));
+    autocalc_log('FATAL: Database connection failed (check .env readable by cron user www-data)');
     exit(1);
 }
 
@@ -91,8 +108,7 @@ $loan_data_query_template = "
         loan.id ASC
     LIMIT 500";
 
-// Log start of processing
-error_log("Cron Job: Starting loan calculation at " . date('Y-m-d H:i:s'));
+autocalc_log('Starting loan calculation');
 
 $processed_count = 0;
 
@@ -101,7 +117,7 @@ do {
     $batch_count = 0;
     $loan_data = cron_query($loan_data_query_template);
     if (!$loan_data) {
-        error_log("Cron Job Error: Main loan query failed at " . date('Y-m-d H:i:s'));
+        autocalc_log('FATAL: Main loan query failed');
         exit(1);
     }
 
@@ -139,19 +155,19 @@ do {
         if ($update_result) {
             $processed_count++;
             $batch_count++;
-            error_log("Cron Job: Updated loan ID $users_id lid $users_lid DPD {$calc['dpd']} - Service: $service_charge, Penalty: $penality");
+            if ($processed_count <= 3 || $calc['dpd'] > 0) {
+                autocalc_log("Updated loan id=$users_id CLL$users_lid DPD={$calc['dpd']} penalty=$penality");
+            }
         } else {
-            error_log("Cron Job Error: Failed to update loan ID $users_id");
+            autocalc_log("ERROR: Failed to update loan id=$users_id");
         }
     }
 } while ($batch_count >= 500);
 
 // --- Cleanup ---
 
-// Log completion
-error_log("Cron Job: Completed processing $processed_count loans at " . date('Y-m-d H:i:s'));
+autocalc_log("Completed: $processed_count rows updated for date=$date");
 
-// Print result for cron output
 echo "$processed_count rows updated\n";
 
 // Close the single database connection at the end of the script.

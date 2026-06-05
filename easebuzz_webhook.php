@@ -520,10 +520,11 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     $result = $_POST;
     $txnid = $result['txnid'];
     $status = $result['status'];
-    $amount = $result['amount'];
-    $bank_ref_num = $result['bank_ref_num'];
-    // FIX: Define $payment_method. Change 'payment_mode' to the actual key from your payment provider.
-    $payment_method = isset($result['payment_mode']) ? $result['payment_mode'] : 'N/A';
+    $amount = isset($result['net_amount_debit']) && $result['net_amount_debit'] !== ''
+        ? $result['net_amount_debit']
+        : $result['amount'];
+    $bank_ref_num = $result['bank_ref_num'] ?? ($result['easepayid'] ?? '');
+    $payment_method = $result['mode'] ?? ($result['payment_mode'] ?? 'easebuzz');
     
     // Validate numeric fields for payment processing
     if (!is_numeric($amount) || $amount <= 0) {
@@ -550,10 +551,24 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
         $flow = $settle['flow'] ?? '';
         if ($settle['ok']) {
             if ($flow === 'skipped') {
-                writeWebhookLog("SKIPPED (already settled via browser): txnid $txnid", $log_file);
+                writeWebhookLog("SKIPPED (already settled): txnid $txnid", $log_file);
+            } elseif ($flow === 'part') {
+                writeWebhookLog("PART only (loan still open): txnid $txnid paid=$amount", $log_file);
+                $failed_transactions[] = "$txnid - part payment only";
             } else {
-                writeWebhookLog("SUCCESS: txnid $txnid flow=$flow", $log_file);
+                $smsNote = !empty($settle['sms_ok']) ? 'sms=ok' : 'sms=fail';
+                writeWebhookLog("SUCCESS: txnid $txnid flow=$flow $smsNote", $log_file);
                 $successful_transactions[] = "$txnid - ₹$amount";
+                if (empty($settle['sms_ok'])) {
+                    $txEsc = mysqli_real_escape_string($db, $txnid);
+                    $lq = towquery($db, "SELECT loan.lid, user.mobile, user.name FROM pg_transaction INNER JOIN loan ON loan.id = pg_transaction.loan_id INNER JOIN user ON user.id = loan.uid WHERE pg_transaction.txnid='$txEsc' LIMIT 1");
+                    if ($lq && townum($lq) > 0) {
+                        $lr = towfetch($lq);
+                        if (creditlab_send_loan_cleared_sms((string) ($lr['mobile'] ?? ''), (string) ($lr['name'] ?? 'Customer'), (int) $lr['lid'], $base_url)) {
+                            writeWebhookLog("Cleared SMS sent (retry) for CLL{$lr['lid']}", $log_file);
+                        }
+                    }
+                }
             }
         } else {
             writeWebhookLog("ERROR: txnid $txnid - " . ($settle['message'] ?? ''), $log_file);

@@ -3,6 +3,7 @@
  * Apply PG link payment success (full close or part payment).
  */
 require_once __DIR__ . '/loan_outstanding.php';
+require_once __DIR__ . '/app_url.php';
 require_once __DIR__ . '/zxc_mail.php';
 require_once __DIR__ . '/http_fetch.php';
 require_once __DIR__ . '/sms_loan_cleared.php';
@@ -30,13 +31,10 @@ function creditlab_pg_payment_is_full_settlement(array $loan, array $pgTx, ?arra
         }
     }
 
-    // Customer autopay (TXN_*): full close when paid amount matches checkout, even if penalty rose after page load
-    $txnid = (string) ($pgTx['txnid'] ?? '');
-    if ($pgLink === null && strpos($txnid, 'PG_') !== 0) {
-        $initiated = (float) ($pgTx['amount'] ?? 0);
-        if ($initiated > 0 && $amountPaid + $tolerance >= $initiated) {
-            return true;
-        }
+    // Paid checkout/initiated amount (Easebuzz success) = full close even if penalty rose before webhook
+    $initiated = (float) ($pgTx['amount'] ?? 0);
+    if ($initiated > 0 && $amountPaid + $tolerance >= $initiated) {
+        return true;
     }
 
     return $amountPaid + $tolerance >= $outstanding;
@@ -176,7 +174,9 @@ function creditlab_settle_pg_payment(
             if ($mobile !== '') {
                 $template_id = '1107169454135117024';
                 $message = "We got a part payment of Rs {$amount} w.r.t your Creditlab.in loan CLL{$loanLid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
-                define('CREDITLAB_SMS_INCLUDE', true);
+                if (!defined('CREDITLAB_SMS_INCLUDE')) {
+                    define('CREDITLAB_SMS_INCLUDE', true);
+                }
                 include __DIR__ . '/../send_sms.php';
             }
         }
@@ -184,18 +184,15 @@ function creditlab_settle_pg_payment(
         creditlab_pg_mark_tx_success($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
         mysqli_commit($mysqliConn);
 
+        $smsOk = false;
         if ($isFull) {
-            $base = creditlab_get_base_url();
-            creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base, $userDetails['email'], null, null, $base . '/no-due-certificate2.php?id=' . $loanLid));
-            creditlab_send_loan_cleared_sms(
-                (string) ($userDetails['mobile'] ?? ''),
-                (string) ($userDetails['name'] ?? 'Customer'),
-                $loanLid,
-                $base
-            );
+            $smsOk = creditlab_pg_notify_loan_cleared($userDetails, $loanLid);
+            if (!$smsOk) {
+                error_log("PG full settle: cleared SMS failed txnid=$txnid CLL$loanLid");
+            }
         }
 
-        return ['ok' => true, 'message' => 'Settled', 'flow' => $flow];
+        return ['ok' => true, 'message' => 'Settled', 'flow' => $flow, 'sms_ok' => $smsOk];
     } catch (Exception $e) {
         mysqli_rollback($mysqliConn);
         error_log('PG settlement failed: ' . $e->getMessage());
@@ -282,24 +279,28 @@ function creditlab_settle_legacy_pg_full($mysqliConn, string $txnid, float $amou
         $uidEsc = mysqli_real_escape_string($mysqliConn, (string) $uid);
         $pmEsc = mysqli_real_escape_string($mysqliConn, $paymentMethod);
 
-        towquery("UPDATE user SET sloan=sloan+1, credit_score=credit_score+$point, status='cleared' WHERE id='$uidEsc'");
-        towquery("UPDATE loan SET action='cleared', status_log='cleared', cleard_date='$dateOnly' WHERE id='$loanIdEsc'");
-        towquery("UPDATE loan_apply SET status='cleared' WHERE id='$loanLidEsc'");
-        towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full')");
-        towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'");
+        if (!towquery("UPDATE user SET sloan=sloan+1, credit_score=credit_score+$point, status='cleared' WHERE id='$uidEsc'")) {
+            throw new Exception('Failed to update user (legacy)');
+        }
+        if (!towquery("UPDATE loan SET action='cleared', status_log='cleared', cleard_date='$dateOnly' WHERE id='$loanIdEsc'")) {
+            throw new Exception('Failed to clear loan (legacy)');
+        }
+        if (!towquery("UPDATE loan_apply SET status='cleared' WHERE id='$loanLidEsc'")) {
+            throw new Exception('Failed to clear loan apply (legacy)');
+        }
+        if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full')")) {
+            throw new Exception('Failed to insert transaction (legacy)');
+        }
+        if (!towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'")) {
+            throw new Exception('Failed to update pg_transaction (legacy)');
+        }
         mysqli_commit($mysqliConn);
 
-        $base = creditlab_get_base_url();
-        if (!empty($userDetails['email'])) {
-            creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base, $userDetails['email'], null, null, $base . '/no-due-certificate2.php?id=' . $loanLid));
+        $smsOk = creditlab_pg_notify_loan_cleared($userDetails, $loanLid);
+        if (!$smsOk) {
+            error_log("PG legacy full settle: cleared SMS failed txnid=$txnid CLL$loanLid");
         }
-        creditlab_send_loan_cleared_sms(
-            (string) ($userDetails['mobile'] ?? ''),
-            (string) ($userDetails['name'] ?? 'Customer'),
-            $loanLid,
-            $base
-        );
-        return ['ok' => true, 'message' => 'legacy full', 'flow' => 'full'];
+        return ['ok' => true, 'message' => 'legacy full', 'flow' => 'full', 'sms_ok' => $smsOk];
     } catch (Exception $e) {
         mysqli_rollback($mysqliConn);
         return ['ok' => false, 'message' => $e->getMessage()];

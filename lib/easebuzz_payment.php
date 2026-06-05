@@ -3,15 +3,8 @@
  * Create Easebuzz payment link (initiate payment API).
  */
 require_once __DIR__ . '/../config/easebuzz.php';
+require_once __DIR__ . '/app_url.php';
 require_once __DIR__ . '/../payeasebuzz/easebuzz-lib/easebuzz_payment_gateway.php';
-
-function creditlab_get_base_url(): string
-{
-    if (function_exists('getAppUrl')) {
-        return rtrim(getAppUrl(), '/');
-    }
-    return rtrim(env('APP_BASE_URL', 'https://creditlab.in'), '/');
-}
 
 function creditlab_easebuzz_initiate_link(array $params): array
 {
