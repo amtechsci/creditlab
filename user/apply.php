@@ -14,6 +14,15 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
     }elseif($user_verify  == 1 ){
         $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='pending' OR status='disbursal' OR status='follow_up')");
         if(townum($a) == 0){
+        // Auto-hold: admin has flagged this user — put them on hold immediately, no new loan
+        if (!empty($user_block_next_loan) && (int)$user_block_next_loan === 1) {
+            $holdDate = date('Y-m-d H:i:s');
+            towquery("UPDATE `user` SET `verify`=3, `status`='Hold', `block_next_loan`=0,
+                `validation`=CONCAT(`validation`,'Auto-held on new application (admin block) on ".date('Y-m-d')."\\n')
+                WHERE id=$user_id");
+            header('location:index.php');
+            exit;
+        }
         $extract = towrealarray($_POST);
         extract($extract);
         $t = $amount;
