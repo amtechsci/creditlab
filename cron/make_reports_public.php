@@ -29,15 +29,8 @@ use Aws\Exception\AwsException;
 // Get report ID from command line if provided
 $report_id = isset($argv[1]) ? (int)$argv[1] : null;
 
-// Initialize S3 client
-$s3Client = new S3Client([
-    'version' => 'latest',
-    'region'  => S3_REGION,
-    'credentials' => [
-        'key'    => AWS_ACCESS_KEY_ID,
-        'secret' => AWS_SECRET_ACCESS_KEY,
-    ],
-]);
+// Initialize S3 client (EC2 instance role when .env keys are empty)
+$s3Client = new S3Client(s3_client_config());
 
 echo "Generating Presigned URLs for S3 Report Files\n";
 echo "==============================================\n";
