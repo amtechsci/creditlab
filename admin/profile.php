@@ -1165,6 +1165,9 @@
                                         <div class="row">
                                             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                                 <div class="review-content-section">
+                                                    <form id="blockNextLoanForm" method="POST" action="profile.php?id=<?=$userpro_id?>&tab=Personal" style="display:none;">
+                                                        <input type="hidden" name="toggle_block_next_loan" value="1">
+                                                    </form>
                                                     <form id="add-department" action="" method="post" class="add-department">
                                                         <div class="row">
                                                             <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
@@ -1459,21 +1462,15 @@
                                                                         <span style="display:inline-block; background:#d9534f; color:#fff; padding:4px 10px; border-radius:3px; font-size:12px; font-weight:bold;">
                                                                             <i class="fa fa-lock"></i> BLOCKED — will be auto-held on next application
                                                                         </span>
-                                                                        <form method="POST" action="profile.php?id=<?=$userpro_id?>&tab=Personal" style="display:inline; margin-left:8px;">
-                                                                            <input type="hidden" name="toggle_block_next_loan" value="1">
-                                                                            <button type="submit" class="btn btn-xs btn-success"
-                                                                                onclick="return confirm('Remove block? This user will be allowed to proceed with their next loan normally.')">
-                                                                                <i class="fa fa-unlock"></i> Remove Block
-                                                                            </button>
-                                                                        </form>
+                                                                        <button type="submit" form="blockNextLoanForm" class="btn btn-xs btn-success" style="margin-left:8px;"
+                                                                            onclick="return confirm('Remove block? This user will be allowed to proceed with their next loan normally.')">
+                                                                            <i class="fa fa-unlock"></i> Remove Block
+                                                                        </button>
                                                                     <?php else: ?>
-                                                                        <form method="POST" action="profile.php?id=<?=$userpro_id?>&tab=Personal">
-                                                                            <input type="hidden" name="toggle_block_next_loan" value="1">
-                                                                            <button type="submit" class="btn btn-sm btn-danger"
-                                                                                onclick="return confirm('Block this user?\n\nAfter clearing their current loan, if they apply for a new loan it will be automatically put on HOLD — they will NOT be taken to KFS or agreement steps.')">
-                                                                                <i class="fa fa-ban"></i> Block User (next loan)
-                                                                            </button>
-                                                                        </form>
+                                                                        <button type="submit" form="blockNextLoanForm" class="btn btn-sm btn-danger"
+                                                                            onclick="return confirm('Block this user?\n\nAfter clearing their current loan, if they apply for a new loan it will be automatically put on HOLD — they will NOT be taken to KFS or agreement steps.')">
+                                                                            <i class="fa fa-ban"></i> Block User (next loan)
+                                                                        </button>
                                                                     <?php endif; ?>
                                                                     <small class="text-muted" style="display:block; margin-top:5px;">
                                                                         When blocked, the next loan application is auto-held and user cannot proceed to KFS / agreement.
