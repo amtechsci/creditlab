@@ -146,17 +146,15 @@ function creditlab_user_has_active_loan_apply(int $user_id): bool
 }
 
 /**
- * Whether the user has a running loan (in-flight application or active loan not cleared).
+ * Whether the user has a running loan (disbursed loan under account manager or recovery officer).
+ * loan_apply rows (pending / disbursal / etc.) are not running loans.
  */
 function creditlab_user_has_running_loan(int $user_id): bool
 {
 	if ($user_id <= 0) {
 		return false;
 	}
-	if (creditlab_user_has_active_loan_apply($user_id)) {
-		return true;
-	}
-	$running = towquery("SELECT id FROM `loan` WHERE uid=$user_id AND status_log IN ('account manager','recovery officer','default') LIMIT 1");
+	$running = towquery("SELECT id FROM `loan` WHERE uid=$user_id AND status_log IN ('account manager','recovery officer') LIMIT 1");
 	return $running && townum($running) > 0;
 }
 

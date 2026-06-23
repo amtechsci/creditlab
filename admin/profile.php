@@ -1487,7 +1487,7 @@
                                                                         </button>
                                                                     <?php endif; ?>
                                                                     <small class="text-muted" style="display:block; margin-top:5px;">
-                                                                        User can complete any running loan. After all loans are cleared, the account shows on hold and they cannot apply or proceed to KFS / agreement.
+                                                                        Running loan = disbursed loan with account manager or recovery officer status (not loan_apply). User can finish that loan; after it is cleared, the account shows on hold.
                                                                     </small>
                                                                 </div>
                                                                 <div class="form-group">
