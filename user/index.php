@@ -1,6 +1,15 @@
 <?php
 include_once 'head.php';
 $refquery = towquery("SELECT * FROM user_referrals WHERE uid=$user_id");
+
+// Blocked for next loan — hold only after all running loans are cleared
+if (creditlab_user_should_see_account_on_hold((int)$user_id, (int)$user_verify, isset($user_validation) ? $user_validation : '')) {
+    if (creditlab_user_is_blocked_for_next_loan((int)$user_id)) {
+        creditlab_enforce_block_next_loan((int)$user_id);
+    }
+    include 'account_on_hold.php';
+    exit;
+}
 ?>
 <body>
 <?php

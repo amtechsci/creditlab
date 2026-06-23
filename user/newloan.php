@@ -1,5 +1,12 @@
 <?php
 include_once 'head.php';
+if (creditlab_user_should_see_account_on_hold((int)$user_id, (int)$user_verify, isset($user_validation) ? $user_validation : '')) {
+    if (creditlab_user_is_blocked_for_next_loan((int)$user_id)) {
+        creditlab_enforce_block_next_loan((int)$user_id);
+    }
+    include 'account_on_hold.php';
+    exit;
+}
 $refquery = towquery("SELECT * FROM user_ref WHERE uid=$user_id");
 $fff = 1;
 ?>

@@ -81,6 +81,155 @@ function ensure_db_connection() {
 	return true;
 }
 
+/**
+ * Ensure a column exists on the user table (self-healing for manual migrations).
+ *
+ * @param string $column     Column name (alphanumeric + underscore only)
+ * @param string $definition SQL column definition, e.g. "TINYINT(1) NOT NULL DEFAULT 0"
+ * @return bool True if column exists or was created successfully
+ */
+function creditlab_ensure_user_column(string $column, string $definition): bool
+{
+	global $db;
+	static $checked = [];
+
+	if (isset($checked[$column])) {
+		return $checked[$column];
+	}
+
+	if (!ensure_db_connection()) {
+		$checked[$column] = false;
+		return false;
+	}
+
+	$safe_column = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+	if ($safe_column !== $column) {
+		$checked[$column] = false;
+		return false;
+	}
+
+	$result = mysqli_query($db, "SHOW COLUMNS FROM `user` LIKE '$safe_column'");
+	if ($result && mysqli_num_rows($result) > 0) {
+		$checked[$column] = true;
+		return true;
+	}
+
+	$ok = mysqli_query($db, "ALTER TABLE `user` ADD COLUMN `$safe_column` $definition");
+	if (!$ok) {
+		error_log("Failed to add user column `$safe_column`: " . mysqli_error($db));
+		$checked[$column] = false;
+		return false;
+	}
+
+	$checked[$column] = true;
+	return true;
+}
+
+/**
+ * SQL fragment for in-flight / active loan_apply rows.
+ */
+function creditlab_active_loan_apply_status_sql(): string
+{
+	return "status='pending' OR status='disbursal' OR status='follow_up' OR status='follow up' OR status='account manager' OR status='recovery officer'";
+}
+
+/**
+ * Whether the user has an in-flight or active loan_apply row.
+ */
+function creditlab_user_has_active_loan_apply(int $user_id): bool
+{
+	if ($user_id <= 0) {
+		return false;
+	}
+	$active = towquery("SELECT id FROM `loan_apply` WHERE uid=$user_id AND (" . creditlab_active_loan_apply_status_sql() . ") LIMIT 1");
+	return $active && townum($active) > 0;
+}
+
+/**
+ * Whether the user has a running loan (in-flight application or active loan not cleared).
+ */
+function creditlab_user_has_running_loan(int $user_id): bool
+{
+	if ($user_id <= 0) {
+		return false;
+	}
+	if (creditlab_user_has_active_loan_apply($user_id)) {
+		return true;
+	}
+	$running = towquery("SELECT id FROM `loan` WHERE uid=$user_id AND status_log IN ('account manager','recovery officer','default') LIMIT 1");
+	return $running && townum($running) > 0;
+}
+
+/**
+ * Whether validation log indicates an admin block_next_loan hold.
+ */
+function creditlab_is_admin_block_hold(?string $validation): bool
+{
+	return is_string($validation) && strpos($validation, 'admin block') !== false;
+}
+
+/**
+ * User is flagged block_next_loan and all running loans have been cleared.
+ */
+function creditlab_user_is_blocked_for_next_loan(int $user_id): bool
+{
+	if ($user_id <= 0) {
+		return false;
+	}
+	if (!creditlab_ensure_user_column('block_next_loan', 'TINYINT(1) NOT NULL DEFAULT 0')) {
+		return false;
+	}
+	$row = towfetchassoc(towquery("SELECT `block_next_loan` FROM `user` WHERE id=$user_id LIMIT 1"));
+	if (!$row || (int)$row['block_next_loan'] !== 1) {
+		return false;
+	}
+	return !creditlab_user_has_running_loan($user_id);
+}
+
+/**
+ * Whether the user should see the account-on-hold page (blocked, all loans cleared).
+ */
+function creditlab_user_should_see_account_on_hold(int $user_id, int $verify, ?string $validation): bool
+{
+	if (creditlab_user_is_blocked_for_next_loan($user_id)) {
+		return true;
+	}
+	if ($verify === 3 && creditlab_is_admin_block_hold($validation) && !creditlab_user_has_running_loan($user_id)) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Auto-hold user flagged with block_next_loan once all running loans are cleared.
+ * Returns true if the user was placed on hold.
+ */
+function creditlab_enforce_block_next_loan(int $user_id): bool
+{
+	if ($user_id <= 0) {
+		return false;
+	}
+
+	if (!creditlab_ensure_user_column('block_next_loan', 'TINYINT(1) NOT NULL DEFAULT 0')) {
+		return false;
+	}
+
+	$row = towfetchassoc(towquery("SELECT `block_next_loan` FROM `user` WHERE id=$user_id LIMIT 1"));
+	if (!$row || (int)$row['block_next_loan'] !== 1) {
+		return false;
+	}
+
+	if (creditlab_user_has_running_loan($user_id)) {
+		return false;
+	}
+
+	$holdDate = date('Y-m-d');
+	$ok = towquery("UPDATE `user` SET `verify`=3, `status`='Hold', `block_next_loan`=0,
+		`validation`=CONCAT(`validation`,'Auto-held on new application (admin block) on $holdDate\\n')
+		WHERE id=$user_id");
+	return (bool)$ok;
+}
+
 function towquery($query)
 {
 	global $db;

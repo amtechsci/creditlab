@@ -356,11 +356,19 @@
     }
     
     if (isset($_POST['toggle_block_next_loan'])) {
+        if (!creditlab_ensure_user_column('block_next_loan', 'TINYINT(1) NOT NULL DEFAULT 0')) {
+            echo "<script>alert('Failed to update block status. Database column could not be created. Contact support.'); window.location.replace('profile.php?id=$id&tab=Personal');</script>";
+            exit;
+        }
         $cur = isset($userpro_block_next_loan) ? (int)$userpro_block_next_loan : 0;
         $new_val = ($cur === 1) ? 0 : 1;
-        towquery("UPDATE `user` SET `block_next_loan`=$new_val WHERE id='$userpro_id'");
-        $label = $new_val ? 'blocked for next loan' : 'unblocked (next loan allowed)';
-        echo "<script>alert('User $label successfully.'); window.location.replace('profile.php?id=$id&tab=Personal');</script>";
+        $ok = towquery("UPDATE `user` SET `block_next_loan`=$new_val WHERE id='$userpro_id'");
+        if ($ok) {
+            $label = $new_val ? 'blocked for next loan' : 'unblocked (next loan allowed)';
+            echo "<script>alert('User $label successfully.'); window.location.replace('profile.php?id=$id&tab=Personal');</script>";
+        } else {
+            echo "<script>alert('Failed to update block status. Please try again or contact support.'); window.location.replace('profile.php?id=$id&tab=Personal');</script>";
+        }
         exit;
     }
 
@@ -1459,21 +1467,27 @@
                                                                 <div class="form-group" style="margin-top:10px; padding:10px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
                                                                     <label style="display:block; margin-bottom:6px;"><i class="fa fa-ban"></i> Block Next Loan</label>
                                                                     <?php if (!empty($userpro_block_next_loan) && (int)$userpro_block_next_loan === 1): ?>
-                                                                        <span style="display:inline-block; background:#d9534f; color:#fff; padding:4px 10px; border-radius:3px; font-size:12px; font-weight:bold;">
-                                                                            <i class="fa fa-lock"></i> BLOCKED — will be auto-held on next application
+                                                                        <?php if (creditlab_user_has_running_loan((int)$userpro_id)): ?>
+                                                                        <span style="display:inline-block; background:#f0ad4e; color:#fff; padding:4px 10px; border-radius:3px; font-size:12px; font-weight:bold;">
+                                                                            <i class="fa fa-clock-o"></i> BLOCKED — waiting for running loan(s) to clear
                                                                         </span>
+                                                                        <?php else: ?>
+                                                                        <span style="display:inline-block; background:#d9534f; color:#fff; padding:4px 10px; border-radius:3px; font-size:12px; font-weight:bold;">
+                                                                            <i class="fa fa-lock"></i> BLOCKED — account will show on hold (no running loans)
+                                                                        </span>
+                                                                        <?php endif; ?>
                                                                         <button type="button" class="btn btn-xs btn-success" style="margin-left:8px;"
                                                                             onclick="if(confirm('Remove block? This user will be allowed to proceed with their next loan normally.')){document.getElementById('blockNextLoanForm').submit();}">
                                                                             <i class="fa fa-unlock"></i> Remove Block
                                                                         </button>
                                                                     <?php else: ?>
                                                                         <button type="button" class="btn btn-sm btn-danger"
-                                                                            onclick="if(confirm('Block this user?\n\nAfter clearing their current loan, if they apply for a new loan it will be automatically put on HOLD — they will NOT be taken to KFS or agreement steps.')){document.getElementById('blockNextLoanForm').submit();}">
+                                                                            onclick="if(confirm('Block this user?\n\nThey can finish their current running loan(s). Once all loans are cleared, their account will show on hold and they cannot apply for a new loan.')){document.getElementById('blockNextLoanForm').submit();}">
                                                                             <i class="fa fa-ban"></i> Block User (next loan)
                                                                         </button>
                                                                     <?php endif; ?>
                                                                     <small class="text-muted" style="display:block; margin-top:5px;">
-                                                                        When blocked, the next loan application is auto-held and user cannot proceed to KFS / agreement.
+                                                                        User can complete any running loan. After all loans are cleared, the account shows on hold and they cannot apply or proceed to KFS / agreement.
                                                                     </small>
                                                                 </div>
                                                                 <div class="form-group">

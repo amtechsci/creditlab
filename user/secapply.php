@@ -8,6 +8,10 @@ if(isset($user)){
 }else{
     header('location:../account/');
 }
+if (creditlab_enforce_block_next_loan((int)$user_id)) {
+    header('location:index.php');
+    exit;
+}
 $loanquery = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND (status='account manager' OR status='recovery officer')");
          if(townum($loanquery) > 0){  
              $amount = 0;
