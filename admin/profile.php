@@ -1462,13 +1462,13 @@
                                                                         <span style="display:inline-block; background:#d9534f; color:#fff; padding:4px 10px; border-radius:3px; font-size:12px; font-weight:bold;">
                                                                             <i class="fa fa-lock"></i> BLOCKED — will be auto-held on next application
                                                                         </span>
-                                                                        <button type="submit" form="blockNextLoanForm" class="btn btn-xs btn-success" style="margin-left:8px;"
-                                                                            onclick="return confirm('Remove block? This user will be allowed to proceed with their next loan normally.')">
+                                                                        <button type="button" class="btn btn-xs btn-success" style="margin-left:8px;"
+                                                                            onclick="if(confirm('Remove block? This user will be allowed to proceed with their next loan normally.')){document.getElementById('blockNextLoanForm').submit();}">
                                                                             <i class="fa fa-unlock"></i> Remove Block
                                                                         </button>
                                                                     <?php else: ?>
-                                                                        <button type="submit" form="blockNextLoanForm" class="btn btn-sm btn-danger"
-                                                                            onclick="return confirm('Block this user?\n\nAfter clearing their current loan, if they apply for a new loan it will be automatically put on HOLD — they will NOT be taken to KFS or agreement steps.')">
+                                                                        <button type="button" class="btn btn-sm btn-danger"
+                                                                            onclick="if(confirm('Block this user?\n\nAfter clearing their current loan, if they apply for a new loan it will be automatically put on HOLD — they will NOT be taken to KFS or agreement steps.')){document.getElementById('blockNextLoanForm').submit();}">
                                                                             <i class="fa fa-ban"></i> Block User (next loan)
                                                                         </button>
                                                                     <?php endif; ?>
