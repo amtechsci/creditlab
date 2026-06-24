@@ -20,7 +20,6 @@ $listResult = creditlab_admin_list_logs([
 ]);
 $allLogs = $listResult['rows'];
 $totals = $listResult['totals'];
-$allRowsUnfiltered = $listResult['all_rows'];
 
 $filterQueryBase = [];
 if ($filterDateFrom !== '') {
@@ -74,22 +73,6 @@ if (isset($_GET['view']) && $selectedRelativePath !== '') {
     }
 }
 
-$logsByDate = [];
-foreach ($allRowsUnfiltered as $log) {
-    $date = $log['date'];
-    if (!isset($logsByDate[$date])) {
-        $logsByDate[$date] = ['cron' => 0, 'webhook' => 0, 'sms' => 0, 'other' => 0, 'size' => 0];
-    }
-    $t = $log['type'];
-    if (isset($logsByDate[$date][$t])) {
-        $logsByDate[$date][$t]++;
-    } else {
-        $logsByDate[$date]['other']++;
-    }
-    $logsByDate[$date]['size'] += $log['size'];
-}
-ksort($logsByDate);
-
 $filteredSize = array_sum(array_column($allLogs, 'size'));
 $typeBadgeClass = [
     'cron' => 'primary',
@@ -135,26 +118,6 @@ $typeBadgeClass = [
             <div class="row">
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
-
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="panel panel-primary">
-                                    <div class="panel-heading">
-                                        <h4><i class="fa fa-play-circle"></i> E-NACH Auto Debit Dry Run</h4>
-                                    </div>
-                                    <div class="panel-body">
-                                        <p>Run a dry run test of the E-NACH auto debit cron job without making API calls.</p>
-                                        <button type="button" class="btn btn-warning btn-lg" id="dryRunBtn" onclick="runDryRun()">
-                                            <i class="fa fa-play"></i> Run Dry Run Test
-                                        </button>
-                                        <div id="dryRunLoading" style="display: none; margin-top: 15px;">
-                                            <i class="fa fa-spinner fa-spin"></i> Running dry run test, please wait...
-                                        </div>
-                                        <div id="dryRunResults" style="display: none; margin-top: 20px;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="row">
                             <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
@@ -206,47 +169,6 @@ $typeBadgeClass = [
                                             </div>
                                             <div class="contact-right"><i class="fa fa-hdd-o"></i></div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="review-content-section">
-                                    <h4>Recent activity by date</h4>
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-bordered table-condensed">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>Cron</th>
-                                                    <th>Webhook</th>
-                                                    <th>SMS</th>
-                                                    <th>Other</th>
-                                                    <th>Size</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $recentDates = array_slice(array_keys($logsByDate), -7, 7, true);
-                                                foreach ($recentDates as $date):
-                                                    $stats = $logsByDate[$date];
-                                                ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars($date) ?></td>
-                                                    <td><span class="badge badge-primary"><?= (int) $stats['cron'] ?></span></td>
-                                                    <td><span class="badge badge-success"><?= (int) $stats['webhook'] ?></span></td>
-                                                    <td><span class="badge badge-warning"><?= (int) $stats['sms'] ?></span></td>
-                                                    <td><?= (int) $stats['other'] ?></td>
-                                                    <td><?= creditlab_admin_format_file_size((int) $stats['size']) ?></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                                <?php if ($recentDates === []): ?>
-                                                <tr><td colspan="6" class="text-center text-muted">No log files found</td></tr>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -558,53 +480,6 @@ $typeBadgeClass = [
         }
     }, 1800000);
     <?php endif; ?>
-
-    function runDryRun() {
-        const btn = document.getElementById('dryRunBtn');
-        const loading = document.getElementById('dryRunLoading');
-        const results = document.getElementById('dryRunResults');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Running...';
-        loading.style.display = 'block';
-        results.style.display = 'none';
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', '../payment/dry_run_enach.php', true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa fa-play"></i> Run Dry Run Test';
-                loading.style.display = 'none';
-                if (xhr.status === 200) {
-                    const response = xhr.responseText;
-                    let summaryHtml = '<div class="alert alert-info"><h4><i class="fa fa-info-circle"></i> Dry Run Results</h4>';
-                    const eligibleMatch = response.match(/Total eligible loans found: (\d+)/i);
-                    const successMatch = response.match(/Would-be Success: (\d+)/i);
-                    const failedMatch = response.match(/Would-be Failed: (\d+)/i);
-                    const skippedMatch = response.match(/Skipped: (\d+)/i);
-                    summaryHtml += '<div class="row" style="margin-top: 15px;">';
-                    if (eligibleMatch) summaryHtml += '<div class="col-md-3"><div class="alert alert-primary"><strong>Eligible:</strong><br><h3>' + eligibleMatch[1] + '</h3></div></div>';
-                    if (successMatch) summaryHtml += '<div class="col-md-3"><div class="alert alert-success"><strong>Would Process:</strong><br><h3>' + successMatch[1] + '</h3></div></div>';
-                    if (failedMatch) summaryHtml += '<div class="col-md-3"><div class="alert alert-danger"><strong>Would Fail:</strong><br><h3>' + failedMatch[1] + '</h3></div></div>';
-                    if (skippedMatch) summaryHtml += '<div class="col-md-3"><div class="alert alert-warning"><strong>Skipped:</strong><br><h3>' + skippedMatch[1] + '</h3></div></div>';
-                    summaryHtml += '</div>';
-                    summaryHtml += '<div style="margin-top: 15px;"><button class="btn btn-sm btn-default" type="button" data-toggle="collapse" data-target="#fullOutput">View Full Output</button>';
-                    summaryHtml += '<div class="collapse" id="fullOutput" style="margin-top: 15px;"><div class="well log-content"><pre>' + htmlEscape(response) + '</pre></div></div></div></div>';
-                    results.innerHTML = summaryHtml;
-                    results.style.display = 'block';
-                } else {
-                    results.innerHTML = '<div class="alert alert-danger">Error running dry run. Status: ' + xhr.status + '</div>';
-                    results.style.display = 'block';
-                }
-            }
-        };
-        xhr.send();
-    }
-
-    function htmlEscape(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
     </script>
 
     <style>
