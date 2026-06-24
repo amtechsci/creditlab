@@ -5,7 +5,7 @@
 if (($creditlab_profile_role ?? '') !== 'agency_admin') {
     return;
 }
-$allowedPanes = ['pg_link', 'Reference'];
+$allowedPanes = creditlab_profile_tabs_for_role('agency_admin');
 $allPanes = array_keys(creditlab_profile_tab_definitions());
 $hide = array_diff($allPanes, $allowedPanes);
 ?>

@@ -25,13 +25,26 @@ if ($_POST) {
     $amount = isset($result['data']['amount']) ? $result['data']['amount'] : '';
     $payment_method = isset($result['data']['mode']) ? $result['data']['mode'] : '';
     $bank_reference_number = isset($result['data']['bank_ref_num']) ? $result['data']['bank_ref_num'] : '';
+    if ($bank_reference_number === '' || $bank_reference_number === 'NA') {
+        $bank_reference_number = $result['data']['easepayid'] ?? ('RESPONSE_' . $txnid);
+    }
     
     // Check if payment was successful
     if (isset($result['status']) && $result['status'] == 1 && isset($result['data']['status']) && $result['data']['status'] === "success") {
 
         require_once __DIR__ . '/response_settle.php';
-        $pg_transaction = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnid' AND `status`!='success'");
-        if (townum($pg_transaction) > 0) {
+        $txnidEsc = towreal($txnid);
+        $needsSettle = false;
+        $pgRow = null;
+        $pgQ = towquery("SELECT p.*, loan.status_log AS loan_status_log FROM pg_transaction p INNER JOIN loan ON loan.id = p.loan_id WHERE p.txnid='$txnidEsc' LIMIT 1");
+        if ($pgQ && townum($pgQ) > 0) {
+            $pgRow = towfetch($pgQ);
+            $needsSettle = ($pgRow['loan_status_log'] ?? '') !== 'cleared';
+        } else {
+            $needsSettle = true;
+        }
+
+        if ($needsSettle) {
             $settle = creditlab_payeasebuzz_handle_success($txnid, (float) $amount, (string) $bank_reference_number, (string) $payment_method);
             if (!$settle['ok'] && ($settle['message'] ?? '') !== 'Not found') {
                 echo '<html><body><h3>Payment Processing Error!</h3><p>Please contact support.</p>';
@@ -41,6 +54,12 @@ if ($_POST) {
             echo '<html><body>';
             echo '<h3>Payment Successful!</h3>';
             echo '<p>Your payment has been successfully processed. You will be redirected shortly.</p>';
+            echo '<script>setTimeout(function() { window.location.href = "/user/"; }, 2000);</script>';
+            echo '</body></html>';
+        } else {
+            echo '<html><body>';
+            echo '<h3>Payment Successful!</h3>';
+            echo '<p>Your loan is already cleared. You will be redirected shortly.</p>';
             echo '<script>setTimeout(function() { window.location.href = "/user/"; }, 2000);</script>';
             echo '</body></html>';
         }

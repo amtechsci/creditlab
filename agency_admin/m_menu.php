@@ -4,9 +4,7 @@
             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                 <div class="mobile-menu">
                     <nav id="dropdown">
-                        <ul class="nav nav-tabs">
-                            <li><a href="index.php">Home</a></li>
-                        </ul>
+                        <ul class="nav nav-tabs"></ul>
                     </nav>
                 </div>
             </div>

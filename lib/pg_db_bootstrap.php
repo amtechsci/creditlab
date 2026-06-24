@@ -13,7 +13,7 @@ function creditlab_pg_bind_mysqli($mysqliConn): void
 function creditlab_ensure_app_db_helpers($mysqliConn): void
 {
     creditlab_pg_bind_mysqli($mysqliConn);
-    if (!function_exists('towquery')) {
+    if (!function_exists('towreal')) {
         if (!defined('CREDITLAB_SKIP_SESSION')) {
             define('CREDITLAB_SKIP_SESSION', true);
         }
