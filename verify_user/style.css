@@ -153,12 +153,17 @@ body {}
     height: 100vh;
     z-index: 9999;
     width: 240px;
+    overflow: hidden;
 }
 #sidebar {
-    min-width: 200px;
+    min-width: 240px;
+    max-width: 240px;
+    width: 240px;
     background: #ddd;
     color: #fff;
 	position:fixed;
+    top: 0;
+    left: 0;
     transition: all 0.3s;
 	z-index:999;
 	height: 100vh;
@@ -177,12 +182,22 @@ body {}
     max-height: none;
 }
 .mini-navbar .all-content-wrapper {
-    margin-left: 80px;
+    margin-left: 90px;
     transition: all 0.3s;
+}
+.mini-navbar .left-sidebar-pro {
+    width: 80px;
+}
+.mini-navbar #sidebar,
+.mini-navbar #sidebar.active {
+    min-width: 80px;
+    max-width: 80px;
+    width: 80px;
 }
 #sidebar.active {
     min-width: 80px;
     max-width: 80px;
+    width: 80px;
     text-align: center;
 }
 #sidebar.active .sidebar-header h3, #sidebar.active .CTAs {

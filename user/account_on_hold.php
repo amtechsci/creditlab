@@ -37,7 +37,7 @@
         <div class="container-fluid">
             <h1>Your account is on hold.</h1>
             <p>You cannot apply for a new loan at this time.</p>
-            <p>Please mail us as per the <a href="<?=getPdfUrl('grievanceredressal')?>" target="_blank">grievance redressal mechanism</a>, if you need any assistance (<a href="mailto:grievance@creditlab.in">grievance@creditlab.in</a>).</p>
+            <p>Please mail us as per the <a href="<?=getPdfUrl('grievanceredressal')?>" target="_blank">grievance redressal mechanism</a>, if you need any assistance.</p>
             <br><br><br><br><br><br><br><br><br><br>
         </div>
     </div>
