@@ -252,67 +252,76 @@ $typeBadgeClass = [
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-lg-4 col-md-4 col-sm-12 col-xs-12">
-                                <div class="review-content-section">
-                                    <h4>Filters</h4>
-                                    <form method="get" action="log_viewer.php" class="form-horizontal">
-                                        <div class="form-group">
-                                            <label>Date from</label>
-                                            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filterDateFrom) ?>">
+                        <div class="row log-manager-section">
+                            <div class="col-lg-12">
+                                <div class="review-content-section log-manager-panel">
+                                    <h4>Search &amp; filters</h4>
+                                    <form method="get" action="log_viewer.php" class="log-filter-form">
+                                        <div class="row">
+                                            <div class="col-md-3 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="filterDateFrom">Date from</label>
+                                                    <input type="date" id="filterDateFrom" name="date_from" class="form-control" value="<?= htmlspecialchars($filterDateFrom) ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="filterDateTo">Date to</label>
+                                                    <input type="date" id="filterDateTo" name="date_to" class="form-control" value="<?= htmlspecialchars($filterDateTo) ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="filterType">Type</label>
+                                                    <select id="filterType" name="type" class="form-control">
+                                                        <option value="all" <?= $filterType === 'all' ? 'selected' : '' ?>>All</option>
+                                                        <option value="cron" <?= $filterType === 'cron' ? 'selected' : '' ?>>Cron</option>
+                                                        <option value="webhook" <?= $filterType === 'webhook' ? 'selected' : '' ?>>Webhook</option>
+                                                        <option value="sms" <?= $filterType === 'sms' ? 'selected' : '' ?>>SMS</option>
+                                                        <option value="other" <?= $filterType === 'other' ? 'selected' : '' ?>>Other</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 col-sm-6">
+                                                <div class="form-group">
+                                                    <label for="filterSearch">Search filename</label>
+                                                    <input type="text" id="filterSearch" name="search" class="form-control" placeholder="webhook, enach..." value="<?= htmlspecialchars($filterSearch) ?>">
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="form-group">
-                                            <label>Date to</label>
-                                            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filterDateTo) ?>">
+                                        <div class="log-filter-actions">
+                                            <button type="submit" class="btn btn-primary">Apply filters</button>
+                                            <a href="log_viewer.php" class="btn btn-default">Reset</a>
                                         </div>
-                                        <div class="form-group">
-                                            <label>Type</label>
-                                            <select name="type" class="form-control">
-                                                <option value="all" <?= $filterType === 'all' ? 'selected' : '' ?>>All</option>
-                                                <option value="cron" <?= $filterType === 'cron' ? 'selected' : '' ?>>Cron</option>
-                                                <option value="webhook" <?= $filterType === 'webhook' ? 'selected' : '' ?>>Webhook</option>
-                                                <option value="sms" <?= $filterType === 'sms' ? 'selected' : '' ?>>SMS</option>
-                                                <option value="other" <?= $filterType === 'other' ? 'selected' : '' ?>>Other</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Search filename</label>
-                                            <input type="text" name="search" class="form-control" placeholder="webhook, enach..." value="<?= htmlspecialchars($filterSearch) ?>">
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-block">Apply filters</button>
-                                        <a href="log_viewer.php" class="btn btn-default btn-block">Reset</a>
                                     </form>
 
                                     <hr>
-                                    <h4>Bulk delete</h4>
-                                    <p class="text-muted small">Permanent. Admin only.</p>
-                                    <button type="button" class="btn btn-danger btn-block" id="btnDeleteSelected" disabled onclick="confirmDeleteSelected()">
-                                        <i class="fa fa-trash"></i> Delete selected
-                                    </button>
-                                    <div class="form-group" style="margin-top:10px;">
-                                        <label>Delete older than</label>
-                                        <select id="deleteOlderDays" class="form-control">
-                                            <option value="7">7 days</option>
-                                            <option value="30">30 days</option>
-                                            <option value="90" selected>90 days</option>
-                                            <option value="180">180 days</option>
-                                        </select>
+                                    <div class="log-bulk-bar">
+                                        <h4 class="log-bulk-title">Bulk delete <small class="text-muted">(admin only, permanent)</small></h4>
+                                        <div class="log-bulk-actions">
+                                            <button type="button" class="btn btn-danger" id="btnDeleteSelected" disabled onclick="confirmDeleteSelected()">
+                                                <i class="fa fa-trash"></i> Delete selected
+                                            </button>
+                                            <label for="deleteOlderDays" class="log-bulk-label">Older than</label>
+                                            <select id="deleteOlderDays" class="form-control log-bulk-days">
+                                                <option value="7">7 days</option>
+                                                <option value="30">30 days</option>
+                                                <option value="90" selected>90 days</option>
+                                                <option value="180">180 days</option>
+                                            </select>
+                                            <button type="button" class="btn btn-danger" onclick="confirmDeleteOlder()">
+                                                <i class="fa fa-trash"></i> Delete by age
+                                            </button>
+                                            <span id="selectedSizeHint" class="text-muted small"></span>
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn btn-danger btn-block" onclick="confirmDeleteOlder()">
-                                        <i class="fa fa-trash"></i> Delete by age
-                                    </button>
-                                    <p id="selectedSizeHint" class="text-muted small" style="margin-top:8px;"></p>
-                                </div>
-                            </div>
 
-                            <div class="col-lg-8 col-md-8 col-sm-12 col-xs-12">
-                                <div class="review-content-section">
-                                    <h4>Log files</h4>
-                                    <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                                    <h4 style="margin-top:20px;">Log files</h4>
+                                    <div class="table-responsive log-table-wrap">
                                         <table class="table table-striped table-bordered table-hover" id="logFilesTable">
                                             <thead>
                                                 <tr>
-                                                    <th style="width:36px;">
+                                                    <th class="col-check">
                                                         <input type="checkbox" id="selectAllLogs" title="Select all">
                                                     </th>
                                                     <th>File</th>
@@ -320,7 +329,7 @@ $typeBadgeClass = [
                                                     <th>Date</th>
                                                     <th>Size</th>
                                                     <th>Modified</th>
-                                                    <th>Actions</th>
+                                                    <th class="col-actions">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -333,15 +342,15 @@ $typeBadgeClass = [
                                                     <td>
                                                         <input type="checkbox" class="log-checkbox" value="<?= htmlspecialchars($rel) ?>">
                                                     </td>
-                                                    <td>
+                                                    <td class="log-file-cell">
                                                         <a href="log_viewer.php<?= htmlspecialchars($viewQ) ?>"><?= htmlspecialchars($log['name']) ?></a>
-                                                        <br><small class="text-muted"><?= htmlspecialchars($rel) ?></small>
+                                                        <div class="log-file-path"><?= htmlspecialchars($rel) ?></div>
                                                     </td>
                                                     <td><span class="label label-<?= $badge ?>"><?= htmlspecialchars($log['type']) ?></span></td>
                                                     <td><?= htmlspecialchars($log['date']) ?></td>
                                                     <td><?= creditlab_admin_format_file_size((int) $log['size']) ?></td>
-                                                    <td><?= date('Y-m-d H:i:s', $log['modified']) ?></td>
-                                                    <td>
+                                                    <td class="log-modified-cell"><?= date('Y-m-d H:i:s', $log['modified']) ?></td>
+                                                    <td class="log-actions-cell">
                                                         <a href="log_viewer.php<?= htmlspecialchars($viewQ) ?>" class="btn btn-primary btn-xs">View</a>
                                                         <a href="log_viewer.php<?= htmlspecialchars(log_viewer_build_query(['download' => 1, 'file' => $rel])) ?>" class="btn btn-success btn-xs">Download</a>
                                                         <button type="button" class="btn btn-danger btn-xs" onclick="confirmDeleteSingle('<?= htmlspecialchars($rel, ENT_QUOTES) ?>', '<?= htmlspecialchars($log['name'], ENT_QUOTES) ?>')">Delete</button>
@@ -357,7 +366,7 @@ $typeBadgeClass = [
                                 </div>
 
                                 <?php if ($selectedLog && $logContent): ?>
-                                <div class="review-content-section" style="margin-top:20px;">
+                                <div class="review-content-section log-view-panel">
                                     <h4>
                                         Viewing: <?= htmlspecialchars($selectedLog) ?>
                                         <div class="pull-right">
@@ -599,6 +608,88 @@ $typeBadgeClass = [
     </script>
 
     <style>
+    .log-manager-section {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .log-manager-panel,
+    .log-view-panel {
+        background: #fff;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #e7e7e7;
+        border-radius: 4px;
+        overflow: visible;
+    }
+    .log-filter-form .form-group {
+        margin-bottom: 12px;
+    }
+    .log-filter-form label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
+    .log-filter-actions {
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+    .log-filter-actions .btn {
+        margin-right: 8px;
+    }
+    .log-bulk-bar {
+        margin-top: 8px;
+    }
+    .log-bulk-title {
+        margin-bottom: 10px;
+    }
+    .log-bulk-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+    }
+    .log-bulk-label {
+        margin: 0;
+        font-weight: 600;
+    }
+    .log-bulk-days {
+        width: 120px;
+        display: inline-block;
+    }
+    .log-table-wrap {
+        max-height: 560px;
+        overflow: auto;
+        margin-top: 10px;
+        border: 1px solid #e7e7e7;
+    }
+    #logFilesTable {
+        margin-bottom: 0;
+        font-size: 13px;
+    }
+    #logFilesTable thead th {
+        background: #f5f5f5;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #logFilesTable .col-check { width: 40px; }
+    #logFilesTable .col-actions { min-width: 200px; }
+    .log-file-cell {
+        min-width: 200px;
+        max-width: 320px;
+    }
+    .log-file-path {
+        font-size: 11px;
+        color: #888;
+        margin-top: 2px;
+        word-break: break-all;
+    }
+    .log-modified-cell {
+        white-space: nowrap;
+        font-size: 12px;
+    }
+    .log-actions-cell .btn {
+        margin-bottom: 2px;
+    }
     .log-content {
         background: #f8f9fa;
         border: 1px solid #dee2e6;
@@ -623,7 +714,6 @@ $typeBadgeClass = [
     .contact-left h4 { margin: 0 0 5px 0; font-size: 16px; }
     .contact-left p { margin: 0; color: #666; font-size: 14px; }
     .contact-right i { font-size: 24px; opacity: 0.7; }
-    #logFilesTable thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
     </style>
 
 </body>

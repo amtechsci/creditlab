@@ -72,6 +72,11 @@ if (!mysqli_ping($db)) {
     die("Database connection lost");
 }
 
+// Load db.php helpers (towquery, towreal, getAppUrl) for PG settlement — must run before pg_link_settlement.
+require_once __DIR__ . '/lib/pg_db_bootstrap.php';
+creditlab_ensure_app_db_helpers($db);
+require_once __DIR__ . '/lib/pg_link_settlement.php';
+
 
 // Local DB helpers (do not name towquery — pg settlement uses db.php helpers).
 function webhook_query($db, $query) {
@@ -97,48 +102,6 @@ function creditlab_webhook_is_autodebit_furl(string $furl, string $baseUrl): boo
         }
     }
     return false;
-}
-
-// --- 3. STANDARDIZED BUSINESS LOGIC FUNCTIONS ---
-/**
- * Get base URL from database configuration
- */
-function getAppUrl() {
-    global $db;
-    static $cached_url = null;
-    
-    if ($cached_url !== null) {
-        return $cached_url;
-    }
-    
-    try {
-        $table_check = mysqli_query($db, "SHOW TABLES LIKE 'site_config'");
-        if (mysqli_num_rows($table_check) == 0) {
-            mysqli_query($db, "CREATE TABLE IF NOT EXISTS `site_config` (
-                `id` int(11) NOT NULL AUTO_INCREMENT,
-                `config_key` varchar(100) NOT NULL,
-                `config_value` text NOT NULL,
-                `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (`id`),
-                UNIQUE KEY `config_key` (`config_key`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
-            mysqli_query($db, "INSERT INTO `site_config` (`config_key`, `config_value`) VALUES ('base_url', 'https://creditlab.in') ON DUPLICATE KEY UPDATE `config_value` = 'https://creditlab.in'");
-        }
-        
-        $result = mysqli_query($db, "SELECT `config_value` FROM `site_config` WHERE `config_key` = 'base_url' LIMIT 1");
-        if ($result && mysqli_num_rows($result) > 0) {
-            $row = mysqli_fetch_assoc($result);
-            $cached_url = rtrim($row['config_value'], '/');
-            return $cached_url;
-        }
-    } catch (Exception $e) {
-    }
-    
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-    $host = $_SERVER['HTTP_HOST'] ?? 'creditlab.in';
-    $cached_url = $protocol . $host;
-    
-    return $cached_url;
 }
 
 /**
@@ -560,9 +523,6 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     }
     
     if (isset($status) && $status == "success") {
-        require_once __DIR__ . '/lib/pg_db_bootstrap.php';
-        require_once __DIR__ . '/lib/pg_link_settlement.php';
-        creditlab_ensure_app_db_helpers($db);
         writeWebhookLog("Processing payment for txnid: $txnid | Amount: ₹$amount", $log_file);
         $settle = creditlab_process_pg_payment_success($db, $txnid, (float) $amount, (string) $bank_ref_num, (string) $payment_method);
         $flow = $settle['flow'] ?? '';
@@ -592,9 +552,6 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
             $failed_transactions[] = "$txnid - " . ($settle['message'] ?? '');
         }
     } else {
-        require_once __DIR__ . '/lib/pg_db_bootstrap.php';
-        require_once __DIR__ . '/lib/pg_link_settlement.php';
-        creditlab_ensure_app_db_helpers($db);
         creditlab_pg_mark_tx_failure($db, $txnid);
     }
 }

@@ -52,7 +52,10 @@ function creditlab_pg_link_by_txnid(string $txnid): ?array
 
 function creditlab_is_staff_pg_txnid(string $txnid): bool
 {
-    return strpos($txnid, 'PG_') === 0 || creditlab_pg_link_by_txnid($txnid) !== null;
+    if (strpos($txnid, 'PG_') === 0) {
+        return true;
+    }
+    return creditlab_pg_link_by_txnid($txnid) !== null;
 }
 
 /**
