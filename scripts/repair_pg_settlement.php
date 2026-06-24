@@ -6,13 +6,47 @@ require_once __DIR__ . '/../lib/guard_cli.php';
  * Usage:
  *   php scripts/repair_pg_settlement.php              # list stuck rows
  *   php scripts/repair_pg_settlement.php --apply      # settle all stuck rows
- *   php scripts/repair_pg_settlement.php TXNID ...  # settle specific txnid(s)
+ *   php scripts/repair_pg_settlement.php TXNID ...    # settle specific txnid(s)
  *   php scripts/repair_pg_settlement.php --apply TXNID
+ *
+ * On production (.env readable only by www-data):
+ *   sudo -u www-data php scripts/repair_pg_settlement.php
+ *   sudo -u www-data php scripts/repair_pg_settlement.php --apply
  */
 date_default_timezone_set('Asia/Kolkata');
 
-require_once __DIR__ . '/../db.php';
-require_once __DIR__ . '/../lib/pg_link_settlement.php';
+$projectRoot = dirname(__DIR__);
+$envPath = $projectRoot . '/.env';
+
+require_once $projectRoot . '/lib/env.php';
+require_once $projectRoot . '/lib/database.php';
+
+if (!is_readable($envPath)) {
+    fwrite(STDERR, "Cannot read {$envPath}\n");
+    fwrite(STDERR, "Run as the web user: sudo -u www-data php scripts/repair_pg_settlement.php\n");
+    fwrite(STDERR, "Or export DB_HOST, DB_USER, DB_PASSWORD, DB_NAME in your shell.\n");
+    exit(1);
+}
+
+$creds = creditlab_db_credentials();
+if ($creds['pass'] === '' || $creds['pass'] === null) {
+    fwrite(STDERR, "DB_PASSWORD is empty. Check {$envPath} or use: sudo -u www-data php scripts/repair_pg_settlement.php\n");
+    exit(1);
+}
+
+$db = creditlab_db_connect();
+if (!$db) {
+    fwrite(STDERR, "Database connection failed for user '{$creds['user']}'@'{$creds['host']}'.\n");
+    fwrite(STDERR, "Verify DB_* in {$envPath}\n");
+    exit(1);
+}
+
+$GLOBALS['db'] = $db;
+if (!defined('CREDITLAB_SKIP_SESSION')) {
+    define('CREDITLAB_SKIP_SESSION', true);
+}
+require_once $projectRoot . '/db.php';
+require_once $projectRoot . '/lib/pg_link_settlement.php';
 
 $argv = $_SERVER['argv'] ?? [];
 $apply = in_array('--apply', $argv, true);
