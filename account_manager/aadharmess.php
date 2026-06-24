@@ -1,5 +1,9 @@
 <?php 
 include '../db.php';
+require_once __DIR__ . '/../lib/staff_context.php';
+if (!creditlab_can_view_pan_aadhar()) {
+    exit;
+}
 $search = towreal($_POST['aadharmess']);
 $id = towreal($_POST['id']);
 if($search != ""){

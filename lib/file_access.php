@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/s3_aws_sdk.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/staff_context.php';
 
 function creditlab_is_valid_upload_filename(string $filename): bool
 {
@@ -63,6 +64,9 @@ function creditlab_authorize_file_download(string $filename): bool
         return false;
     }
     if (creditlab_is_staff_logged_in()) {
+        if (!creditlab_can_view_documents()) {
+            return false;
+        }
         return true;
     }
     $customerId = creditlab_get_logged_in_customer_id();

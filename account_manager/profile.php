@@ -263,7 +263,7 @@ if(isset($_POST['conta'])){
     }
     print_r("<script> window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }
-if(isset($_POST['document'])){
+if(isset($_POST['document']) && creditlab_can_view_documents()){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
     $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
@@ -530,7 +530,7 @@ if(isset($_POST['loan_acc_man'])){
     towquery("INSERT INTO `loan_acc_man`(`uid`, `lid`, `customer_response`, `commitment_date`, `commitment_text`, `default_type`, `updated_by`) VALUES ('$id','$loan_id','$customer_response','$commitment_date','$commitment_text','$default_type','$updated_by_escaped')");
     print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }
-if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
+if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty($_POST['reset'])) {
     // Loop through selected checkboxes
     foreach ($_POST['reset'] as $document) {
         // Update the selected document field to NULL for the user
@@ -557,6 +557,9 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                             <div class="breadcome-list">
                                 <div class="row">
+                                    <?php if ($is_agency_profile) { ?>
+                                    <?php include __DIR__ . '/../includes/profile_agency_header.php'; ?>
+                                    <?php } else { ?>
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                    <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
                    <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
@@ -589,6 +592,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                    <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
                                                      if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
                 </div></div>
+                                    <?php } ?>
                             </div>
                         </div>
                     </div>
@@ -817,6 +821,11 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                                 <lable>PAN <span style="color:red;" id="panmess"></span></lable>
                                                                 <input name="pan" type="text" class="form-control" placeholder="PAN" pattern="^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$" id="panNumber" value="<?=$userpro_pan?>">
                                                             </div>
+                                                            <?php } else { ?>
+                                                            <div class="form-group">
+                                                                <lable>PAN</lable>
+                                                                <input disabled type="text" class="form-control" value="<?= htmlspecialchars(creditlab_mask_sensitive_id($userpro_pan ?? '')) ?>" placeholder="PAN">
+                                                            </div>
                                                             <?php } ?>
                                                             <div class="form-group">
                                                                 <lable>Monthly Net Salary</lable>
@@ -904,6 +913,11 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             <div class="form-group">
                                                                 <lable>Aadhar No</lable> <span style="color:red;" id="aadharmess"></span>
                                                                 <input name="aadhar" type="text" class="form-control" value="<?=$userpro_aadhar?>" placeholder="Aadhar No">
+                                                            </div>
+                                                            <?php } else { ?>
+                                                            <div class="form-group">
+                                                                <lable>Aadhar No</lable>
+                                                                <input disabled type="text" class="form-control" value="<?= htmlspecialchars(creditlab_mask_sensitive_id($userpro_aadhar ?? '')) ?>" placeholder="Aadhar No">
                                                             </div>
                                                             <?php } ?>
                                                             <div class="form-group">
@@ -1042,6 +1056,9 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                 
                                 </div>
                                 <div class="product-tab-list tab-pane fade" id="INFORMATION">
+                                    <?php if (!creditlab_can_view_documents()) { ?>
+                                    <p class="text-muted">Document access is not available for your role.</p>
+                                    <?php } else { ?>
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
@@ -1301,6 +1318,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                             </div>
                                         </div>
                                     </div>
+                                    <?php } ?>
                                 </div>
                                 <div class="product-tab-list tab-pane fade" id="Bank">
                                    <form action="" method="post"> <div class="row">
@@ -2239,6 +2257,7 @@ if(mobile != altmobile){
 });
 </script>
 
+<?php if (creditlab_can_view_pan_aadhar()) { ?>
 <script>
     $(document).ready(function(){
         
@@ -2275,6 +2294,7 @@ if(mobile != altmobile){
              });
     });
 </script>
+<?php } ?>
 <script>
     $(document).ready(function(){
         $.post("acnomess.php",

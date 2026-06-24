@@ -155,6 +155,9 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
 
 function creditlab_send_recovery_agency_csv(string $filename, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null): void
 {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=' . $filename);
     $output = fopen('php://output', 'w');

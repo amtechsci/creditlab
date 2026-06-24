@@ -83,6 +83,24 @@ function creditlab_can_view_pan_aadhar(): bool
     return creditlab_staff_role() !== 'agency_admin';
 }
 
+function creditlab_can_view_documents(): bool
+{
+    return creditlab_staff_role() !== 'agency_admin';
+}
+
+function creditlab_mask_sensitive_id(?string $value): string
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+    $len = strlen($value);
+    if ($len <= 4) {
+        return str_repeat('X', $len);
+    }
+    return str_repeat('X', $len - 4) . substr($value, -4);
+}
+
 function creditlab_can_create_pg_link(): bool
 {
     $role = creditlab_staff_role();
