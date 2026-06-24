@@ -5,13 +5,20 @@
 		 mCustomScrollbar
 		---------------------------- */	
 			$(window).on("load",function(){
-				$(".message-menu, .notification-menu, .comment-scrollbar, .notes-menu-scrollbar, .project-st-menu-scrollbar, .report-graph-scroll, .report-graph-scroll2").mCustomScrollbar({
+				$(".message-menu, .notification-menu, .notes-menu-scrollbar, .project-st-menu-scrollbar, .report-graph-scroll, .report-graph-scroll2").mCustomScrollbar({
 					axis:"x",
 					axis:"y",
 					autoHideScrollbar: true,
 					scrollbarPosition: "outside",
 					theme:"light-1"
 					
+				});
+				$(".comment-scrollbar").not("#sidebar .comment-scrollbar, #sidebar .left-custom-menu-adp-wrap").mCustomScrollbar({
+					axis:"x",
+					axis:"y",
+					autoHideScrollbar: true,
+					scrollbarPosition: "outside",
+					theme:"light-1"
 				});
 				$(".timeline-scrollbar").mCustomScrollbar({
 					setHeight:636,

@@ -143,6 +143,10 @@ body {}
     transition: all 0.3s;
 }
 .left-sidebar-pro {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
     z-index: 9999;
     width: 240px;
 }
@@ -153,7 +157,20 @@ body {}
 	position:fixed;
     transition: all 0.3s;
 	z-index:999;
-	height:100%;
+	height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+#sidebar .left-custom-menu-adp-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+#sidebar .left-custom-menu-adp-wrap.comment-scrollbar,
+#sidebar .left-custom-menu-adp-wrap.sidebar-menu-scroll {
+    height: auto !important;
+    max-height: none;
 }
 .mini-navbar .all-content-wrapper {
     margin-left: 80px;
@@ -4376,6 +4393,12 @@ div#sparklinehome canvas {
 /*----------------------------------------*/
 .comment-scrollbar, .timeline-scrollbar, .messages-scrollbar, .project-list-scrollbar {
     height: 580px;
+}
+#sidebar .comment-scrollbar,
+#sidebar .left-custom-menu-adp-wrap.comment-scrollbar,
+#sidebar .left-custom-menu-adp-wrap.sidebar-menu-scroll {
+    height: auto !important;
+    max-height: none;
 }
 .mCSB_outside+.mCSB_scrollTools {
     right: -15px;
