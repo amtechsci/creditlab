@@ -139,8 +139,12 @@ body {}
 /*  4. left sidebar
 /*----------------------------------------*/
 .all-content-wrapper {
-    margin-left: 200px;
+    margin-left: 250px;
     transition: all 0.3s;
+}
+.header-top-wraper > .row {
+    margin-left: 0;
+    margin-right: 0;
 }
 .left-sidebar-pro {
     position: fixed;
