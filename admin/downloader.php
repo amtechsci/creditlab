@@ -86,6 +86,7 @@ if (isset($_GET['pageno'])) {
                                 <a href="/downloader/bs_disbursal.php" target="_blank" class="download-link" data-file="bs_disbursal.php"><button style='margin-left:20px;' class="btn btn-success">BS Disbursal</button></a>
                                 <a href="/downloader/applied.php" target="_blank" class="download-link" data-file="applied.php"><button style='margin-left:20px;' class="btn btn-success">Applied</button></a>
                                 <a href="/downloader/recoveryagency.php" target="_blank" class="download-link" data-file="recoveryagency.php"><button style='margin-left:20px;' class="btn btn-success">recovery agency</button></a>
+                                <a href="/downloader/agency_payments.php" target="_blank" class="download-link" data-file="agency_payments.php"><button style='margin-left:20px;' class="btn btn-success">Agency wise payments</button></a>
                             </div>
                             
                             <script>

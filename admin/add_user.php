@@ -1,5 +1,15 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/auth.php';
+
+$agencies = [];
+$agencyQuery = towquery('SELECT id, name FROM agency WHERE active=1 ORDER BY name');
+if ($agencyQuery) {
+    while ($row = towfetch($agencyQuery)) {
+        $agencies[] = $row;
+    }
+}
+
 if(isset($_POST['submit'])){
     $extract = towrealarray($_POST);
     extract($extract);
@@ -18,6 +28,20 @@ if(isset($_POST['submit'])){
     $reg_date = date('Y-m-d H:i:s');
     $a = towquery("INSERT INTO `verify_user`(`name`, `email`, `mobile`, `password`, `reg_date`) VALUES ('$name','$email','$mobile','$password','$reg_date')");
         print_r("<script>alert('User Added'); window.location.replace('add_user.php');</script>");
+    }elseif($emp_type == "agency_admin"){
+        $agency_id = (int) ($agency_id ?? 0);
+        if ($agency_id <= 0 || trim($name ?? '') === '' || trim($email ?? '') === '' || ($password ?? '') === '') {
+            print_r("<script>alert('Select agency and fill name, email, and password'); window.location.replace('add_user.php');</script>");
+        } else {
+            $chk = towquery("SELECT id FROM agency_admin WHERE email='" . towreal($email) . "' LIMIT 1");
+            if ($chk && townum($chk) > 0) {
+                print_r("<script>alert('Email already exists for a recovery admin'); window.location.replace('add_user.php');</script>");
+            } else {
+                $hashEsc = towreal(creditlab_hash_password($password));
+                towquery("INSERT INTO agency_admin (agency_id, name, email, password, active) VALUES ($agency_id, '" . towreal($name) . "', '" . towreal($email) . "', '$hashEsc', 1)");
+                print_r("<script>alert('Recovery admin created'); window.location.replace('add_user.php');</script>");
+            }
+        }
     }else{
         $rcid = "RC".date('ymdHis');
         $a = towquery("INSERT INTO `user`(`rcid`, `name`, `email`, `mobile` `password`, `active`, `verify`, `otp`, `validation`, `reg_date`, `status`, `document_password`, `loan_limit`, `assign_account_manager`, `assign_recovery_officer`, `star_member`) VALUES ('$rcid','$name','$email','$mobile','$password',1,0,1111,'','$reg_date','waiting','pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',10000,1,1,2)");
@@ -69,27 +93,34 @@ if(isset($_POST['submit'])){
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
                                                 <div id="dropzone1" class="pro-ad">
-                                                    <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
-                                            
-                                                            <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                                                <div>
-                                                                    <div class="table-responsive">
-                                                                        <form action="" method="post">
-                                                                            <select name="emp_type" class="form-control">
-                                                                                <option value="account_manager">account manager</option>
-                                                                                <option value="recovery_officer">recovery officer</option>
-                                                                                <option value="verify_user">Verify User</option>
-                                                                                <option value="user">User</option>
-                                                                            </select>
-                                                                            <input name="name" type="text" class="form-control" placeholder="Name" required>
-                                                                            <input name="email" type="email" class="form-control" placeholder="Email" required>
-                                                                            <input name="number" type="mobile" class="form-control" placeholder="Mobile" required>
-                                                                            <input name="password" type="text" class="form-control" placeholder="Password" required>
-                                                                            <input name="submit" type="submit" class="btn btn-success">
-                                                                        </form>
-                                                                    </div>
+                                                    <form action="" method="post" class="add-professors" id="createEmployeeForm">
+                                                        <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                                                            <div class="table-responsive">
+                                                                <select name="emp_type" id="emp_type" class="form-control" style="margin-bottom:10px;">
+                                                                    <option value="account_manager">account manager</option>
+                                                                    <option value="recovery_officer">recovery officer</option>
+                                                                    <option value="agency_admin">recovery admin (agency)</option>
+                                                                    <option value="verify_user">Verify User</option>
+                                                                    <option value="user">User</option>
+                                                                </select>
+                                                                <div id="agencyFields" style="display:none; margin-bottom:10px;">
+                                                                    <select name="agency_id" id="agency_id" class="form-control">
+                                                                        <option value="">Select agency</option>
+                                                                        <?php foreach ($agencies as $ag) { ?>
+                                                                        <option value="<?= (int) $ag['id'] ?>"><?= htmlspecialchars($ag['name']) ?></option>
+                                                                        <?php } ?>
+                                                                    </select>
+                                                                    <?php if ($agencies === []) { ?>
+                                                                    <p class="text-muted" style="margin-top:8px;">No agencies yet. <a href="agency_admins.php">Create an agency first</a>.</p>
+                                                                    <?php } ?>
                                                                 </div>
+                                                                <input name="name" type="text" class="form-control" placeholder="Name" required style="margin-bottom:10px;">
+                                                                <input name="email" type="email" class="form-control" placeholder="Email" required style="margin-bottom:10px;">
+                                                                <input name="mobile" id="mobileField" type="text" class="form-control" placeholder="Mobile" style="margin-bottom:10px;">
+                                                                <input name="password" type="text" class="form-control" placeholder="Password" required style="margin-bottom:10px;">
+                                                                <input name="submit" type="submit" class="btn btn-success" value="Create">
                                                             </div>
+                                                        </div>
                                                     </form>
                                                 </div>
                                             </div>
@@ -107,6 +138,7 @@ if(isset($_POST['submit'])){
                                                 $a = towquery("SELECT * FROM `verify_user`");
                                                 $b = towquery("SELECT * FROM `account_manager`");
                                                 $c = towquery("SELECT * FROM `recovery_officer`");
+                                                $d = towquery("SELECT agency_admin.*, agency.name AS agency_name FROM agency_admin INNER JOIN agency ON agency.id = agency_admin.agency_id ORDER BY agency_admin.id DESC");
                                                 while($aa = towfetch($a)){ ?>
                                                 <tr>
                                                     <th><?php if($aa['type'] == 1){echo "Verify user";}else{echo "NBFC";}?></th>
@@ -134,6 +166,15 @@ if(isset($_POST['submit'])){
                                                     <th><?=$cc['password'];?></th>
                                                     <th><a href="deleteuser.php?id=<?=$cc['id'];?>&type=recovery_officer">Delete</a></th>
                                                 </tr>
+                                                <?php } while($dd = towfetch($d)){ ?>
+                                                <tr>
+                                                    <th>Recovery admin<?php if (!empty($dd['agency_name'])) { echo ' (' . htmlspecialchars($dd['agency_name']) . ')'; } ?></th>
+                                                    <th><?= htmlspecialchars($dd['name']) ?></th>
+                                                    <th><?= htmlspecialchars($dd['email']) ?></th>
+                                                    <th>—</th>
+                                                    <th>(hashed)</th>
+                                                    <th><a href="deleteuser.php?id=<?= (int) $dd['id'] ?>&type=agency_admin">Delete</a></th>
+                                                </tr>
                                                 <?php } ?>
                                             </table>
                                         </div>
@@ -150,5 +191,30 @@ if(isset($_POST['submit'])){
        <?php
        include_once 'foot.php';
        ?>
+<script>
+(function () {
+    var empType = document.getElementById('emp_type');
+    var agencyFields = document.getElementById('agencyFields');
+    var agencySelect = document.getElementById('agency_id');
+    var mobileField = document.getElementById('mobileField');
+
+    function syncEmployeeForm() {
+        var isAgencyAdmin = empType.value === 'agency_admin';
+        agencyFields.style.display = isAgencyAdmin ? 'block' : 'none';
+        if (agencySelect) {
+            agencySelect.required = isAgencyAdmin;
+        }
+        if (mobileField) {
+            mobileField.required = !isAgencyAdmin;
+            mobileField.style.display = isAgencyAdmin ? 'none' : 'block';
+        }
+    }
+
+    if (empType) {
+        empType.addEventListener('change', syncEmployeeForm);
+        syncEmployeeForm();
+    }
+})();
+</script>
 </body>
 </html>
