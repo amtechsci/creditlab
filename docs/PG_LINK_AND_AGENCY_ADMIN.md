@@ -37,8 +37,9 @@ Available on customer profile for:
 
 Payments settle via `easebuzz_webhook.php` and `payeasebuzz/response.php`:
 
-- **Total outstanding** (or manual ≥ outstanding) → loan cleared, agency name stored on loan
-- **Manual &lt; outstanding** → part payment (`advance_amount` + `transaction_flow=part`)
+- **Total outstanding** (agency or staff) → loan cleared when paid in full
+- **Manual (agency admin)** → payment recorded only; loan stays open; appears in **Agency wise payments** CSV for manual review (no `transaction_details`, no auto-clear, no NOC/SMS)
+- **Manual (admin / account manager)** → part payment only (`advance_amount` + `transaction_flow=part`); never auto-clears the loan
 
 ## Agency admin
 

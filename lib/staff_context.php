@@ -65,13 +65,35 @@ function creditlab_staff_actor(): ?array
 
     if ($role === 'agency_admin') {
         global $agency_admin, $agency_admin_agency_id, $agency_admin_agency_name;
+        $agencyId = isset($agency_admin_agency_id) ? (int) $agency_admin_agency_id : null;
+        $agencyName = $agency_admin_agency_name ?? null;
+        $actorId = (int) ($user_id ?? 0);
+        $actorName = $user_name ?? 'Agency';
+
+        if ((empty($agencyId) || empty($agencyName)) && !empty($agency_admin)) {
+            $q = towquery(
+                "SELECT aa.id, aa.name, aa.agency_id, ag.name AS agency_name
+                FROM agency_admin aa
+                INNER JOIN agency ag ON ag.id = aa.agency_id
+                WHERE aa.email='" . towreal($agency_admin) . "' AND aa.active=1
+                LIMIT 1"
+            );
+            if ($q && townum($q) > 0) {
+                $row = towfetch($q);
+                $actorId = (int) $row['id'];
+                $actorName = $row['name'] ?? $actorName;
+                $agencyId = (int) $row['agency_id'];
+                $agencyName = $row['agency_name'] ?? null;
+            }
+        }
+
         return [
             'role' => 'agency_admin',
-            'id' => (int) ($user_id ?? 0),
-            'name' => $user_name ?? 'Agency',
+            'id' => $actorId,
+            'name' => $actorName,
             'email' => $agency_admin ?? '',
-            'agency_id' => isset($agency_admin_agency_id) ? (int) $agency_admin_agency_id : null,
-            'agency_name' => $agency_admin_agency_name ?? null,
+            'agency_id' => $agencyId ?: null,
+            'agency_name' => $agencyName,
         ];
     }
 

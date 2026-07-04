@@ -59,6 +59,7 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                     <th>Loan ID</th>
                     <th>type</th>
                     <th>amt</th>
+                    <th>Agency</th>
                     <th>created by</th>
                     <th>Pg link</th>
                     <th>Status</th>
@@ -71,12 +72,16 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                     while ($pl = towfetch($pgLinksQ)) {
                         $typeLabel = $pl['link_type'] === 'total_outstanding' ? 'total outstanding' : 'manual';
                         $url = $pl['payment_url'] ?? '';
+                        $agencyLabel = !empty($pl['agency_name'])
+                            ? $pl['agency_name']
+                            : (($pl['created_by_role'] ?? '') === 'agency_admin' ? ($pl['created_by_name'] ?: 'Agency') : '—');
                         ?>
                 <tr>
                     <td><?= $sn++ ?></td>
-                    <td>CLL<?= (int) $pl['loan_lid'] ?><?php if (!empty($pl['agency_name'])) { ?> <small class="text-muted">(<?= htmlspecialchars($pl['agency_name']) ?>)</small><?php } ?></td>
+                    <td>CLL<?= (int) $pl['loan_lid'] ?></td>
                     <td><?= htmlspecialchars($typeLabel) ?></td>
                     <td><?= htmlspecialchars($pl['amount']) ?></td>
+                    <td><?= htmlspecialchars($agencyLabel) ?></td>
                     <td><?= htmlspecialchars($pl['created_by_name']) ?></td>
                     <td><?php if ($url) { ?><a href="<?= htmlspecialchars($url) ?>" target="_blank" rel="noopener">Pay link</a><?php } else { ?>—<?php } ?></td>
                     <td><?= htmlspecialchars($pl['status']) ?></td>
@@ -142,6 +147,7 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                     '<td>' + row.loan_id + '</td>' +
                     '<td>' + row.type + '</td>' +
                     '<td>' + row.amount + '</td>' +
+                    '<td>' + (row.agency_name || '—') + '</td>' +
                     '<td>' + row.created_by + '</td>' +
                     '<td><a href="' + row.payment_url + '" target="_blank" rel="noopener">Pay link</a></td>' +
                     '<td>' + row.status + '</td>';

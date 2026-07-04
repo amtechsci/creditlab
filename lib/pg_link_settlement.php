@@ -15,26 +15,43 @@ function creditlab_pg_amount_tolerance(): float
     return 2.0;
 }
 
+function creditlab_pg_is_agency_manual_link(?array $pgLink, array $pgTx): bool
+{
+    $linkType = $pgLink['link_type'] ?? ($pgTx['link_type'] ?? '');
+    if ($linkType !== 'manual') {
+        return false;
+    }
+    if (!empty($pgLink['agency_id']) || !empty($pgTx['agency_id'])) {
+        return true;
+    }
+    $role = $pgLink['created_by_role'] ?? ($pgTx['created_by_role'] ?? '');
+    return $role === 'agency_admin';
+}
+
 /**
  * Full close when customer paid the link/initiated amount or current outstanding.
  */
 function creditlab_pg_payment_is_full_settlement(array $loan, array $pgTx, ?array $pgLink, float $amountPaid): bool
 {
+    $linkType = $pgLink['link_type'] ?? ($pgTx['link_type'] ?? '');
+
+    // Manual links never auto-close the loan (agency staff review in agency payment report).
+    if ($linkType === 'manual') {
+        return false;
+    }
+
     $tolerance = creditlab_pg_amount_tolerance();
     $outstanding = creditlab_loan_outstanding_amount($loan);
-    $linkType = $pgLink['link_type'] ?? ($pgTx['link_type'] ?? '');
 
     if ($linkType === 'total_outstanding') {
         $linkAmount = (float) ($pgLink['amount'] ?? $pgTx['amount'] ?? 0);
         if ($linkAmount > 0 && $amountPaid + $tolerance >= $linkAmount) {
             return true;
         }
-    }
-
-    // Paid checkout/initiated amount (Easebuzz success) = full close even if penalty rose before webhook
-    $initiated = (float) ($pgTx['amount'] ?? 0);
-    if ($initiated > 0 && $amountPaid + $tolerance >= $initiated) {
-        return true;
+        $initiated = (float) ($pgTx['amount'] ?? 0);
+        if ($initiated > 0 && $amountPaid + $tolerance >= $initiated) {
+            return true;
+        }
     }
 
     return $amountPaid + $tolerance >= $outstanding;
@@ -99,6 +116,13 @@ function creditlab_settle_pg_payment(
     if ($loan['status_log'] === 'cleared') {
         creditlab_pg_mark_tx_success($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
         return ['ok' => true, 'message' => 'Already cleared', 'flow' => 'skipped'];
+    }
+
+    // Agency manual PG: record payment only — no loan clear, no transaction_details, no SMS.
+    if (creditlab_pg_is_agency_manual_link($pgLink, $pgTx)) {
+        creditlab_pg_mark_tx_success($mysqliConn, $txnid, $amount, $bankRef, $paymentMethod, $pgLink);
+        error_log("PG agency manual recorded: txnid=$txnid CLL$loanLid paid=$amount (loan unchanged)");
+        return ['ok' => true, 'message' => 'Agency manual payment recorded', 'flow' => 'agency_manual'];
     }
 
     $pgAlreadySuccess = (($pgTx['status'] ?? '') === 'success');
@@ -214,6 +238,11 @@ function creditlab_pg_mark_tx_success($mysqliConn, string $txnid, float $amount,
     $pmEsc = mysqli_real_escape_string($mysqliConn, $paymentMethod);
     towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'");
     if ($pgLink) {
+        if (!empty($pgLink['agency_name'])) {
+            $an = mysqli_real_escape_string($mysqliConn, $pgLink['agency_name']);
+            $agencyIdSql = !empty($pgLink['agency_id']) ? ', agency_id=' . (int) $pgLink['agency_id'] : '';
+            towquery("UPDATE pg_transaction SET agency_name='$an'$agencyIdSql WHERE txnid='$txnidEsc' AND (agency_name IS NULL OR agency_name = '')");
+        }
         $id = (int) $pgLink['id'];
         towquery("UPDATE pg_payment_link SET status='paid', paid_at=NOW(), bank_ref_num='$bankEsc' WHERE id=$id AND status='created'");
     }

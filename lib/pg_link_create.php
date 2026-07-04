@@ -51,8 +51,12 @@ function creditlab_create_pg_link(int $uid, int $loanInternalId, string $linkTyp
     $txnid = 'PG_' . $role . '_' . (int) $actor['id'] . '_' . (int) $loanInternalId . '_' . strtoupper(bin2hex(random_bytes(4)));
     $loanLid = (int) $loan['lid'];
     $agencyId = $actor['agency_id'];
-    $agencyName = $actor['agency_name'];
     $createdByName = $actor['name'];
+    $agencyName = $actor['agency_name'];
+    if ($role === 'agency_admin' && empty($agencyName) && $agencyId) {
+        $agencyRow = towfetch(towquery('SELECT name FROM agency WHERE id=' . (int) $agencyId . ' LIMIT 1'));
+        $agencyName = $agencyRow['name'] ?? $createdByName;
+    }
     $createdById = (int) $actor['id'];
 
     $txnidEsc = towreal($txnid);
@@ -115,6 +119,7 @@ function creditlab_create_pg_link(int $uid, int $loanInternalId, string $linkTyp
             'type' => $typeLabel,
             'amount' => $amountFmt,
             'created_by' => $createdByName,
+            'agency_name' => $agencyName ?? '',
             'payment_url' => $pay['payment_url'],
             'status' => 'created',
         ],
