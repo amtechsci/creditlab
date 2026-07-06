@@ -4,13 +4,24 @@
  */
 require_once __DIR__ . '/../lib/loan_outstanding.php';
 require_once __DIR__ . '/../lib/staff_context.php';
+require_once __DIR__ . '/../lib/pg_link_agency.php';
 
 if (!creditlab_can_create_pg_link()) {
     return;
 }
 
 $activeLoans = creditlab_active_loans_for_user((int) $userpro_id);
-$pgLinksQ = towquery("SELECT * FROM pg_payment_link WHERE uid=" . (int) $userpro_id . " ORDER BY id DESC LIMIT 100");
+$agencyNameExpr = creditlab_pg_link_agency_name_expr('pl', 'pt');
+$agencyJoins = creditlab_pg_link_agency_join_sql('pl', 'pt');
+$pgLinksQ = towquery(
+    "SELECT pl.*, pt.agency_name AS pt_agency_name, {$agencyNameExpr} AS resolved_agency_name
+    FROM pg_payment_link pl
+    LEFT JOIN pg_transaction pt ON pt.txnid = pl.txnid
+    {$agencyJoins}
+    WHERE pl.uid=" . (int) $userpro_id . "
+    ORDER BY pl.id DESC
+    LIMIT 100"
+);
 ?>
 <?php
 $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active))
@@ -72,9 +83,7 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                     while ($pl = towfetch($pgLinksQ)) {
                         $typeLabel = $pl['link_type'] === 'total_outstanding' ? 'total outstanding' : 'manual';
                         $url = $pl['payment_url'] ?? '';
-                        $agencyLabel = !empty($pl['agency_name'])
-                            ? $pl['agency_name']
-                            : (($pl['created_by_role'] ?? '') === 'agency_admin' ? ($pl['created_by_name'] ?: 'Agency') : '—');
+                        $agencyLabel = creditlab_resolve_pg_link_agency_name($pl);
                         ?>
                 <tr>
                     <td><?= $sn++ ?></td>

@@ -41,6 +41,16 @@ Payments settle via `easebuzz_webhook.php` and `payeasebuzz/response.php`:
 - **Manual (agency admin)** → payment recorded only; loan stays open; appears in **Agency wise payments** CSV for manual review (no `transaction_details`, no auto-clear, no NOC/SMS)
 - **Manual (admin / account manager)** → part payment only (`advance_amount` + `transaction_flow=part`); never auto-clears the loan
 
+### Legacy agency names on old PG links
+
+Older agency PG links may have an empty `agency_name` column. The admin PG tab and **Agency wise payments** CSV resolve the agency from `created_by_id` → `agency_admin` → `agency`.
+
+One-time backfill (optional, persists names in DB):
+
+```bash
+sudo -u www-data php scripts/backfill_pg_link_agency.php --apply
+```
+
 ## Agency admin
 
 - URL: `/agency_admin/`

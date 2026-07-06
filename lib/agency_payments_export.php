@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/loan_dpd.php';
+require_once __DIR__ . '/pg_link_agency.php';
 
 function creditlab_agency_payments_csv_headers(): array
 {
@@ -47,9 +48,12 @@ function creditlab_write_agency_payments_csv($output, ?string $fromDate = null, 
 {
     fputcsv($output, creditlab_agency_payments_csv_headers());
 
+    $agencyNameExpr = creditlab_pg_link_agency_name_expr('pl', 'pt');
+    $agencyJoins = creditlab_pg_link_agency_join_sql('pl', 'pt');
+
     $sql = "SELECT
                 pl.loan_lid,
-                COALESCE(NULLIF(pl.agency_name, ''), NULLIF(pt.agency_name, ''), ag.name, pl.created_by_name) AS agency_name,
+                {$agencyNameExpr} AS agency_name,
                 pt.amount AS pg_amount,
                 pl.link_type,
                 pl.paid_at,
@@ -64,7 +68,7 @@ function creditlab_write_agency_payments_csv($output, ?string $fromDate = null, 
             FROM pg_payment_link pl
             INNER JOIN pg_transaction pt ON pt.txnid = pl.txnid
             INNER JOIN loan l ON l.id = pl.loan_internal_id
-            LEFT JOIN agency ag ON ag.id = pl.agency_id
+            {$agencyJoins}
             LEFT JOIN loan_apply la ON la.id = pl.loan_lid
             LEFT JOIN transaction_details td
                 ON td.cllid = pl.loan_lid
@@ -128,7 +132,7 @@ function creditlab_write_agency_payments_csv($output, ?string $fromDate = null, 
 
         fputcsv($output, [
             'CLL' . $row['loan_lid'],
-            $row['agency_name'],
+            creditlab_resolve_pg_link_agency_name($row),
             number_format($amount, 2, '.', ''),
             $status,
             $paidDate ? date('Y-m-d', strtotime($paidDate)) : '',
