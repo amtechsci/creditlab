@@ -43,11 +43,12 @@ Payments settle via `easebuzz_webhook.php` and `payeasebuzz/response.php`:
 
 ### Legacy agency names on old PG links
 
-Older agency PG links may have an empty `agency_name` column. The admin PG tab and **Agency wise payments** CSV resolve the agency from `created_by_id` → `agency_admin` → `agency`.
+Older agency PG links may have an empty or placeholder `agency_name` (e.g. `Agency`), or `created_by_id = 0` when the link was created via API before session context loaded. The admin PG tab and **Agency wise payments** CSV resolve agency from txnid (`PG_agency_admin_{id}_…`), `agency_id`, or `loan.paid_via_agency_*`.
 
 One-time backfill (optional, persists names in DB):
 
 ```bash
+sudo -u www-data php scripts/backfill_pg_link_agency.php --list
 sudo -u www-data php scripts/backfill_pg_link_agency.php --apply
 ```
 
