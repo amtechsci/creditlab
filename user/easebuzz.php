@@ -16,26 +16,59 @@ function generateHash($data, $salt) {
     $hashSequence = $data['key'] . '|' . $data['txnid'] . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' . $data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' . $data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
     return hash('sha512', $hashSequence);
 }
-$udf5 = round($user_salary*0.6);
+$udf5 = creditlab_easebuzz_max_debit_amount(
+    isset($user_salary) ? (float)$user_salary : 0,
+    isset($user_loan_limit) ? (float)$user_loan_limit : 0
+);
+
+function creditlab_easebuzz_base_url() {
+    return (strtolower(EASEBUZZ_ENV) === 'test') ? 'https://testpay.easebuzz.in' : 'https://pay.easebuzz.in';
+}
+
+function creditlab_easebuzz_max_debit_amount($salary, $loan_limit) {
+    $amount = round($salary * 0.6);
+    if ($loan_limit > $amount) {
+        $amount = (int)round($loan_limit);
+    }
+    if ($amount < 10000) {
+        $amount = 10000;
+    }
+    return $amount;
+}
 
 function creditlab_resolve_easebuzz_bank_code($ifsc, $db_code) {
     $ifsc = strtoupper(trim((string)$ifsc));
-    $db_code = strtoupper(trim((string)$db_code));
+    $prefix = strlen($ifsc) >= 4 ? substr($ifsc, 0, 4) : '';
 
+    // Easebuzz codes often differ from IFSC prefix / DB values (e.g. HDFC -> HDFCB).
+    $overrides = [
+        'HDFC' => 'HDFCB',
+        'UTIB' => 'UTIB',
+        'ICIC' => 'ICIC',
+        'SBIN' => 'SBIN',
+        'KKBK' => 'KKBK',
+        'IDIB' => 'IDIB',
+        'BARB' => 'BARB',
+        'PUNB' => 'PUNB',
+        'CBIN' => 'CBIN',
+        'YESB' => 'YESB',
+        'CNRB' => 'CNRB',
+        'FDRL' => 'FDRL',
+        'BKID' => 'BKID',
+        'INDB' => 'INDB',
+        'AUBL' => 'AUBL',
+    ];
+
+    if ($prefix !== '' && isset($overrides[$prefix])) {
+        return $overrides[$prefix];
+    }
+
+    $db_code = strtoupper(trim((string)$db_code));
     if ($db_code !== '' && $db_code !== '0' && preg_match('/^[A-Z]{4,5}$/', $db_code)) {
         return $db_code;
     }
 
-    if (strlen($ifsc) < 4) {
-        return '';
-    }
-
-    $prefix = substr($ifsc, 0, 4);
-    $overrides = [
-        'HDFC' => 'HDFCB',
-    ];
-
-    return $overrides[$prefix] ?? $prefix;
+    return $prefix;
 }
 
 function creditlab_resolve_easebuzz_account_type($ac_type) {
@@ -90,14 +123,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // Extract and sanitize fields
-    $firstname = towreal($_POST['firstname']);
-    $phone = towreal($_POST['phone']);
-    $email = towreal($_POST['email']);
+    $firstname = trim(towreal($_POST['firstname']));
+    $phone = preg_replace('/\D+/', '', towreal($_POST['phone']));
+    if (strlen($phone) > 10) {
+        $phone = substr($phone, -10);
+    }
+    $email = trim(towreal($_POST['email']));
     $bankCode = towreal($_POST['bank_code']);
-    $accountNo = towreal($_POST['account_no']);
+    $accountNo = preg_replace('/\D+/', '', towreal($_POST['account_no']));
     $auth_mode = towreal($_POST['auth_mode']);
     $accountType = towreal($_POST['account_type']);
     $ifsc = strtoupper(trim(towreal($_POST['ifsc'])));
+    $use_seamless = isset($_POST['use_seamless']) && $_POST['use_seamless'] === '1';
+
+    if (strlen($phone) !== 10) {
+        die('Invalid mobile number. Please update your profile and try again.');
+    }
+
+    if ($accountNo === '') {
+        die('Invalid account number. Please contact support to update bank details.');
+    }
 
     $bankCode = creditlab_resolve_easebuzz_bank_code($ifsc, $bankCode);
     $accountType = creditlab_resolve_easebuzz_account_type($accountType);
@@ -136,14 +181,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         "furl" => getAppUrl() . "/easebuzz_callback.php",
         "udf1" => "", "udf2" => "", "udf3" => "", "udf4" => "", "udf5" => "$udf5.0", // Max debit amount
         "udf6" => "", "udf7" => "", "udf8" => "", "udf9" => "", "udf10" => "",
-        "request_flow" => "SEAMLESS",
         "customer_authentication_id" => $cai,
         "final_collection_date" => date('d/m/Y', strtotime('+3 year'))
     ];
+    if ($use_seamless) {
+        $authData["request_flow"] = "SEAMLESS";
+    }
 
     $authData['hash'] = generateHash($authData, $SALT);
-    $authUrl = "https://pay.easebuzz.in/payment/initiateLink";
+    $easebuzz_base = creditlab_easebuzz_base_url();
+    $authUrl = $easebuzz_base . "/payment/initiateLink";
     $authResponse = sendCurlRequest($authUrl, $authData);
+
+    error_log("Easebuzz ENACH initiate uid=$user_id ifsc=$ifsc bank_code=$bankCode auth_mode=$auth_mode seamless=" . ($use_seamless ? '1' : '0') . " response=" . json_encode($authResponse));
 
     if ($authResponse && isset($authResponse['status']) && $authResponse['status'] == 1) {
         $access_key = $authResponse['data'];
@@ -154,11 +204,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Insert new record
-        $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`) VALUES ($user_id, '{$authData['txnid']}', '$firstname', '$phone', '$email', '{$authData['udf5']}', '{$authData['request_flow']}', '$cai', '{$authData['final_collection_date']}', '{$authData['hash']}', '$access_key', 'EN', '$ifsc', '$accountType', '$accountNo', '$auth_mode', '$bankCode')";
+        $request_flow = $use_seamless ? 'SEAMLESS' : 'HOSTED';
+        $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`) VALUES ($user_id, '{$authData['txnid']}', '$firstname', '$phone', '$email', '{$authData['udf5']}', '$request_flow', '$cai', '{$authData['final_collection_date']}', '{$authData['hash']}', '$access_key', 'EN', '$ifsc', '$accountType', '$accountNo', '$auth_mode', '$bankCode')";
         
         if (towquery($insert_query)) {
-            echo "
-                    <form id='seamless_auto_submit_upi_form' method='POST' action='https://pay.easebuzz.in/initiate_seamless_payment/'>
+            if ($use_seamless) {
+                echo "
+                    <form id='seamless_auto_submit_upi_form' method='POST' action='".$easebuzz_base."/initiate_seamless_payment/'>
                         <input type='hidden' name='access_key' value='".$access_key."'>
                         <input type='hidden' name='payment_mode' value='EN'>
                         <input type='hidden' name='ifsc' value='".$ifsc."'>
@@ -171,6 +223,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         document.getElementById('seamless_auto_submit_upi_form').submit();
                     </script>
             ";
+            } else {
+                $hosted_url = $easebuzz_base . '/pay/' . rawurlencode($access_key);
+                echo "<script>window.location.replace(" . json_encode($hosted_url) . ");</script>";
+                echo "<p>Redirecting to Easebuzz for e-NACH registration... <a href='" . htmlspecialchars($hosted_url, ENT_QUOTES) . "'>Click here</a> if not redirected.</p>";
+                exit;
+            }
         } else {
             error_log("Failed to insert easebuzz_adtd record for uid: $user_id");
             die('Database error occurred. Please try again.');
@@ -242,24 +300,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <td>Account Type</td>
                             <td><?=$account_type?></td>
                         </tr>
+                        <tr>
+                            <td>Easebuzz Bank Code</td>
+                            <td><?=htmlspecialchars($bankcodebc)?></td>
+                        </tr>
+                        <tr>
+                            <td>Max Debit Amount</td>
+                            <td>₹<?=number_format($udf5)?></td>
+                        </tr>
                     </table>
                     <?php if ($bank_setup_error !== ''): ?>
                     <p style="color:red;"><?=htmlspecialchars($bank_setup_error)?></p>
                     <?php else: ?>
 <?php echo "
         <form method='POST' action=''>
-            <input type='hidden' name='firstname' value='".($user_pan_name ? $user_pan_name : $user_name)."'>
-            <input type='hidden' name='phone' value='$user_mobile'>
-            <input type='hidden' name='email' value='$user_email'>
-            <input type='hidden' name='bank_code' value='".$bankcodebc."'>
-            <input type='hidden' name='account_no' value='".$ubf['ac_no']."'>
-            <input type='hidden' name='account_type' value='".$account_type."'>
-            <input type='hidden' name='ifsc' value='".$ifsc_code."'>
+            <input type='hidden' name='firstname' value='".htmlspecialchars($user_pan_name ? $user_pan_name : $user_name, ENT_QUOTES)."'>
+            <input type='hidden' name='phone' value='".htmlspecialchars($user_mobile, ENT_QUOTES)."'>
+            <input type='hidden' name='email' value='".htmlspecialchars($user_email, ENT_QUOTES)."'>
+            <input type='hidden' name='bank_code' value='".htmlspecialchars($bankcodebc, ENT_QUOTES)."'>
+            <input type='hidden' name='account_no' value='".htmlspecialchars($ubf['ac_no'], ENT_QUOTES)."'>
+            <input type='hidden' name='account_type' value='".htmlspecialchars($account_type, ENT_QUOTES)."'>
+            <input type='hidden' name='ifsc' value='".htmlspecialchars($ifsc_code, ENT_QUOTES)."'>
+            <input type='hidden' name='use_seamless' value='1'>
             <p><strong>Authentication mode:</strong></p>
-            <label style='margin-right:15px;'><input type='radio' name='auth_mode' value='NetBanking' checked> Net Banking</label>
+            <label style='margin-right:15px;'><input type='radio' name='auth_mode' value='NetBanking' checked> Net Banking (recommended for HDFC/SBI)</label>
             <label><input type='radio' name='auth_mode' value='DebitCard'> Debit Card</label>
             <br><br>
-                <button class='btn btn-primary' style='text-align:center;' type='submit'>Continue</button>
+                <button class='btn btn-primary' style='text-align:center;' type='submit'>Continue to Easebuzz</button>
+            </form>
+            <form method='POST' action='' style='margin-top:10px;text-align:center;'>
+            <input type='hidden' name='firstname' value='".htmlspecialchars($user_pan_name ? $user_pan_name : $user_name, ENT_QUOTES)."'>
+            <input type='hidden' name='phone' value='".htmlspecialchars($user_mobile, ENT_QUOTES)."'>
+            <input type='hidden' name='email' value='".htmlspecialchars($user_email, ENT_QUOTES)."'>
+            <input type='hidden' name='bank_code' value='".htmlspecialchars($bankcodebc, ENT_QUOTES)."'>
+            <input type='hidden' name='account_no' value='".htmlspecialchars($ubf['ac_no'], ENT_QUOTES)."'>
+            <input type='hidden' name='account_type' value='".htmlspecialchars($account_type, ENT_QUOTES)."'>
+            <input type='hidden' name='ifsc' value='".htmlspecialchars($ifsc_code, ENT_QUOTES)."'>
+            <input type='hidden' name='auth_mode' value='NetBanking'>
+            <input type='hidden' name='use_seamless' value='0'>
+                <button class='btn btn-default' style='text-align:center;' type='submit'>Try alternate Easebuzz page</button>
             </form>
         ";
                     endif;
