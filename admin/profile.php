@@ -41,6 +41,34 @@
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
+
+    $profile_enach_query = towquery("SELECT auto_debit_access_key, account_no, authorization_status, status FROM easebuzz_adtd WHERE uid='".(int)$id."' ORDER BY id DESC LIMIT 1");
+    $uid_enach_data = ($profile_enach_query && townum($profile_enach_query) > 0) ? towfetch($profile_enach_query) : null;
+    $profile_enach_authorized = false;
+    if ($uid_enach_data) {
+        $profile_enach_auth = strtolower(trim((string)($uid_enach_data['authorization_status'] ?? '')));
+        if (in_array($profile_enach_auth, ['authorized', 'accepted'], true)) {
+            $profile_enach_authorized = true;
+        } else {
+            $profile_enach_key = trim((string)($uid_enach_data['auto_debit_access_key'] ?? ''));
+            if ($profile_enach_key !== '' && $profile_enach_key !== 'NA' && strtolower(trim((string)($uid_enach_data['status'] ?? ''))) === 'success') {
+                $profile_enach_authorized = true;
+            }
+        }
+    }
+    if ($profile_enach_authorized && (int)$userpro_easebuzz !== 1) {
+        towquery("UPDATE `user` SET easebuzz=1 WHERE id='".(int)$id."'");
+        $userpro_easebuzz = 1;
+    }
+    if ((int)$userpro_easebuzz === 1 || $profile_enach_authorized) {
+        $userpro_enach_label = 'Yes';
+    } elseif ((int)$userpro_easebuzz === 2) {
+        $userpro_enach_label = 'Cancel';
+    } elseif ($uid_enach_data) {
+        $userpro_enach_label = 'Pending';
+    } else {
+        $userpro_enach_label = 'No';
+    }
         
         $limit_percentage = null;
         $limit_percentage_display = 'N/A';
@@ -70,7 +98,7 @@
                 $account_no_escaped = mysqli_real_escape_string($db, $account_no);
                 $access_key_escaped = mysqli_real_escape_string($db, $access_key);
                 
-                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped', authorization_status = 'authorized' WHERE account_no = '$account_no_escaped' AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '' OR auto_debit_access_key = 'NA')";
+                $update_query = "UPDATE easebuzz_adtd SET auto_debit_access_key = '$access_key_escaped', authorization_status = 'authorized' WHERE (account_no = '$account_no_escaped' OR uid = '".(int)$id."') AND (auto_debit_access_key IS NULL OR auto_debit_access_key = '' OR auto_debit_access_key = 'NA')";
                 
                 towquery($update_query);
                 
@@ -592,7 +620,12 @@
     if(isset($_POST['bank_name']) and !isset($_POST['bank_detail_update'])){
         $extract = towrealarray($_POST);     extract($extract);
         towquery("INSERT INTO `user_bank`(`uid`, `ac_name`, `ac_no`, `ifsc_code`, `ac_type`, `branch_name`, `bank_name`, `date`) VALUES ($id,'$account_name','$account_no','$ifsc','$account_type','$branch_name','$bank_name','".date('Y-m-d')."')");
-        towquery("UPDATE `user` SET `bank_name`='$bank_name',`branch_name`='$branch_name',`ifsc`='$ifsc',`account_no`='$account_no',`account_type`='$account_type',`account_name`='$account_name',`easebuzz`=0 WHERE id='$userpro_id'");
+        $bank_user_update = "UPDATE `user` SET `bank_name`='$bank_name',`branch_name`='$branch_name',`ifsc`='$ifsc',`account_no`='$account_no',`account_type`='$account_type',`account_name`='$account_name'";
+        if (!$profile_enach_authorized) {
+            $bank_user_update .= ",`easebuzz`=0";
+        }
+        $bank_user_update .= " WHERE id='$userpro_id'";
+        towquery($bank_user_update);
         // towquery("");
         print_r("<script>alert('Your data is successfully updated');  window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
     }
@@ -1125,7 +1158,7 @@
                     </div>
                                         <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                     <p>Pan : Y</p>
-                    <p>Enach : <?= ($userpro_easebuzz == 1) ? 'Yes' : (($userpro_easebuzz == 2) ? 'Cancel' : 'No') ?></p>
+                    <p>Enach : <?=$userpro_enach_label?></p>
                     <p>adhar : Y</p>
                     <p>Bank check : Y </p>
                     <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
@@ -1955,16 +1988,25 @@
                                         $ext = towrealarray($_POST);
                                         towquery("UPDATE `user_bank` SET `ac_name`='".$ext['ac_name']."',`ac_no`='".$ext['ac_no']."',`ifsc_code`='".$ext['ifsc_code']."',`ac_type`='".$ext['ac_type']."',`branch_name`='".$ext['branch_name']."',`bank_name`='".$ext['bank_name']."' WHERE `id`=".$ext['bank_id']);
                                     }
-                                    $ref_data = towquery("SELECT * FROM user_bank WHERE uid='$userpro_id' ORDER BY id DESC"); 
+                                    $ref_data = towquery("SELECT * FROM user_bank WHERE uid='$userpro_id' ORDER BY id DESC");
+                                    $user_bank_count = townum($ref_data);
                                     while($bank_fetch = towfetch($ref_data)){
                                     extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
                                     
-                                    // Fetch auto_debit_access_key from easebuzz_adtd table
+                                    // Match E-NACH by account_no first, then by uid (same as auto_enach/zzenach)
                                     $ac_no_escaped = mysqli_real_escape_string($db, $ub_ac_no);
-                                    $easebuzz_query = towquery("SELECT auto_debit_access_key FROM easebuzz_adtd WHERE account_no = '$ac_no_escaped' LIMIT 1");
-                                    $easebuzz_record_exists = ($easebuzz_query && townum($easebuzz_query) > 0);
-                                    $easebuzz_data = towfetch($easebuzz_query);
+                                    $easebuzz_query = towquery("SELECT auto_debit_access_key, account_no, authorization_status FROM easebuzz_adtd WHERE account_no = '$ac_no_escaped' LIMIT 1");
+                                    $easebuzz_data = ($easebuzz_query && townum($easebuzz_query) > 0) ? towfetch($easebuzz_query) : null;
+                                    if (!$easebuzz_data && $uid_enach_data) {
+                                        $enach_account = trim((string)$uid_enach_data['account_no']);
+                                        $bank_account = trim((string)$ub_ac_no);
+                                        if ($enach_account === $bank_account || $user_bank_count <= 1) {
+                                            $easebuzz_data = $uid_enach_data;
+                                        }
+                                    }
+                                    $easebuzz_record_exists = !empty($easebuzz_data);
                                     $auto_debit_key = $easebuzz_data ? $easebuzz_data['auto_debit_access_key'] : null;
+                                    $easebuzz_account_mismatch = $easebuzz_data && trim((string)$easebuzz_data['account_no']) !== trim((string)$ub_ac_no);
                                     ?>
                                         <tr>
                                             <form method="post">
@@ -2001,6 +2043,9 @@
                                                     </form>
                                                 <?php else: ?>
                                                     <span><?=$auto_debit_key?></span>
+                                                    <?php if ($easebuzz_account_mismatch): ?>
+                                                    <br><small style="color: #999;">Registered on ac: <?=htmlspecialchars($easebuzz_data['account_no'])?></small>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
                                             

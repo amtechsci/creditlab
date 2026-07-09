@@ -17,6 +17,39 @@ function generateHash($data, $salt) {
     return hash('sha512', $hashSequence);
 }
 $udf5 = round($user_salary*0.6);
+
+function creditlab_resolve_easebuzz_bank_code($ifsc, $db_code) {
+    $ifsc = strtoupper(trim((string)$ifsc));
+    $db_code = strtoupper(trim((string)$db_code));
+
+    if ($db_code !== '' && $db_code !== '0' && preg_match('/^[A-Z]{4,5}$/', $db_code)) {
+        return $db_code;
+    }
+
+    if (strlen($ifsc) < 4) {
+        return '';
+    }
+
+    $prefix = substr($ifsc, 0, 4);
+    $overrides = [
+        'HDFC' => 'HDFCB',
+    ];
+
+    return $overrides[$prefix] ?? $prefix;
+}
+
+function creditlab_resolve_easebuzz_account_type($ac_type) {
+    $normalized = strtolower(trim((string)$ac_type));
+    if (strpos($normalized, 'curr') !== false) {
+        return 'CURRENT';
+    }
+    return 'SAVINGS';
+}
+
+function creditlab_is_valid_ifsc($ifsc) {
+    return (bool)preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', strtoupper(trim((string)$ifsc)));
+}
+
 function sendCurlRequest($url, $data) {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -39,9 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'firstname',
         'phone',
         'email',
-        'bank_code',
         'account_no',
-        'auth_mode',
         'account_type',
         'ifsc'
     ];
@@ -66,7 +97,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $accountNo = towreal($_POST['account_no']);
     $auth_mode = towreal($_POST['auth_mode']);
     $accountType = towreal($_POST['account_type']);
-    $ifsc = towreal($_POST['ifsc']);
+    $ifsc = strtoupper(trim(towreal($_POST['ifsc'])));
+
+    $bankCode = creditlab_resolve_easebuzz_bank_code($ifsc, $bankCode);
+    $accountType = creditlab_resolve_easebuzz_account_type($accountType);
+
+    if (!creditlab_is_valid_ifsc($ifsc)) {
+        error_log("Invalid IFSC in user/easebuzz.php for uid $user_id: $ifsc");
+        die('Invalid IFSC code. It must be 11 characters (e.g. SBIN0001234). Please update your bank details and try again.');
+    }
+
+    if ($bankCode === '' || $bankCode === '0') {
+        error_log("Missing Easebuzz bank_code for uid $user_id, IFSC $ifsc");
+        die('Unable to resolve bank code for e-NACH. Please verify bank name and IFSC in your bank details.');
+    }
+
+    if (!in_array($auth_mode, ['NetBanking', 'DebitCard'], true)) {
+        $auth_mode = 'NetBanking';
+    }
 
     // Validate user_id exists
     if (!isset($user_id) || empty($user_id)) {
@@ -137,15 +185,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if(townum($ub) > 0){
         $ubf = towfetch($ub);
         $ubank_name = $ubf['bank_name'];
-        $bankcode = towquery("SELECT * FROM `bank_name` WHERE bank_name LIKE '%".$ubank_name."%'");
+        $ifsc_code = strtoupper(trim($ubf['ifsc_code']));
+        $account_type = creditlab_resolve_easebuzz_account_type($ubf['ac_type']);
+        $bankcode = towquery("SELECT * FROM `bank_name` WHERE bank_name='".mysqli_real_escape_string($db, $ubank_name)."' LIMIT 1");
+        if(townum($bankcode) == 0){
+            $bankcode = towquery("SELECT * FROM `bank_name` WHERE bank_name LIKE '%".mysqli_real_escape_string($db, $ubank_name)."%' LIMIT 1");
+        }
         if(townum($bankcode) > 0){
             $bankcode = towfetch($bankcode);
             $bankcoden = $bankcode['bank_name'];
-            $bankcodebc = $bankcode['bank_code'];
+            $bankcodebc = creditlab_resolve_easebuzz_bank_code($ifsc_code, $bankcode['bank_code']);
         }else{
             $bankcoden = $ubf['bank_name'];
-            $bankcodebc = 0;
-        } ?>
+            $bankcodebc = creditlab_resolve_easebuzz_bank_code($ifsc_code, '');
+        }
+        $bank_setup_error = '';
+        if (!creditlab_is_valid_ifsc($ifsc_code)) {
+            $bank_setup_error = 'Your IFSC code is invalid or incomplete. Please contact support to update bank details before e-NACH registration.';
+        } elseif ($bankcodebc === '') {
+            $bank_setup_error = 'Unable to resolve bank code for e-NACH. Please verify bank name and IFSC code.';
+        }
+        ?>
         <div class="container">
             <div class="row">
                 <div class="col-md-12">
@@ -176,9 +236,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </tr>
                         <tr>
                             <td>IFSC</td>
-                            <td><?=$ubf['ifsc_code']?></td>
+                            <td><?=$ifsc_code?></td>
+                        </tr>
+                        <tr>
+                            <td>Account Type</td>
+                            <td><?=$account_type?></td>
                         </tr>
                     </table>
+                    <?php if ($bank_setup_error !== ''): ?>
+                    <p style="color:red;"><?=htmlspecialchars($bank_setup_error)?></p>
+                    <?php else: ?>
 <?php echo "
         <form method='POST' action=''>
             <input type='hidden' name='firstname' value='".($user_pan_name ? $user_pan_name : $user_name)."'>
@@ -186,12 +253,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <input type='hidden' name='email' value='$user_email'>
             <input type='hidden' name='bank_code' value='".$bankcodebc."'>
             <input type='hidden' name='account_no' value='".$ubf['ac_no']."'>
-            <input type='hidden' name='account_type' value='SAVINGS'>
-            <input type='hidden' name='auth_mode' value='DebitCard'>
-            <input type='hidden' name='ifsc' value='".$ubf['ifsc_code']."'>
+            <input type='hidden' name='account_type' value='".$account_type."'>
+            <input type='hidden' name='ifsc' value='".$ifsc_code."'>
+            <p><strong>Authentication mode:</strong></p>
+            <label style='margin-right:15px;'><input type='radio' name='auth_mode' value='NetBanking' checked> Net Banking</label>
+            <label><input type='radio' name='auth_mode' value='DebitCard'> Debit Card</label>
+            <br><br>
                 <button class='btn btn-primary' style='text-align:center;' type='submit'>Continue</button>
             </form>
         ";
+                    endif;
     } ?>
                 </div>
             </div>
