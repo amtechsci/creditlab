@@ -34,6 +34,78 @@ function creditlab_recovery_agency_csv_headers(): array
 }
 
 /**
+ * Latest 5 AM responses per lid (ORDER BY id DESC).
+ *
+ * @param int[] $loanIds
+ * @return array<int, array{responses: list<string|null>, dates: list<string|null>}>
+ */
+function creditlab_recovery_agency_responses_by_lid(array $loanIds): array
+{
+    $byLid = [];
+    $loanIds = array_values(array_unique(array_filter(array_map('intval', $loanIds))));
+    if ($loanIds === []) {
+        return $byLid;
+    }
+
+    // Chunk IN() lists to keep queries manageable on large exports.
+    foreach (array_chunk($loanIds, 1000) as $chunk) {
+        $ids = implode(',', $chunk);
+        $q = towquery("SELECT lid, customer_response, commitment_date FROM `loan_acc_man` WHERE lid IN ($ids) ORDER BY id DESC");
+        if (!$q) {
+            continue;
+        }
+        while ($r = towfetch($q)) {
+            $lid = (int) $r['lid'];
+            if (!isset($byLid[$lid])) {
+                $byLid[$lid] = ['responses' => [], 'dates' => []];
+            }
+            if (count($byLid[$lid]['responses']) >= 5) {
+                continue;
+            }
+            $byLid[$lid]['responses'][] = $r['customer_response'];
+            $byLid[$lid]['dates'][] = $r['commitment_date'];
+        }
+    }
+
+    return $byLid;
+}
+
+/**
+ * First 10 referrals per uid (ORDER BY id ASC).
+ *
+ * @param int[] $userIds
+ * @return array<int, list<string>>
+ */
+function creditlab_recovery_agency_referrals_by_uid(array $userIds): array
+{
+    $byUid = [];
+    $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+    if ($userIds === []) {
+        return $byUid;
+    }
+
+    foreach (array_chunk($userIds, 1000) as $chunk) {
+        $ids = implode(',', $chunk);
+        $q = towquery("SELECT uid, name, relation, phone, status FROM `user_referrals` WHERE uid IN ($ids) ORDER BY id ASC");
+        if (!$q) {
+            continue;
+        }
+        while ($r = towfetch($q)) {
+            $uid = (int) $r['uid'];
+            if (!isset($byUid[$uid])) {
+                $byUid[$uid] = [];
+            }
+            if (count($byUid[$uid]) >= 10) {
+                continue;
+            }
+            $byUid[$uid][] = $r['name'] . ' / ' . $r['relation'] . ' / ' . $r['phone'] . ' / ' . $r['status'];
+        }
+    }
+
+    return $byUid;
+}
+
+/**
  * @param resource $output
  */
 function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null): void
@@ -69,7 +141,9 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
             la.status = 'account manager'";
 
     if ($fromDate && $toDate) {
-        $sql .= " AND DATE(l.processed_date) BETWEEN '" . date('Y-m-d', strtotime($fromDate)) . "' AND '" . date('Y-m-d', strtotime($toDate)) . "'";
+        $fromEsc = towreal(date('Y-m-d', strtotime($fromDate)));
+        $toEsc = towreal(date('Y-m-d', strtotime($toDate)));
+        $sql .= " AND DATE(l.processed_date) BETWEEN '$fromEsc' AND '$toEsc'";
     }
 
     $sql .= ' ORDER BY la.id DESC';
@@ -79,12 +153,13 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
         return;
     }
 
+    // Collect rows first so we can bulk-load related data (avoids N+1 timeout).
+    $rows = [];
+    $loanIds = [];
+    $userIds = [];
     while ($row = towfetch($result)) {
         $exhausted_days = 0;
         $dpd = 0;
-        $loan_principle = (float) $row['processed_amount'] + (float) $row['p_fee'] + ((float) $row['p_fee'] * 0.18);
-        $outstanding_amount = (float) $row['processed_amount'] + (float) $row['p_fee'] + ((float) $row['p_fee'] * 0.18) + (float) $row['total_interest'] + (float) $row['penality_charge'];
-
         if (!empty($row['loan_start_date'])) {
             $loanRow = [
                 'processed_date' => $row['loan_start_date'],
@@ -100,23 +175,26 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
             continue;
         }
 
-        $responses = [];
-        $commit_dates = [];
-        $response_query = towquery('SELECT customer_response, commitment_date FROM `loan_acc_man` WHERE lid=' . (int) $row['loan_id'] . ' ORDER BY id DESC LIMIT 5');
-        if ($response_query) {
-            while ($response_row = towfetch($response_query)) {
-                $responses[] = $response_row['customer_response'];
-                $commit_dates[] = $response_row['commitment_date'];
-            }
-        }
+        $row['exhausted_days'] = $exhausted_days;
+        $row['calculated_dpd'] = $dpd;
+        $rows[] = $row;
+        $loanIds[] = (int) $row['loan_id'];
+        $userIds[] = (int) $row['user_id'];
+    }
 
-        $referrals = [];
-        $referral_query = towquery('SELECT name, relation, phone, status FROM `user_referrals` WHERE uid=' . (int) $row['user_id'] . ' ORDER BY id ASC LIMIT 10');
-        if ($referral_query) {
-            while ($referral_row = towfetch($referral_query)) {
-                $referrals[] = $referral_row['name'] . ' / ' . $referral_row['relation'] . ' / ' . $referral_row['phone'] . ' / ' . $referral_row['status'];
-            }
-        }
+    $responsesByLid = creditlab_recovery_agency_responses_by_lid($loanIds);
+    $referralsByUid = creditlab_recovery_agency_referrals_by_uid($userIds);
+
+    $rowCount = 0;
+    foreach ($rows as $row) {
+        $loanId = (int) $row['loan_id'];
+        $userId = (int) $row['user_id'];
+        $loan_principle = (float) $row['processed_amount'] + (float) $row['p_fee'] + ((float) $row['p_fee'] * 0.18);
+        $outstanding_amount = (float) $row['processed_amount'] + (float) $row['p_fee'] + ((float) $row['p_fee'] * 0.18) + (float) $row['total_interest'] + (float) $row['penality_charge'];
+
+        $responses = $responsesByLid[$loanId]['responses'] ?? [];
+        $commit_dates = $responsesByLid[$loanId]['dates'] ?? [];
+        $referrals = $referralsByUid[$userId] ?? [];
 
         fputcsv($output, [
             $row['pan_name'],
@@ -125,8 +203,8 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
             $row['salary_date'],
             number_format($loan_principle, 2, '.', ''),
             number_format($outstanding_amount, 2, '.', ''),
-            $exhausted_days,
-            $dpd,
+            $row['exhausted_days'],
+            $row['calculated_dpd'],
             $row['penality_charge'],
             $row['total_interest'],
             $row['company'],
@@ -150,16 +228,30 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
             creditlab_format_recovery_response($responses[3] ?? null, $commit_dates[3] ?? null),
             creditlab_format_recovery_response($responses[4] ?? null, $commit_dates[4] ?? null),
         ]);
+
+        $rowCount++;
+        if (($rowCount % 200) === 0) {
+            fflush($output);
+            if (function_exists('flush')) {
+                flush();
+            }
+        }
     }
 }
 
 function creditlab_send_recovery_agency_csv(string $filename, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null): void
 {
+    set_time_limit(3000);
+    ignore_user_abort(true);
+    ini_set('memory_limit', '512M');
+
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=' . $filename);
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
     $output = fopen('php://output', 'w');
     creditlab_write_recovery_agency_csv($output, $minDpd, $fromDate, $toDate);
     fclose($output);
