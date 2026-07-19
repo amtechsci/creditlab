@@ -42,27 +42,102 @@ $flash = $_SESSION['autocollect_playground'] ?? [];
 $result_block = null;
 $action = $_POST['action'] ?? ($_GET['action'] ?? '');
 
+$seamless_bank_fields = [
+    'account_holder_name' => $_POST['account_holder_name'] ?? '',
+    'account_number' => $_POST['account_number'] ?? '',
+    'account_type' => $_POST['account_type'] ?? 'savings',
+    'ifsc' => $_POST['ifsc'] ?? '',
+    'bank_code' => $_POST['bank_code'] ?? '',
+    'auth_mode' => $_POST['auth_mode'] ?? 'netbanking',
+];
+
 // Seamless mandate: emit HTML form and exit (browser posts to Easebuzz)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'seamless_mandate') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || $action === 'generate_key_and_seamless')) {
     $access_key = trim((string) ($_POST['access_key'] ?? ($flash['access_key'] ?? '')));
-    if ($access_key === '') {
+
+    if ($action === 'generate_key_and_seamless') {
+        $result = creditlab_autocollect_generate_access_key([
+            'transaction_id' => $_POST['transaction_id'] ?? '',
+            'amount' => $_POST['amount'] ?? '10000',
+            'email' => $_POST['email'] ?? '',
+            'phone' => $_POST['phone'] ?? '',
+            'start_date' => $_POST['start_date'] ?? date('Y-m-d'),
+            'end_date' => $_POST['end_date'] ?? date('Y-m-d', strtotime('+3 years')),
+            'success_url' => $_POST['success_url'] ?? '',
+            'failure_url' => $_POST['failure_url'] ?? '',
+            'request_type' => 'SEAMLESS',
+        ]);
+        if (empty($result['access_key'])) {
+            $result_block = ['title' => 'Generate Access Key + Seamless Mandate', 'result' => $result];
+        } else {
+            $_SESSION['autocollect_playground'] = [
+                'access_key' => $result['access_key'],
+                'transaction_id' => $result['transaction_id'],
+                'checkout_url' => $result['checkout_url'],
+                'request_type' => 'SEAMLESS',
+            ];
+            $missing = [];
+            foreach (['account_holder_name', 'account_number', 'ifsc', 'bank_code'] as $req_field) {
+                if (trim((string) ($seamless_bank_fields[$req_field] ?? '')) === '') {
+                    $missing[] = $req_field;
+                }
+            }
+            if ($missing) {
+                $result_block = [
+                    'title' => 'Generate Access Key + Seamless Mandate',
+                    'ok' => false,
+                    'error' => 'Access key created, but bank details missing: ' . implode(', ', $missing)
+                        . '. Fill bank details and use Section B2, or retry with all fields.',
+                    'result' => $result,
+                ];
+                $flash = $_SESSION['autocollect_playground'];
+            } else {
+                echo creditlab_autocollect_build_seamless_mandate_form($result['access_key'], $seamless_bank_fields);
+                exit;
+            }
+        }
+    } elseif ($access_key === '') {
         $result_block = ['title' => 'Seamless mandate', 'ok' => false, 'error' => 'access_key is required'];
     } else {
-        echo creditlab_autocollect_build_seamless_mandate_form($access_key, [
-            'account_holder_name' => $_POST['account_holder_name'] ?? '',
-            'account_number' => $_POST['account_number'] ?? '',
-            'account_type' => $_POST['account_type'] ?? 'savings',
-            'ifsc' => $_POST['ifsc'] ?? '',
-            'bank_code' => $_POST['bank_code'] ?? '',
-            'auth_mode' => $_POST['auth_mode'] ?? 'netbanking',
-        ]);
+        echo creditlab_autocollect_build_seamless_mandate_form($access_key, $seamless_bank_fields);
         exit;
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $result_block === null) {
     switch ($action) {
         case 'generate_key':
+            $request_type = strtoupper(trim((string) ($_POST['request_type'] ?? 'DEFAULT')));
+            if ($request_type === 'SEAMLESS') {
+                // Prefer the combined flow when SEAMLESS is selected with bank fields present.
+                $has_bank = trim((string) ($_POST['account_number'] ?? '')) !== ''
+                    && trim((string) ($_POST['account_holder_name'] ?? '')) !== '';
+                if ($has_bank) {
+                    $result = creditlab_autocollect_generate_access_key([
+                        'transaction_id' => $_POST['transaction_id'] ?? '',
+                        'amount' => $_POST['amount'] ?? '10000',
+                        'email' => $_POST['email'] ?? '',
+                        'phone' => $_POST['phone'] ?? '',
+                        'start_date' => $_POST['start_date'] ?? date('Y-m-d'),
+                        'end_date' => $_POST['end_date'] ?? date('Y-m-d', strtotime('+3 years')),
+                        'success_url' => $_POST['success_url'] ?? '',
+                        'failure_url' => $_POST['failure_url'] ?? '',
+                        'request_type' => 'SEAMLESS',
+                    ]);
+                    if (!empty($result['access_key'])) {
+                        $_SESSION['autocollect_playground'] = [
+                            'access_key' => $result['access_key'],
+                            'transaction_id' => $result['transaction_id'],
+                            'checkout_url' => $result['checkout_url'],
+                            'request_type' => 'SEAMLESS',
+                        ];
+                        echo creditlab_autocollect_build_seamless_mandate_form($result['access_key'], $seamless_bank_fields);
+                        exit;
+                    }
+                    $result_block = ['title' => 'Generate Access Key', 'result' => $result];
+                    break;
+                }
+            }
             $result = creditlab_autocollect_generate_access_key([
                 'transaction_id' => $_POST['transaction_id'] ?? '',
                 'amount' => $_POST['amount'] ?? '10000',
@@ -72,13 +147,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'end_date' => $_POST['end_date'] ?? date('Y-m-d', strtotime('+3 years')),
                 'success_url' => $_POST['success_url'] ?? '',
                 'failure_url' => $_POST['failure_url'] ?? '',
-                'request_type' => $_POST['request_type'] ?? 'DEFAULT',
+                'request_type' => $request_type === 'SEAMLESS' ? 'SEAMLESS' : 'DEFAULT',
             ]);
             if (!empty($result['access_key'])) {
                 $_SESSION['autocollect_playground'] = [
                     'access_key' => $result['access_key'],
                     'transaction_id' => $result['transaction_id'],
                     'checkout_url' => $result['checkout_url'],
+                    'request_type' => $request_type === 'SEAMLESS' ? 'SEAMLESS' : 'DEFAULT',
                 ];
                 $flash = $_SESSION['autocollect_playground'];
             }
@@ -204,11 +280,10 @@ function playground_dump($data)
     <div class="card">
         <h2>Smoke test (sandbox)</h2>
         <ol class="smoke">
-            <li><strong>A.</strong> Generate Access Key (DEFAULT + EN).</li>
-            <li><strong>B.</strong> Open checkout, or Seamless with sandbox account
-                <code>282800002828</code> / IFSC <code>EBZS0001987</code> / holder <code>Sandbox Testing</code>.</li>
+            <li><strong>A.</strong> Choose <code>SEAMLESS</code>, fill customer + bank details, click <strong>Generate key &amp; create mandate</strong>.</li>
+            <li>Complete netbanking / debit card auth on the bank page.</li>
             <li><strong>D.</strong> Retrieve until <code>authorized</code>.</li>
-            <li><strong>C.</strong> Debit with <code>merchant_request_number</code> containing <code>suc</code> for success mock.</li>
+            <li><strong>C.</strong> Debit with a unique merchant_request_number (prod: real ₹1–2; sandbox: include <code>suc</code>).</li>
         </ol>
         <p class="hint">Logs: <code>logs/easebuzz_autocollect_<?= date('Y-m-d') ?>.log</code></p>
     </div>
@@ -246,12 +321,12 @@ function playground_dump($data)
         </div>
     <?php endif; ?>
 
-    <!-- A. Generate Access Key -->
+    <!-- A. Generate Access Key (+ bank details when SEAMLESS) -->
     <div class="card">
         <h2>A. Generate Access Key</h2>
-        <p class="hint">POST <code>/v1/access-key/generate/</code> — eNACH, <code>request_type=DEFAULT</code>, <code>payment_modes=["EN"]</code>.</p>
-        <form method="POST">
-            <input type="hidden" name="action" value="generate_key">
+        <p class="hint">POST <code>/v1/access-key/generate/</code> — eNACH, <code>payment_modes=["EN"]</code>. Choose <strong>SEAMLESS</strong> to fill bank details here and create the mandate in one step.</p>
+        <form method="POST" id="form_generate">
+            <input type="hidden" name="action" id="generate_action" value="generate_key">
             <div class="row">
                 <div>
                     <label>transaction_id (optional)</label>
@@ -293,76 +368,124 @@ function playground_dump($data)
                 </div>
             </div>
             <label>request_type</label>
-            <select name="request_type">
-                <option value="DEFAULT" selected>DEFAULT (non-seamless)</option>
-                <option value="SEAMLESS">SEAMLESS</option>
+            <select name="request_type" id="request_type">
+                <option value="SEAMLESS" selected>SEAMLESS (fill bank details below)</option>
+                <option value="DEFAULT">DEFAULT (non-seamless checkout)</option>
             </select>
+
+            <div id="seamless_bank_box" style="margin-top:16px;padding:14px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;">
+                <h3 style="margin-top:0;">Bank details (required for SEAMLESS)</h3>
+                <p class="hint">We send these to Easebuzz encrypted. Customer only does netbanking / debit card auth — no bank form on Easebuzz.</p>
+                <div class="row">
+                    <div>
+                        <label>account_holder_name</label>
+                        <input type="text" name="account_holder_name" id="account_holder_name" placeholder="Name as on bank account">
+                    </div>
+                    <div>
+                        <label>account_number</label>
+                        <input type="text" name="account_number" id="account_number" placeholder="Your account number">
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>account_type</label>
+                        <select name="account_type" id="account_type">
+                            <option value="savings" selected>savings</option>
+                            <option value="current">current</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>ifsc</label>
+                        <input type="text" name="ifsc" id="ifsc" placeholder="e.g. HDFC0001234" style="text-transform:uppercase;">
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>bank_code (4 uppercase letters)</label>
+                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" style="text-transform:uppercase;">
+                    </div>
+                    <div>
+                        <label>auth_mode</label>
+                        <select name="auth_mode" id="auth_mode">
+                            <option value="netbanking" selected>netbanking</option>
+                            <option value="debit_card">debit_card</option>
+                            <option value="aadhaar">aadhaar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <br>
-            <button type="submit">Generate Access Key</button>
+            <button type="submit" id="generate_btn">Generate key &amp; create mandate</button>
         </form>
     </div>
 
-    <!-- B. Create Mandate -->
+    <!-- B. Create Mandate (fallback / advanced) -->
     <div class="card">
-        <h2>B. Create eNACH Mandate</h2>
+        <h2>B. Create eNACH Mandate (fallback)</h2>
+        <p class="hint">Only needed if you already have an access key, or if you used DEFAULT and need checkout.</p>
 
-        <h3>B1. Non-seamless redirect</h3>
-        <p class="hint">Opens <code>pay/testpay.easebuzz.in/pay/{access_key}</code>.</p>
-        <form method="POST">
-            <input type="hidden" name="action" value="open_checkout">
-            <label>access_key</label>
-            <input type="text" name="access_key" value="<?= $v_access_key ?>" required style="max-width:100%;">
-            <br>
-            <button type="submit">Open checkout</button>
-        </form>
+        <div id="b1_box">
+            <h3>B1. Non-seamless redirect</h3>
+            <p class="hint">Opens <code>pay.easebuzz.in/pay/{access_key}</code> (or testpay in sandbox).</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="open_checkout">
+                <label>access_key</label>
+                <input type="text" name="access_key" value="<?= $v_access_key ?>" style="max-width:100%;">
+                <br>
+                <button type="submit">Open checkout</button>
+            </form>
+        </div>
 
         <hr style="margin: 24px 0; border: 0; border-top: 1px solid #ddd;">
 
-        <h3>B2. Seamless form submit</h3>
-        <p class="hint">Encrypts account fields and auto-POSTs to <code>/v1/mandate</code>. Use request_type=SEAMLESS when generating the key.</p>
-        <form method="POST">
-            <input type="hidden" name="action" value="seamless_mandate">
-            <label>access_key</label>
-            <input type="text" name="access_key" value="<?= $v_access_key ?>" required style="max-width:100%;">
-            <div class="row">
-                <div>
-                    <label>account_holder_name</label>
-                    <input type="text" name="account_holder_name" value="Sandbox Testing" required>
+        <div id="b2_box">
+            <h3>B2. Seamless form submit (with existing access_key)</h3>
+            <p class="hint">Use when the key was already generated and you only need to submit bank details.</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="seamless_mandate">
+                <label>access_key</label>
+                <input type="text" name="access_key" value="<?= $v_access_key ?>" required style="max-width:100%;">
+                <div class="row">
+                    <div>
+                        <label>account_holder_name</label>
+                        <input type="text" name="account_holder_name" placeholder="Name as on bank account" required>
+                    </div>
+                    <div>
+                        <label>account_number</label>
+                        <input type="text" name="account_number" placeholder="Your account number" required>
+                    </div>
                 </div>
-                <div>
-                    <label>account_number</label>
-                    <input type="text" name="account_number" value="282800002828" required>
+                <div class="row">
+                    <div>
+                        <label>account_type</label>
+                        <select name="account_type">
+                            <option value="savings" selected>savings</option>
+                            <option value="current">current</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>ifsc</label>
+                        <input type="text" name="ifsc" placeholder="e.g. HDFC0001234" required style="text-transform:uppercase;">
+                    </div>
                 </div>
-            </div>
-            <div class="row">
-                <div>
-                    <label>account_type</label>
-                    <select name="account_type">
-                        <option value="savings" selected>savings</option>
-                        <option value="current">current</option>
-                    </select>
+                <div class="row">
+                    <div>
+                        <label>bank_code (4 uppercase letters)</label>
+                        <input type="text" name="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" required style="text-transform:uppercase;">
+                    </div>
+                    <div>
+                        <label>auth_mode</label>
+                        <select name="auth_mode">
+                            <option value="netbanking" selected>netbanking</option>
+                            <option value="debit_card">debit_card</option>
+                            <option value="aadhaar">aadhaar</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label>ifsc</label>
-                    <input type="text" name="ifsc" value="EBZS0001987" required>
-                </div>
-            </div>
-            <div class="row">
-                <div>
-                    <label>bank_code (4 uppercase letters)</label>
-                    <input type="text" name="bank_code" value="EBZS" pattern="[A-Z]{4}" required>
-                </div>
-                <div>
-                    <label>auth_mode</label>
-                    <select name="auth_mode">
-                        <option value="netbanking" selected>netbanking</option>
-                        <option value="debit_card">debit_card</option>
-                        <option value="aadhaar">aadhaar</option>
-                    </select>
-                </div>
-            </div>
-            <button type="submit">Submit seamless mandate</button>
-        </form>
+                <button type="submit">Submit seamless mandate</button>
+            </form>
+        </div>
     </div>
 
     <!-- D. Retrieve (before C so testers see status first) -->
@@ -403,5 +526,30 @@ function playground_dump($data)
         </form>
     </div>
 </div>
+<script>
+(function () {
+    var sel = document.getElementById('request_type');
+    var bankBox = document.getElementById('seamless_bank_box');
+    var actionInput = document.getElementById('generate_action');
+    var btn = document.getElementById('generate_btn');
+    var bankRequiredIds = ['account_holder_name', 'account_number', 'ifsc', 'bank_code'];
+
+    function syncRequestType() {
+        var seamless = sel && sel.value === 'SEAMLESS';
+        if (bankBox) bankBox.style.display = seamless ? 'block' : 'none';
+        if (actionInput) actionInput.value = seamless ? 'generate_key_and_seamless' : 'generate_key';
+        if (btn) btn.textContent = seamless ? 'Generate key & create mandate' : 'Generate Access Key';
+        bankRequiredIds.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.required = !!seamless;
+        });
+    }
+
+    if (sel) {
+        sel.addEventListener('change', syncRequestType);
+        syncRequestType();
+    }
+})();
+</script>
 </body>
 </html>
