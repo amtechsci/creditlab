@@ -4,10 +4,26 @@
  */
 require_once __DIR__ . '/env.php';
 
+function creditlab_has_staff_session(): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return false;
+    }
+    foreach (['admin', 'account_manager', 'recovery_officer', 'verify_user', 'agency_admin'] as $key) {
+        if (!empty($_SESSION[$key])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function creditlab_is_staff_logged_in(): bool
 {
     global $admin, $account_manager, $recovery_officer, $verify_user, $agency_admin;
-    return !empty($admin) || !empty($account_manager) || !empty($recovery_officer) || !empty($verify_user) || !empty($agency_admin);
+    if (!empty($admin) || !empty($account_manager) || !empty($recovery_officer) || !empty($verify_user) || !empty($agency_admin)) {
+        return true;
+    }
+    return creditlab_has_staff_session();
 }
 
 function creditlab_require_staff(string $redirect = '/account/login.php'): void
@@ -19,6 +35,15 @@ function creditlab_require_staff(string $redirect = '/account/login.php'): void
         header('Location: ' . $redirect);
         exit;
     }
+}
+
+function creditlab_safe_internal_redirect(string $next, string $default): string
+{
+    $next = trim($next);
+    if ($next === '' || $next[0] !== '/' || strpos($next, '//') !== false) {
+        return $default;
+    }
+    return $next;
 }
 
 function creditlab_hash_password(string $plain): string

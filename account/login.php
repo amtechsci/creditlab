@@ -1,8 +1,13 @@
 <?php
 include '../db.php';
 require_once __DIR__ . '/../lib/auth.php';
+$login_next = creditlab_safe_internal_redirect((string) ($_GET['next'] ?? ''), '');
 if(isset($_POST['email'])){
     extract(towrealarray2($_POST));
+    $posted_next = creditlab_safe_internal_redirect((string) ($_POST['next'] ?? ''), '');
+    if ($posted_next !== '') {
+        $login_next = $posted_next;
+    }
 function get_client_ip() {
     $ipaddress = '';
     if (getenv('HTTP_CLIENT_IP'))
@@ -55,7 +60,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
         $_SESSION['admin'] = $email;
         creditlab_set_auth_cookie('admin', $email);
-        header("location:../../admin/");
+        header('Location: ' . ($login_next !== '' ? $login_next : '../../admin/'));
         exit;
     }
         }
@@ -117,7 +122,12 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
 include_once 'head.php';
 include_once '../head2.php';
 
-if (isset($user)) {
+if (creditlab_is_staff_logged_in() && $login_next !== '') {
+    header('Location: ' . $login_next);
+    exit;
+}
+
+if (isset($user) && !creditlab_is_staff_logged_in()) {
     print_r("<script>window.location.replace('../user');</script>");
 }else{ ?>
 <style>
@@ -145,6 +155,9 @@ if (isset($user)) {
 									<div class="widget-shadow login-form-shadow" data-example-id="basic-forms">
 										<div class="form-body form-body-info mb-5">
 											<form data-toggle="validator" action="" method="post">
+												<?php if ($login_next !== ''): ?>
+												<input type="hidden" name="next" value="<?= htmlspecialchars($login_next, ENT_QUOTES) ?>">
+												<?php endif; ?>
 												<div class="form-group has-feedback">
 													<input type="email" class="form-control" name="email" placeholder="Enter Your Email" style="height: 40px;font-size: 2rem;" required title="Please enter valid email">
 												</div>

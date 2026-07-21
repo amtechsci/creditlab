@@ -286,7 +286,11 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         $account_type = 'savings';
     }
     $ifsc = strtoupper(trim((string) ($fields['ifsc'] ?? '')));
-    $bank_code = strtoupper(trim((string) ($fields['bank_code'] ?? '')));
+    require_once __DIR__ . '/easebuzz_enach.php';
+    $bank_code = creditlab_resolve_easebuzz_bank_code(
+        $ifsc,
+        (string) ($fields['bank_code'] ?? '')
+    );
     $auth_mode = strtolower(trim((string) ($fields['auth_mode'] ?? 'netbanking')));
 
     $enc_account_number = creditlab_autocollect_aes_encrypt($account_number);
@@ -443,8 +447,9 @@ function creditlab_autocollect_playground_allowed()
     if ((string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND !== '1') {
         return false;
     }
-    if (function_exists('creditlab_is_staff_logged_in')) {
-        return creditlab_is_staff_logged_in();
+    require_once __DIR__ . '/auth.php';
+    if (creditlab_validate_internal_token()) {
+        return true;
     }
-    return false;
+    return creditlab_is_staff_logged_in();
 }

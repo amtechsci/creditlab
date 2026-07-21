@@ -17,16 +17,47 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
+require_once __DIR__ . '/../lib/easebuzz_enach.php';
+
+function creditlab_playground_access_debug(): string
+{
+    $parts = ['host=' . ($_SERVER['HTTP_HOST'] ?? '')];
+    foreach (['admin', 'account_manager', 'recovery_officer', 'verify_user', 'agency_admin', 'user'] as $key) {
+        $parts[] = $key . '=' . (!empty($_SESSION[$key]) ? 'yes' : 'no');
+    }
+    global $admin;
+    $parts[] = 'global_admin=' . (!empty($admin) ? 'yes' : 'no');
+    return implode(', ', $parts);
+}
 
 if (!creditlab_autocollect_playground_allowed()) {
     http_response_code(403);
-    header('Content-Type: text/plain; charset=utf-8');
     if (!creditlab_autocollect_is_sandbox() && (string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND === '1') {
-        die(
-            "Autocollect playground requires a staff login in production.\n"
-            . "Log in at /account/login.php as admin, then reopen this page.\n"
-        );
+        if (creditlab_has_staff_session()) {
+            header('Content-Type: text/plain; charset=utf-8');
+            die(
+                "Autocollect playground could not verify your staff session.\n\n"
+                . "A staff session cookie was detected, but access still failed.\n"
+                . "Try: hard refresh, log out/in at /account/login.php, use the same host (www vs non-www).\n\n"
+                . "Debug: " . creditlab_playground_access_debug() . "\n"
+            );
+        }
+        global $user;
+        if (!empty($user) && !creditlab_has_staff_session()) {
+            header('Content-Type: text/plain; charset=utf-8');
+            die(
+                "Autocollect playground requires a staff login in production.\n\n"
+                . "You are logged in as a regular user (borrower), not admin/staff.\n"
+                . "Log out (or use incognito), log in at /account/login.php with admin (user.active = 2),\n"
+                . "then reopen /payment/autocollect_playground.php\n\n"
+                . "Debug: " . creditlab_playground_access_debug() . "\n"
+            );
+        }
+        $next = rawurlencode('/payment/autocollect_playground.php');
+        header('Location: /account/login.php?next=' . $next);
+        exit;
     }
+    header('Content-Type: text/plain; charset=utf-8');
     die(
         "Autocollect playground is disabled.\n"
         . "Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 and log in as staff.\n"
@@ -76,8 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || 
                 'checkout_url' => $result['checkout_url'],
                 'request_type' => 'SEAMLESS',
             ];
+            $seamless_bank_fields['bank_code'] = creditlab_resolve_easebuzz_bank_code(
+                $seamless_bank_fields['ifsc'],
+                $seamless_bank_fields['bank_code']
+            );
             $missing = [];
-            foreach (['account_holder_name', 'account_number', 'ifsc', 'bank_code'] as $req_field) {
+            foreach (['account_holder_name', 'account_number', 'ifsc'] as $req_field) {
                 if (trim((string) ($seamless_bank_fields[$req_field] ?? '')) === '') {
                     $missing[] = $req_field;
                 }
@@ -99,6 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || 
     } elseif ($access_key === '') {
         $result_block = ['title' => 'Seamless mandate', 'ok' => false, 'error' => 'access_key is required'];
     } else {
+        $seamless_bank_fields['bank_code'] = creditlab_resolve_easebuzz_bank_code(
+            $seamless_bank_fields['ifsc'],
+            $seamless_bank_fields['bank_code']
+        );
         echo creditlab_autocollect_build_seamless_mandate_form($access_key, $seamless_bank_fields);
         exit;
     }
@@ -401,8 +440,9 @@ function playground_dump($data)
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 uppercase letters)</label>
-                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" style="text-transform:uppercase;">
+                        <label>bank_code (4–5 letters; HDFC → HDFCB)</label>
+                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFCB" pattern="[A-Za-z]{4,5}" title="4–5 uppercase letters" style="text-transform:uppercase;">
+                        <span class="hint">Optional if IFSC is filled — auto-filled from IFSC on blur.</span>
                     </div>
                     <div>
                         <label>auth_mode</label>
@@ -471,8 +511,8 @@ function playground_dump($data)
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 uppercase letters)</label>
-                        <input type="text" name="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" required style="text-transform:uppercase;">
+                        <label>bank_code (4–5 letters; HDFC → HDFCB)</label>
+                        <input type="text" name="bank_code" placeholder="e.g. HDFCB" pattern="[A-Za-z]{4,5}" title="4–5 uppercase letters" style="text-transform:uppercase;">
                     </div>
                     <div>
                         <label>auth_mode</label>
@@ -532,7 +572,34 @@ function playground_dump($data)
     var bankBox = document.getElementById('seamless_bank_box');
     var actionInput = document.getElementById('generate_action');
     var btn = document.getElementById('generate_btn');
-    var bankRequiredIds = ['account_holder_name', 'account_number', 'ifsc', 'bank_code'];
+    var bankRequiredIds = ['account_holder_name', 'account_number', 'ifsc'];
+
+    var bankCodeOverrides = {
+        HDFC: 'HDFCB',
+        UTIB: 'UTIB',
+        ICIC: 'ICIC',
+        SBIN: 'SBIN',
+        KKBK: 'KKBK',
+        IDIB: 'IDIB',
+        BARB: 'BARB',
+        PUNB: 'PUNB',
+        CBIN: 'CBIN',
+        YESB: 'YESB',
+        CNRB: 'CNRB',
+        FDRL: 'FDRL',
+        BKID: 'BKID',
+        INDB: 'INDB',
+        AUBL: 'AUBL'
+    };
+
+    function resolveBankCodeFromIfsc(ifsc) {
+        ifsc = (ifsc || '').toUpperCase().trim();
+        var prefix = ifsc.length >= 4 ? ifsc.substring(0, 4) : '';
+        if (prefix && bankCodeOverrides[prefix]) {
+            return bankCodeOverrides[prefix];
+        }
+        return prefix;
+    }
 
     function syncRequestType() {
         var seamless = sel && sel.value === 'SEAMLESS';
@@ -544,6 +611,19 @@ function playground_dump($data)
             if (el) el.required = !!seamless;
         });
     }
+
+    document.querySelectorAll('input[name="ifsc"]').forEach(function (ifscInput) {
+        ifscInput.addEventListener('blur', function () {
+            var form = ifscInput.closest('form');
+            if (!form) return;
+            var bankInput = form.querySelector('input[name="bank_code"]');
+            if (!bankInput || bankInput.value.trim() !== '') return;
+            var code = resolveBankCodeFromIfsc(ifscInput.value);
+            if (/^[A-Za-z]{4,5}$/.test(code)) {
+                bankInput.value = code.toUpperCase();
+            }
+        });
+    });
 
     if (sel) {
         sel.addEventListener('change', syncRequestType);
