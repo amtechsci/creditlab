@@ -269,6 +269,28 @@ function creditlab_autocollect_mandate_redirect_url($access_key)
 }
 
 /**
+ * Autocollect ENACH bank_code — exactly 4 uppercase letters (IFSC prefix).
+ * Legacy PG eNACH uses 5-char codes (e.g. HDFCB); Autocollect rejects those (ADVA00001).
+ */
+function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
+{
+    $ifsc = strtoupper(trim((string) $ifsc));
+    $prefix = strlen($ifsc) >= 4 ? substr($ifsc, 0, 4) : '';
+
+    $bank_code = strtoupper(trim((string) $bank_code));
+    if ($bank_code !== '' && preg_match('/^[A-Z]{4}$/', $bank_code)) {
+        return $bank_code;
+    }
+    if ($bank_code !== '' && preg_match('/^[A-Z]{5}$/', $bank_code) && preg_match('/^[A-Z]{4}$/', $prefix)) {
+        return $prefix;
+    }
+    if (preg_match('/^[A-Z]{4}$/', $prefix)) {
+        return $prefix;
+    }
+    return '';
+}
+
+/**
  * Build auto-submit HTML form for seamless eNACH mandate creation (POST /v1/mandate).
  *
  * @param string $access_key
@@ -286,8 +308,7 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         $account_type = 'savings';
     }
     $ifsc = strtoupper(trim((string) ($fields['ifsc'] ?? '')));
-    require_once __DIR__ . '/easebuzz_enach.php';
-    $bank_code = creditlab_resolve_easebuzz_bank_code(
+    $bank_code = creditlab_autocollect_resolve_bank_code(
         $ifsc,
         (string) ($fields['bank_code'] ?? '')
     );

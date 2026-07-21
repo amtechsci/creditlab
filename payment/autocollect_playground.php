@@ -17,7 +17,6 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
-require_once __DIR__ . '/../lib/easebuzz_enach.php';
 
 if (!creditlab_autocollect_playground_allowed()) {
     http_response_code(403);
@@ -67,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || 
                 'checkout_url' => $result['checkout_url'],
                 'request_type' => 'SEAMLESS',
             ];
-            $seamless_bank_fields['bank_code'] = creditlab_resolve_easebuzz_bank_code(
+            $seamless_bank_fields['bank_code'] = creditlab_autocollect_resolve_bank_code(
                 $seamless_bank_fields['ifsc'],
                 $seamless_bank_fields['bank_code']
             );
@@ -94,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || 
     } elseif ($access_key === '') {
         $result_block = ['title' => 'Seamless mandate', 'ok' => false, 'error' => 'access_key is required'];
     } else {
-        $seamless_bank_fields['bank_code'] = creditlab_resolve_easebuzz_bank_code(
+        $seamless_bank_fields['bank_code'] = creditlab_autocollect_resolve_bank_code(
             $seamless_bank_fields['ifsc'],
             $seamless_bank_fields['bank_code']
         );
@@ -400,9 +399,9 @@ function playground_dump($data)
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4–5 letters; HDFC → HDFCB)</label>
-                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFCB" pattern="[A-Za-z]{4,5}" title="4–5 uppercase letters" style="text-transform:uppercase;">
-                        <span class="hint">Optional if IFSC is filled — auto-filled from IFSC on blur.</span>
+                        <label>bank_code (4 letters — Autocollect; HDFC IFSC → HDFC)</label>
+                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
+                        <span class="hint">Optional if IFSC is filled — auto-filled from first 4 chars of IFSC.</span>
                     </div>
                     <div>
                         <label>auth_mode</label>
@@ -471,8 +470,8 @@ function playground_dump($data)
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4–5 letters; HDFC → HDFCB)</label>
-                        <input type="text" name="bank_code" placeholder="e.g. HDFCB" pattern="[A-Za-z]{4,5}" title="4–5 uppercase letters" style="text-transform:uppercase;">
+                        <label>bank_code (4 letters — Autocollect; HDFC IFSC → HDFC)</label>
+                        <input type="text" name="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
                     </div>
                     <div>
                         <label>auth_mode</label>
@@ -534,31 +533,9 @@ function playground_dump($data)
     var btn = document.getElementById('generate_btn');
     var bankRequiredIds = ['account_holder_name', 'account_number', 'ifsc'];
 
-    var bankCodeOverrides = {
-        HDFC: 'HDFCB',
-        UTIB: 'UTIB',
-        ICIC: 'ICIC',
-        SBIN: 'SBIN',
-        KKBK: 'KKBK',
-        IDIB: 'IDIB',
-        BARB: 'BARB',
-        PUNB: 'PUNB',
-        CBIN: 'CBIN',
-        YESB: 'YESB',
-        CNRB: 'CNRB',
-        FDRL: 'FDRL',
-        BKID: 'BKID',
-        INDB: 'INDB',
-        AUBL: 'AUBL'
-    };
-
     function resolveBankCodeFromIfsc(ifsc) {
         ifsc = (ifsc || '').toUpperCase().trim();
-        var prefix = ifsc.length >= 4 ? ifsc.substring(0, 4) : '';
-        if (prefix && bankCodeOverrides[prefix]) {
-            return bankCodeOverrides[prefix];
-        }
-        return prefix;
+        return ifsc.length >= 4 ? ifsc.substring(0, 4) : '';
     }
 
     function syncRequestType() {
@@ -579,7 +556,7 @@ function playground_dump($data)
             var bankInput = form.querySelector('input[name="bank_code"]');
             if (!bankInput || bankInput.value.trim() !== '') return;
             var code = resolveBankCodeFromIfsc(ifscInput.value);
-            if (/^[A-Za-z]{4,5}$/.test(code)) {
+            if (/^[A-Za-z]{4}$/.test(code)) {
                 bankInput.value = code.toUpperCase();
             }
         });
