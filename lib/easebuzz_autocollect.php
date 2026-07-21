@@ -435,8 +435,8 @@ function creditlab_autocollect_initiate_enach_debit(array $params)
 /**
  * Whether the Autocollect playground page may be used.
  *
- * Production: EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 and staff session required.
- * Sandbox (EASEBUZZ_ENV=test): allowed without staff for local API testing.
+ * Sandbox (EASEBUZZ_ENV=test): always allowed.
+ * Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 in .env (server-side gate only).
  *
  * This helper is only loaded by payment/autocollect_playground.php — never wire it
  * into user/easebuzz.php, zzenach, or easebuzz_webhook (legacy flow stays separate).
@@ -446,12 +446,5 @@ function creditlab_autocollect_playground_allowed()
     if (creditlab_autocollect_is_sandbox()) {
         return true;
     }
-    if ((string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND !== '1') {
-        return false;
-    }
-    require_once __DIR__ . '/auth.php';
-    if (creditlab_validate_internal_token()) {
-        return true;
-    }
-    return creditlab_is_staff_logged_in();
+    return (string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND === '1';
 }

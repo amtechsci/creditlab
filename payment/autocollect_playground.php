@@ -2,8 +2,8 @@
 /**
  * Internal Autocollect eNACH playground (parallel to legacy eNACH — does not replace it).
  *
- * Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 and log in as admin/staff.
- * Sandbox: EASEBUZZ_ENV=test (no staff required for local API testing).
+ * Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 in server .env.
+ * Sandbox: EASEBUZZ_ENV=test (no extra flag needed).
  *
  * Isolation guarantees:
  * - Does not write to easebuzz_adtd or user.easebuzz
@@ -19,54 +19,14 @@ require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
 require_once __DIR__ . '/../lib/easebuzz_enach.php';
 
-function creditlab_playground_access_debug(): string
-{
-    $parts = ['host=' . ($_SERVER['HTTP_HOST'] ?? '')];
-    foreach (['admin', 'account_manager', 'recovery_officer', 'verify_user', 'agency_admin', 'user'] as $key) {
-        $parts[] = $key . '=' . (!empty($_SESSION[$key]) ? 'yes' : 'no');
-    }
-    global $admin;
-    $parts[] = 'global_admin=' . (!empty($admin) ? 'yes' : 'no');
-    return implode(', ', $parts);
-}
-
 if (!creditlab_autocollect_playground_allowed()) {
     http_response_code(403);
-    if (!creditlab_autocollect_is_sandbox() && (string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND === '1') {
-        if (creditlab_has_staff_session()) {
-            header('Content-Type: text/plain; charset=utf-8');
-            die(
-                "Autocollect playground could not verify your staff session.\n\n"
-                . "A staff session cookie was detected, but access still failed.\n"
-                . "Try: hard refresh, log out/in at /account/login.php, use the same host (www vs non-www).\n\n"
-                . "Debug: " . creditlab_playground_access_debug() . "\n"
-            );
-        }
-        global $user;
-        if (!empty($user) && !creditlab_has_staff_session()) {
-            header('Content-Type: text/plain; charset=utf-8');
-            die(
-                "Autocollect playground requires a staff login in production.\n\n"
-                . "You are logged in as a regular user (borrower), not admin/staff.\n"
-                . "Log out (or use incognito), log in at /account/login.php with admin (user.active = 2),\n"
-                . "then reopen /payment/autocollect_playground.php\n\n"
-                . "Debug: " . creditlab_playground_access_debug() . "\n"
-            );
-        }
-        $next = rawurlencode('/payment/autocollect_playground.php');
-        header('Location: /account/login.php?next=' . $next);
-        exit;
-    }
     header('Content-Type: text/plain; charset=utf-8');
     die(
         "Autocollect playground is disabled.\n"
-        . "Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 and log in as staff.\n"
+        . "Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 in .env\n"
         . "Sandbox: set EASEBUZZ_ENV=test in .env\n"
     );
-}
-
-if (!creditlab_autocollect_is_sandbox()) {
-    creditlab_require_staff('/account/login.php');
 }
 
 $flash = $_SESSION['autocollect_playground'] ?? [];

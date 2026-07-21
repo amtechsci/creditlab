@@ -11,6 +11,6 @@ if (!defined('EASEBUZZ_ENV')) {
     define('EASEBUZZ_ENV', env('EASEBUZZ_ENV', 'prod'));
 }
 if (!defined('EASEBUZZ_AUTOCOLLECT_PLAYGROUND')) {
-    // Production: set to 1 in .env + staff login for payment/autocollect_playground.php (legacy eNACH unchanged)
+    // Production: set to 1 in .env to enable payment/autocollect_playground.php (legacy eNACH unchanged)
     define('EASEBUZZ_AUTOCOLLECT_PLAYGROUND', env('EASEBUZZ_AUTOCOLLECT_PLAYGROUND', '0'));
 }
