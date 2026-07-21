@@ -67,13 +67,13 @@ function creditlab_autocollect_hash(array $parts)
 
 /**
  * AES-256-CBC encrypt for seamless mandate fields.
- * Key: first 32 bytes of SHA-256(merchant key). IV: first 16 bytes of SHA-256(salt).
+ * Matches Easebuzz docs (Python sample): SHA-256 hex digest, first 32/16 chars as key/IV bytes.
  */
 function creditlab_autocollect_aes_encrypt($plain)
 {
     $plain = (string) $plain;
-    $key = substr(hash('sha256', (string) EASEBUZZ_MERCHANT_KEY, true), 0, 32);
-    $iv = substr(hash('sha256', (string) EASEBUZZ_SALT, true), 0, 16);
+    $key = substr(hash('sha256', (string) EASEBUZZ_MERCHANT_KEY), 0, 32);
+    $iv = substr(hash('sha256', (string) EASEBUZZ_SALT), 0, 16);
     $encrypted = openssl_encrypt($plain, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
     if ($encrypted === false) {
         return '';
@@ -298,11 +298,11 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
     $enc_account_type = creditlab_autocollect_aes_encrypt($account_type);
     $enc_upi_handle = ''; // ENACH — empty
 
-    // Docs: UPI & ENACH hash uses encrypted account_number and upi_handle
+    // Docs: UPI & ENACH Authorization = SHA-512(key|enc_account_number|ifsc|enc_upi_handle|salt)
     $authorization = creditlab_autocollect_hash([
         $key,
         $enc_account_number,
-        '',
+        $ifsc,
         $enc_upi_handle,
         EASEBUZZ_SALT,
     ]);
@@ -331,6 +331,8 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         'auth_mode' => $auth_mode,
         'bank_code' => $bank_code,
         'ifsc' => $ifsc,
+        'hash_pattern' => 'key|enc_account_number|ifsc|enc_upi_handle|salt',
+        'authorization_hash_prefix' => substr($authorization, 0, 16),
         'action' => creditlab_autocollect_mandate_api_url(),
     ]);
 
