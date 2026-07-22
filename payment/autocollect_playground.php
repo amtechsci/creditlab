@@ -16,6 +16,10 @@
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../lib/auth.php';
+
+/** Playground always uses UAT sandbox API + hardcoded merchant credentials. */
+define('CREDITLAB_AUTOCOLLECT_FORCE_UAT', true);
+
 require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
 
 if (!creditlab_autocollect_playground_allowed()) {
@@ -248,19 +252,35 @@ function playground_dump($data)
         code { background: #eee; padding: 1px 4px; border-radius: 3px; }
         a.checkout { word-break: break-all; }
         ol.smoke { line-height: 1.5; }
+        .log-entry { margin-bottom: 12px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+        .log-meta { padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 13px; }
+        .log-body { margin: 0; padding: 10px 12px; font-size: 12px; overflow-x: auto; max-height: 320px; white-space: pre-wrap; word-wrap: break-word; }
+        .nav-links { margin-bottom: 16px; }
+        .nav-links a { margin-right: 16px; }
+        .uat-banner { background: #cfe2ff; border: 1px solid #0d6efd; }
     </style>
 </head>
 <body>
 <div class="container">
+    <div class="nav-links">
+        <a href="autocollect_playground.php"><strong>Playground</strong></a>
+        <a href="autocollect_logs.php">API logs</a>
+    </div>
+
     <h1>Autocollect eNACH Playground</h1>
     <p class="hint">
-        Env: <code><?= htmlspecialchars(EASEBUZZ_ENV, ENT_QUOTES) ?></code>
+        Mode: <code>UAT (forced)</code>
         · API: <code><?= htmlspecialchars(creditlab_autocollect_base_url(), ENT_QUOTES) ?></code>
-        · Merchant key configured: <code><?= creditlab_autocollect_credentials_ok() ? 'yes' : 'NO' ?></code>
-        <?php if (function_exists('creditlab_is_staff_logged_in') && creditlab_is_staff_logged_in()): ?>
-        · Staff session: <code>active</code>
-        <?php endif; ?>
+        · Checkout: <code><?= htmlspecialchars(creditlab_autocollect_checkout_base_url(), ENT_QUOTES) ?></code>
+        · Merchant key: <code><?= htmlspecialchars(creditlab_autocollect_merchant_key(), ENT_QUOTES) ?></code>
+        · Salt: <code><?= htmlspecialchars(creditlab_autocollect_salt(), ENT_QUOTES) ?></code>
     </p>
+
+    <div class="banner uat-banner">
+        <strong>UAT sandbox.</strong> This page uses hardcoded UAT credentials (<code>53LFWVJQH</code> / <code>G151INEFT</code>)
+        and sandbox API URLs only. All API requests and responses are logged below and on
+        <a href="autocollect_logs.php">API logs</a>.
+    </div>
 
     <div class="banner">
         <strong>Legacy eNACH is unchanged.</strong> Customer mandate setup still uses
@@ -283,7 +303,8 @@ function playground_dump($data)
             <li><strong>D.</strong> Retrieve until <code>authorized</code>.</li>
             <li><strong>C.</strong> Debit with a unique merchant_request_number (prod: real ₹1–2; sandbox: include <code>suc</code>).</li>
         </ol>
-        <p class="hint">Logs: <code>logs/easebuzz_autocollect_<?= date('Y-m-d') ?>.log</code></p>
+        <p class="hint">Sandbox test account: <code>282800002828</code> / IFSC <code>EBZS0001987</code>.
+        Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
     </div>
 
     <?php if ($result_block): ?>
@@ -524,6 +545,12 @@ function playground_dump($data)
             <button type="submit">Initiate presentment</button>
         </form>
     </div>
+
+    <div class="card">
+        <h2>API log (recent)</h2>
+        <p class="hint">Last 15 calls from this playground session. <a href="autocollect_logs.php">View all / clear logs</a></p>
+        <?= creditlab_autocollect_render_web_logs_html(15) ?>
+    </div>
 </div>
 <script>
 (function () {
@@ -554,8 +581,9 @@ function playground_dump($data)
             var form = ifscInput.closest('form');
             if (!form) return;
             var bankInput = form.querySelector('input[name="bank_code"]');
-            if (!bankInput || bankInput.value.trim() !== '') return;
+            if (!bankInput) return;
             var code = resolveBankCodeFromIfsc(ifscInput.value);
+            // Always sync from IFSC — Autocollect wants 4-char prefix (HDFC), not legacy HDFCB.
             if (/^[A-Za-z]{4}$/.test(code)) {
                 bankInput.value = code.toUpperCase();
             }

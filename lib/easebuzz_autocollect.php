@@ -7,13 +7,127 @@
 require_once __DIR__ . '/../config/easebuzz.php';
 require_once __DIR__ . '/app_url.php';
 
-function creditlab_autocollect_log_path()
+/** UAT credentials — used only when CREDITLAB_AUTOCOLLECT_FORCE_UAT is set (playground/log pages). */
+define('CREDITLAB_AUTOCOLLECT_UAT_MERCHANT_KEY', '53LFWVJQH');
+define('CREDITLAB_AUTOCOLLECT_UAT_SALT', 'G151INEFT');
+
+function creditlab_autocollect_is_uat()
+{
+    return defined('CREDITLAB_AUTOCOLLECT_FORCE_UAT') && CREDITLAB_AUTOCOLLECT_FORCE_UAT;
+}
+
+function creditlab_autocollect_env_label()
+{
+    if (creditlab_autocollect_is_uat()) {
+        return 'uat';
+    }
+    if (creditlab_autocollect_is_sandbox()) {
+        return 'test';
+    }
+    return 'prod';
+}
+
+function creditlab_autocollect_merchant_key()
+{
+    if (creditlab_autocollect_is_uat()) {
+        return CREDITLAB_AUTOCOLLECT_UAT_MERCHANT_KEY;
+    }
+    return (string) EASEBUZZ_MERCHANT_KEY;
+}
+
+function creditlab_autocollect_salt()
+{
+    if (creditlab_autocollect_is_uat()) {
+        return CREDITLAB_AUTOCOLLECT_UAT_SALT;
+    }
+    return (string) EASEBUZZ_SALT;
+}
+
+function creditlab_autocollect_log_dir()
 {
     $log_dir = dirname(__DIR__) . '/logs';
     if (!is_dir($log_dir)) {
         mkdir($log_dir, 0755, true);
     }
-    return $log_dir . '/easebuzz_autocollect_' . date('Y-m-d') . '.log';
+    return $log_dir;
+}
+
+function creditlab_autocollect_log_path()
+{
+    return creditlab_autocollect_log_dir() . '/easebuzz_autocollect_' . date('Y-m-d') . '.log';
+}
+
+function creditlab_autocollect_web_log_path()
+{
+    return creditlab_autocollect_log_dir() . '/autocollect_api_web.log';
+}
+
+function creditlab_autocollect_web_log($title, array $payload = [])
+{
+    $entry = [
+        'ts' => date('Y-m-d H:i:s'),
+        'env' => creditlab_autocollect_env_label(),
+        'title' => (string) $title,
+        'payload' => $payload,
+    ];
+    file_put_contents(
+        creditlab_autocollect_web_log_path(),
+        json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n",
+        FILE_APPEND | LOCK_EX
+    );
+    creditlab_autocollect_log($title, $payload);
+}
+
+/**
+ * @return array<int, array{ts:string,env:string,title:string,payload:array}>
+ */
+function creditlab_autocollect_read_web_logs($limit = 100)
+{
+    $path = creditlab_autocollect_web_log_path();
+    if (!is_readable($path)) {
+        return [];
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) {
+        return [];
+    }
+    $entries = [];
+    foreach (array_slice($lines, -1 * max(1, (int) $limit)) as $line) {
+        $decoded = json_decode($line, true);
+        if (is_array($decoded)) {
+            $entries[] = $decoded;
+        }
+    }
+    return array_reverse($entries);
+}
+
+function creditlab_autocollect_clear_web_logs()
+{
+    file_put_contents(creditlab_autocollect_web_log_path(), '');
+    return true;
+}
+
+function creditlab_autocollect_render_web_logs_html($limit = 50)
+{
+    $entries = creditlab_autocollect_read_web_logs($limit);
+    if (!$entries) {
+        return '<p class="hint">No API log entries yet.</p>';
+    }
+    $html = '';
+    foreach ($entries as $entry) {
+        $title = htmlspecialchars((string) ($entry['title'] ?? ''), ENT_QUOTES);
+        $ts = htmlspecialchars((string) ($entry['ts'] ?? ''), ENT_QUOTES);
+        $env = htmlspecialchars((string) ($entry['env'] ?? ''), ENT_QUOTES);
+        $json = htmlspecialchars(
+            json_encode($entry['payload'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ENT_QUOTES
+        );
+        $html .= '<div class="log-entry">'
+            . '<div class="log-meta"><strong>' . $title . '</strong>'
+            . ' · <code>' . $ts . '</code> · env <code>' . $env . '</code></div>'
+            . '<pre class="log-body">' . $json . '</pre></div>';
+    }
+    return $html;
 }
 
 function creditlab_autocollect_log($title, array $payload = [])
@@ -30,6 +144,9 @@ function creditlab_autocollect_log($title, array $payload = [])
 
 function creditlab_autocollect_is_sandbox()
 {
+    if (creditlab_autocollect_is_uat()) {
+        return true;
+    }
     return strtolower((string) EASEBUZZ_ENV) === 'test';
 }
 
@@ -72,8 +189,8 @@ function creditlab_autocollect_hash(array $parts)
 function creditlab_autocollect_aes_encrypt($plain)
 {
     $plain = (string) $plain;
-    $key = substr(hash('sha256', (string) EASEBUZZ_MERCHANT_KEY), 0, 32);
-    $iv = substr(hash('sha256', (string) EASEBUZZ_SALT), 0, 16);
+    $key = substr(hash('sha256', creditlab_autocollect_merchant_key()), 0, 32);
+    $iv = substr(hash('sha256', creditlab_autocollect_salt()), 0, 16);
     $encrypted = openssl_encrypt($plain, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
     if ($encrypted === false) {
         return '';
@@ -88,7 +205,7 @@ function creditlab_autocollect_format_amount($amount)
 
 function creditlab_autocollect_credentials_ok()
 {
-    return EASEBUZZ_MERCHANT_KEY !== '' && EASEBUZZ_SALT !== '';
+    return creditlab_autocollect_merchant_key() !== '' && creditlab_autocollect_salt() !== '';
 }
 
 /**
@@ -107,7 +224,7 @@ function creditlab_autocollect_request($method, $path, array $headers = [], $bod
 
     $default_headers = [
         'Accept: application/json',
-        'X-EB-MERCHANT-KEY: ' . EASEBUZZ_MERCHANT_KEY,
+        'X-EB-MERCHANT-KEY: ' . creditlab_autocollect_merchant_key(),
     ];
     foreach ($headers as $name => $value) {
         if (is_int($name)) {
@@ -164,11 +281,17 @@ function creditlab_autocollect_request($method, $path, array $headers = [], $bod
         ],
     ];
 
-    creditlab_autocollect_log('HTTP ' . $method . ' ' . $path, [
+    creditlab_autocollect_web_log('HTTP ' . $method . ' ' . $path, [
         'http_code' => $http_code,
+        'url' => $url,
+        'method' => $method,
+        'request_headers' => [
+            'X-EB-MERCHANT-KEY' => creditlab_autocollect_merchant_key(),
+            'Authorization' => isset($headers['Authorization']) ? substr((string) $headers['Authorization'], 0, 16) . '…' : null,
+        ],
         'request_body' => is_array($body) ? $body : $payload,
         'response' => is_array($decoded) ? $decoded : $raw,
-        'error' => $result['error'],
+        'curl_error' => $result['error'],
     ]);
 
     return $result;
@@ -185,7 +308,7 @@ function creditlab_autocollect_generate_access_key(array $params)
         return ['ok' => false, 'error' => 'Easebuzz credentials are not configured.', 'data' => null, 'raw' => null];
     }
 
-    $key = EASEBUZZ_MERCHANT_KEY;
+    $key = creditlab_autocollect_merchant_key();
     $transaction_id = trim((string) ($params['transaction_id'] ?? ''));
     if ($transaction_id === '') {
         $transaction_id = 'CLAC_' . str_replace('.', '', uniqid('', true));
@@ -235,7 +358,7 @@ function creditlab_autocollect_generate_access_key(array $params)
         $body['submerchant_id'] = $params['submerchant_id'];
     }
 
-    $auth = creditlab_autocollect_hash([$key, $amount, $transaction_id, EASEBUZZ_SALT]);
+    $auth = creditlab_autocollect_hash([$key, $amount, $transaction_id, creditlab_autocollect_salt()]);
 
     $response = creditlab_autocollect_request(
         'POST',
@@ -298,7 +421,7 @@ function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
  */
 function creditlab_autocollect_build_seamless_mandate_form($access_key, array $fields)
 {
-    $key = EASEBUZZ_MERCHANT_KEY;
+    $key = creditlab_autocollect_merchant_key();
     $account_number = (string) ($fields['account_number'] ?? '');
     $account_holder_name = (string) ($fields['account_holder_name'] ?? '');
     $account_type = strtolower(trim((string) ($fields['account_type'] ?? 'savings')));
@@ -325,7 +448,7 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         $enc_account_number,
         $ifsc,
         $enc_upi_handle,
-        EASEBUZZ_SALT,
+        creditlab_autocollect_salt(),
     ]);
 
     $form_fields = [
@@ -347,14 +470,17 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         $inputs .= '<input type="hidden" name="' . htmlspecialchars($name, ENT_QUOTES) . '" value="' . htmlspecialchars((string) $value, ENT_QUOTES) . '">' . "\n";
     }
 
-    creditlab_autocollect_log('SEAMLESS MANDATE FORM READY', [
+    creditlab_autocollect_web_log('SEAMLESS MANDATE FORM POST', [
+        'method' => 'POST',
+        'url' => creditlab_autocollect_mandate_api_url(),
         'access_key' => $access_key,
         'auth_mode' => $auth_mode,
         'bank_code' => $bank_code,
         'ifsc' => $ifsc,
+        'account_type' => $account_type,
         'hash_pattern' => 'key|enc_account_number|ifsc|enc_upi_handle|salt',
-        'authorization_hash_prefix' => substr($authorization, 0, 16),
-        'action' => creditlab_autocollect_mandate_api_url(),
+        'authorization_hash_prefix' => substr($authorization, 0, 16) . '…',
+        'form_fields' => array_keys($form_fields),
     ]);
 
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Redirecting to Easebuzz Autocollect</title></head><body>'
@@ -374,8 +500,8 @@ function creditlab_autocollect_retrieve_mandate($transaction_id)
     }
 
     $transaction_id = trim((string) $transaction_id);
-    $key = EASEBUZZ_MERCHANT_KEY;
-    $auth = creditlab_autocollect_hash([$key, $transaction_id, EASEBUZZ_SALT]);
+    $key = creditlab_autocollect_merchant_key();
+    $auth = creditlab_autocollect_hash([$key, $transaction_id, creditlab_autocollect_salt()]);
     $path = '/v1/mandate/' . rawurlencode($transaction_id) . '?key=' . rawurlencode($key);
 
     $response = creditlab_autocollect_request('GET', $path, ['Authorization' => $auth]);
@@ -401,7 +527,7 @@ function creditlab_autocollect_initiate_enach_debit(array $params)
         return ['ok' => false, 'error' => 'Easebuzz credentials are not configured.', 'data' => null];
     }
 
-    $key = EASEBUZZ_MERCHANT_KEY;
+    $key = creditlab_autocollect_merchant_key();
     $transaction_id = trim((string) ($params['transaction_id'] ?? ''));
     $amount = creditlab_autocollect_format_amount($params['amount'] ?? 0);
     $merchant_request_number = trim((string) ($params['merchant_request_number'] ?? ''));
@@ -431,7 +557,7 @@ function creditlab_autocollect_initiate_enach_debit(array $params)
         $transaction_id,
         $merchant_request_number,
         $amount,
-        EASEBUZZ_SALT,
+        creditlab_autocollect_salt(),
     ]);
 
     $response = creditlab_autocollect_request(
