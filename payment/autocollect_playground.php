@@ -362,19 +362,37 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     </div>
 
     <div class="card">
+        <h2>Sandbox credentials (Easebuzz official)</h2>
+        <p class="hint">Source: <a href="<?= htmlspecialchars(creditlab_autocollect_sandbox_docs_url(), ENT_QUOTES) ?>" target="_blank" rel="noopener">Autocollect sandbox testing credentials</a></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;">
+            <tr style="background:#f8f9fa;"><th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Scenario</th><th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Name</th><th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Account</th><th style="text-align:left;padding:8px;border:1px solid #dee2e6;">IFSC</th></tr>
+            <?php foreach (creditlab_autocollect_sandbox_enach_accounts() as $preset): ?>
+            <tr>
+                <td style="padding:8px;border:1px solid #dee2e6;"><?= htmlspecialchars($preset['label'], ENT_QUOTES) ?></td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code><?= htmlspecialchars($preset['account_holder_name'], ENT_QUOTES) ?></code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code><?= htmlspecialchars($preset['account_number'], ENT_QUOTES) ?></code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code><?= htmlspecialchars($preset['ifsc'], ENT_QUOTES) ?></code></td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+        <p class="hint">No separate bank name in docs — use these exact values on <code>testpay</code> checkout. IFSC prefix <code>EBZS</code> is Easebuzz sandbox bank.</p>
+        <p class="hint"><strong>Mandate timing:</strong> after checkout, status is <code>in_process</code> first; final success/failed may take <strong>~5 minutes</strong> (poll Section D or webhook).</p>
+        <p class="hint"><strong>Presentment mock:</strong> <code>merchant_request_number</code> must contain <code>suc</code> for success (e.g. <code>enachReq99suc01</code>).</p>
+    </div>
+
+    <div class="card">
         <h2>Smoke test (sandbox)</h2>
         <div class="banner">
-            <strong>Use DEFAULT (non-seamless) on sandbox.</strong> SEAMLESS with test IFSC
-            <code>EBZS0001987</code> sends <code>bank_code=EBZS</code>, which NPCI rejects
-            (<code>EZD_RM_VL_001_ER: Invalid bank code</code>). Let Easebuzz host bank entry via checkout instead.
+            <strong>Use DEFAULT (non-seamless) on sandbox.</strong> Enter the official sandbox account on
+            <code>testpay.easebuzz.in</code> — do not mix real banks (HDFC) with <code>EBZS0001987</code>.
         </div>
         <ol class="smoke">
-            <li><strong>A.</strong> Choose <code>DEFAULT</code>, leave <code>transaction_id</code> blank, click <strong>Generate Access Key</strong>.</li>
-            <li><strong>B1.</strong> Open checkout on <code>testpay.easebuzz.in</code> and complete eNACH auth there.</li>
-            <li><strong>D.</strong> Retrieve until <code>authorized</code>.</li>
-            <li><strong>C.</strong> Debit with a unique merchant_request_number (include <code>suc</code> in sandbox).</li>
+            <li><strong>A.</strong> <code>DEFAULT</code>, leave <code>transaction_id</code> blank → <strong>Generate Access Key</strong>.</li>
+            <li><strong>B1.</strong> Open checkout → enter <code>Sandbox Testing</code> / <code>282800002828</code> / <code>EBZS0001987</code>.</li>
+            <li><strong>D.</strong> Retrieve — expect <code>in_process</code>, then wait ~5 min and retrieve again until ready for debit.</li>
+            <li><strong>C.</strong> Presentment with MRN like <code>enachReq99suc01</code> (must contain <code>suc</code>).</li>
         </ol>
-        <p class="hint">SEAMLESS sandbox bank fields are only for API payload testing — not a reliable end-to-end path with EBZS IFSC. Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
+        <p class="hint">Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
     </div>
 
     <?php if ($result_block): ?>
@@ -464,7 +482,15 @@ function playground_option_selected($field, $option, array $post_data, array $sa
 
             <div id="seamless_bank_box" style="margin-top:16px;padding:14px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;">
                 <h3 style="margin-top:0;">Bank details (required for SEAMLESS)</h3>
-                <p class="hint">Sandbox: <code>EBZS</code> is not a valid NPCI bank code — SEAMLESS with this IFSC fails at mandate register. Use DEFAULT checkout instead, or prod bank codes (e.g. HDFC IFSC → <code>HDFC</code>).</p>
+                <label>Sandbox account preset</label>
+                <select id="sandbox_account_preset">
+                    <?php foreach (creditlab_autocollect_sandbox_enach_accounts() as $key => $preset): ?>
+                    <option value="<?= htmlspecialchars($key, ENT_QUOTES) ?>"<?= ($sandbox_bank['account_number'] ?? '') === $preset['account_number'] ? ' selected' : '' ?>>
+                        <?= htmlspecialchars($preset['label'], ENT_QUOTES) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="hint">Official sandbox values from Easebuzz docs. Prefer <strong>DEFAULT checkout</strong> for end-to-end sandbox tests.</p>
                 <div class="row">
                     <div>
                         <label>account_holder_name</label>
@@ -581,7 +607,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     <!-- D. Retrieve (before C so testers see status first) -->
     <div class="card">
         <h2>D. Mandate Retrieve</h2>
-        <p class="hint">GET <code>/v1/mandate/{transaction_id}</code> — confirm <code>authorized</code> before debit.</p>
+        <p class="hint">GET <code>/v1/mandate/{transaction_id}</code> — sandbox: may show <code>in_process</code> for ~5 minutes before final status. Confirm mandate is ready before debit.</p>
         <form method="POST">
             <input type="hidden" name="action" value="retrieve_mandate">
             <label>transaction_id</label>
@@ -606,7 +632,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 </div>
                 <div>
                     <label>merchant_request_number (optional)</label>
-                    <input type="text" name="merchant_request_number" placeholder="CLDR_… or enachReq99suc01">
+                    <input type="text" name="merchant_request_number" value="enachReq99suc01" placeholder="must contain suc for sandbox success">
                 </div>
             </div>
             <label>presentment_date (optional YYYY-MM-DD)</label>
@@ -663,6 +689,26 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     if (sel) {
         sel.addEventListener('change', syncRequestType);
         syncRequestType();
+    }
+
+    var sandboxPresets = <?= json_encode(creditlab_autocollect_sandbox_enach_accounts(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    var presetSel = document.getElementById('sandbox_account_preset');
+    function applySandboxPreset() {
+        if (!presetSel || !sandboxPresets[presetSel.value]) return;
+        var p = sandboxPresets[presetSel.value];
+        ['account_holder_name', 'account_number', 'ifsc'].forEach(function (field) {
+            document.querySelectorAll('[name="' + field + '"]').forEach(function (el) {
+                if (field === 'account_holder_name') el.value = p.account_holder_name;
+                if (field === 'account_number') el.value = p.account_number;
+                if (field === 'ifsc') el.value = p.ifsc;
+            });
+        });
+        document.querySelectorAll('input[name="bank_code"]').forEach(function (el) {
+            el.value = 'EBZS';
+        });
+    }
+    if (presetSel) {
+        presetSel.addEventListener('change', applySandboxPreset);
     }
 })();
 </script>

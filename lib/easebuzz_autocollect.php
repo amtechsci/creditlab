@@ -169,9 +169,46 @@ function creditlab_autocollect_checkout_url($access_key)
     return rtrim(creditlab_autocollect_checkout_base_url(), '/') . '/pay/' . ltrim((string) $access_key, '/');
 }
 
+/** @see https://docs.easebuzz.in/docs/8-autocollect-recurring-payment/426w7nkqcqoai-sandbox-testing-credentials */
+function creditlab_autocollect_sandbox_docs_url()
+{
+    return 'https://docs.easebuzz.in/docs/8-autocollect-recurring-payment/426w7nkqcqoai-sandbox-testing-credentials';
+}
+
 /**
- * Easebuzz sandbox eNACH test account fields (for SEAMLESS API payload tests only).
- * Note: bank_code EBZS is rejected by NPCI on mandate register — use DEFAULT checkout on sandbox.
+ * Official Autocollect sandbox eNACH test accounts (Easebuzz docs §A).
+ *
+ * @return array<string, array{label:string,account_holder_name:string,account_number:string,ifsc:string,presentment:string}>
+ */
+function creditlab_autocollect_sandbox_enach_accounts()
+{
+    return [
+        'success_1' => [
+            'label' => 'Success presentment — 282800002828',
+            'account_holder_name' => 'Sandbox Testing',
+            'account_number' => '282800002828',
+            'ifsc' => 'EBZS0001987',
+            'presentment' => 'success',
+        ],
+        'success_2' => [
+            'label' => 'Success presentment — 454545454545',
+            'account_holder_name' => 'Sandbox Testing',
+            'account_number' => '454545454545',
+            'ifsc' => 'EBZS0001987',
+            'presentment' => 'success',
+        ],
+        'fail_presentment' => [
+            'label' => 'Fail presentment — 198765412358',
+            'account_holder_name' => 'Sandbox Testing',
+            'account_number' => '198765412358',
+            'ifsc' => 'EBZS0001987',
+            'presentment' => 'fail',
+        ],
+    ];
+}
+
+/**
+ * Default sandbox bank fields (first success account from Easebuzz docs).
  *
  * @return array<string, string>|null
  */
@@ -180,11 +217,16 @@ function creditlab_autocollect_sandbox_bank_defaults()
     if (!creditlab_autocollect_is_sandbox()) {
         return null;
     }
+    $accounts = creditlab_autocollect_sandbox_enach_accounts();
+    $first = reset($accounts);
+    if (!$first) {
+        return null;
+    }
     return [
-        'account_holder_name' => 'Sandbox Testing',
-        'account_number' => '282800002828',
+        'account_holder_name' => $first['account_holder_name'],
+        'account_number' => $first['account_number'],
         'account_type' => 'savings',
-        'ifsc' => 'EBZS0001987',
+        'ifsc' => $first['ifsc'],
         'bank_code' => 'EBZS',
         'auth_mode' => 'netbanking',
     ];
