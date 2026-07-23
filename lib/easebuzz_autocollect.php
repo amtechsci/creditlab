@@ -169,6 +169,40 @@ function creditlab_autocollect_checkout_url($access_key)
     return rtrim(creditlab_autocollect_checkout_base_url(), '/') . '/pay/' . ltrim((string) $access_key, '/');
 }
 
+/**
+ * Easebuzz sandbox eNACH test account (only valid on sandbox/UAT API).
+ *
+ * @return array<string, string>|null
+ */
+function creditlab_autocollect_sandbox_bank_defaults()
+{
+    if (!creditlab_autocollect_is_sandbox()) {
+        return null;
+    }
+    return [
+        'account_holder_name' => 'Sandbox Testing',
+        'account_number' => '282800002828',
+        'account_type' => 'savings',
+        'ifsc' => 'EBZS0001987',
+        'bank_code' => 'EBZS',
+        'auth_mode' => 'netbanking',
+    ];
+}
+
+function creditlab_autocollect_apply_sandbox_bank_defaults(array $fields)
+{
+    $defaults = creditlab_autocollect_sandbox_bank_defaults();
+    if (!$defaults) {
+        return $fields;
+    }
+    foreach ($defaults as $key => $value) {
+        if (trim((string) ($fields[$key] ?? '')) === '') {
+            $fields[$key] = $value;
+        }
+    }
+    return $fields;
+}
+
 function creditlab_autocollect_mandate_api_url()
 {
     return rtrim(creditlab_autocollect_base_url(), '/') . '/v1/mandate';

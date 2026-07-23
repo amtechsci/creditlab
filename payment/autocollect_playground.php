@@ -44,6 +44,8 @@ $seamless_bank_fields = [
     'bank_code' => $_POST['bank_code'] ?? '',
     'auth_mode' => $_POST['auth_mode'] ?? 'netbanking',
 ];
+$seamless_bank_fields = creditlab_autocollect_apply_sandbox_bank_defaults($seamless_bank_fields);
+$sandbox_bank = creditlab_autocollect_sandbox_bank_defaults() ?? [];
 
 // Seamless mandate: emit HTML form and exit (browser posts to Easebuzz)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || $action === 'generate_key_and_seamless')) {
@@ -225,6 +227,24 @@ function playground_dump($data)
         ENT_QUOTES
     );
 }
+
+function playground_bank_value($field, array $post_data, array $sandbox_defaults)
+{
+    $v = trim((string) ($post_data[$field] ?? ''));
+    if ($v === '' && isset($sandbox_defaults[$field])) {
+        $v = (string) $sandbox_defaults[$field];
+    }
+    return htmlspecialchars($v, ENT_QUOTES);
+}
+
+function playground_option_selected($field, $option, array $post_data, array $sandbox_defaults)
+{
+    $current = trim((string) ($post_data[$field] ?? ''));
+    if ($current === '' && isset($sandbox_defaults[$field])) {
+        $current = (string) $sandbox_defaults[$field];
+    }
+    return $current === (string) $option ? ' selected' : '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -303,8 +323,7 @@ function playground_dump($data)
             <li><strong>D.</strong> Retrieve until <code>authorized</code>.</li>
             <li><strong>C.</strong> Debit with a unique merchant_request_number (prod: real ₹1–2; sandbox: include <code>suc</code>).</li>
         </ol>
-        <p class="hint">Sandbox test account: <code>282800002828</code> / IFSC <code>EBZS0001987</code>.
-        Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
+        <p class="hint">Sandbox test account is auto-filled in Section A/B2. Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
     </div>
 
     <?php if ($result_block): ?>
@@ -394,42 +413,42 @@ function playground_dump($data)
 
             <div id="seamless_bank_box" style="margin-top:16px;padding:14px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;">
                 <h3 style="margin-top:0;">Bank details (required for SEAMLESS)</h3>
-                <p class="hint">We send these to Easebuzz encrypted. Customer only does netbanking / debit card auth — no bank form on Easebuzz.</p>
+                <p class="hint">UAT sandbox test account is pre-filled (<code>282800002828</code> / <code>EBZS0001987</code>). Only this account works on sandbox — edit only if Easebuzz gives you different test credentials.</p>
                 <div class="row">
                     <div>
                         <label>account_holder_name</label>
-                        <input type="text" name="account_holder_name" id="account_holder_name" placeholder="Name as on bank account">
+                        <input type="text" name="account_holder_name" id="account_holder_name" value="<?= playground_bank_value('account_holder_name', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="Name as on bank account">
                     </div>
                     <div>
                         <label>account_number</label>
-                        <input type="text" name="account_number" id="account_number" placeholder="Your account number">
+                        <input type="text" name="account_number" id="account_number" value="<?= playground_bank_value('account_number', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="Your account number">
                     </div>
                 </div>
                 <div class="row">
                     <div>
                         <label>account_type</label>
                         <select name="account_type" id="account_type">
-                            <option value="savings" selected>savings</option>
-                            <option value="current">current</option>
+                            <option value="savings"<?= playground_option_selected('account_type', 'savings', $seamless_bank_fields, $sandbox_bank) ?>>savings</option>
+                            <option value="current"<?= playground_option_selected('account_type', 'current', $seamless_bank_fields, $sandbox_bank) ?>>current</option>
                         </select>
                     </div>
                     <div>
                         <label>ifsc</label>
-                        <input type="text" name="ifsc" id="ifsc" placeholder="e.g. HDFC0001234" style="text-transform:uppercase;">
+                        <input type="text" name="ifsc" id="ifsc" value="<?= playground_bank_value('ifsc', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS0001987" style="text-transform:uppercase;">
                     </div>
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 letters — Autocollect; HDFC IFSC → HDFC)</label>
-                        <input type="text" name="bank_code" id="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
-                        <span class="hint">Optional if IFSC is filled — auto-filled from first 4 chars of IFSC.</span>
+                        <label>bank_code (4 letters — Autocollect; EBZS IFSC → EBZS)</label>
+                        <input type="text" name="bank_code" id="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
+                        <span class="hint">Auto-filled from IFSC on blur.</span>
                     </div>
                     <div>
                         <label>auth_mode</label>
                         <select name="auth_mode" id="auth_mode">
-                            <option value="netbanking" selected>netbanking</option>
-                            <option value="debit_card">debit_card</option>
-                            <option value="aadhaar">aadhaar</option>
+                            <option value="netbanking"<?= playground_option_selected('auth_mode', 'netbanking', $seamless_bank_fields, $sandbox_bank) ?>>netbanking</option>
+                            <option value="debit_card"<?= playground_option_selected('auth_mode', 'debit_card', $seamless_bank_fields, $sandbox_bank) ?>>debit_card</option>
+                            <option value="aadhaar"<?= playground_option_selected('auth_mode', 'aadhaar', $seamless_bank_fields, $sandbox_bank) ?>>aadhaar</option>
                         </select>
                     </div>
                 </div>
@@ -469,37 +488,37 @@ function playground_dump($data)
                 <div class="row">
                     <div>
                         <label>account_holder_name</label>
-                        <input type="text" name="account_holder_name" placeholder="Name as on bank account" required>
+                        <input type="text" name="account_holder_name" value="<?= playground_bank_value('account_holder_name', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="Name as on bank account" required>
                     </div>
                     <div>
                         <label>account_number</label>
-                        <input type="text" name="account_number" placeholder="Your account number" required>
+                        <input type="text" name="account_number" value="<?= playground_bank_value('account_number', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="Your account number" required>
                     </div>
                 </div>
                 <div class="row">
                     <div>
                         <label>account_type</label>
                         <select name="account_type">
-                            <option value="savings" selected>savings</option>
-                            <option value="current">current</option>
+                            <option value="savings"<?= playground_option_selected('account_type', 'savings', $seamless_bank_fields, $sandbox_bank) ?>>savings</option>
+                            <option value="current"<?= playground_option_selected('account_type', 'current', $seamless_bank_fields, $sandbox_bank) ?>>current</option>
                         </select>
                     </div>
                     <div>
                         <label>ifsc</label>
-                        <input type="text" name="ifsc" placeholder="e.g. HDFC0001234" required style="text-transform:uppercase;">
+                        <input type="text" name="ifsc" value="<?= playground_bank_value('ifsc', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS0001987" required style="text-transform:uppercase;">
                     </div>
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 letters — Autocollect; HDFC IFSC → HDFC)</label>
-                        <input type="text" name="bank_code" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
+                        <label>bank_code (4 letters — Autocollect; EBZS IFSC → EBZS)</label>
+                        <input type="text" name="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
                     </div>
                     <div>
                         <label>auth_mode</label>
                         <select name="auth_mode">
-                            <option value="netbanking" selected>netbanking</option>
-                            <option value="debit_card">debit_card</option>
-                            <option value="aadhaar">aadhaar</option>
+                            <option value="netbanking"<?= playground_option_selected('auth_mode', 'netbanking', $seamless_bank_fields, $sandbox_bank) ?>>netbanking</option>
+                            <option value="debit_card"<?= playground_option_selected('auth_mode', 'debit_card', $seamless_bank_fields, $sandbox_bank) ?>>debit_card</option>
+                            <option value="aadhaar"<?= playground_option_selected('auth_mode', 'aadhaar', $seamless_bank_fields, $sandbox_bank) ?>>aadhaar</option>
                         </select>
                     </div>
                 </div>
