@@ -9,7 +9,8 @@
  * - Does not write to easebuzz_adtd or user.easebuzz
  * - Does not call initiateLink / initiateDirectDebitRequest
  * - Callback URLs point only to this page (not easebuzz_callback.php)
- * - Mandate transaction_ids use CLAC_ prefix; udf1=AUTOCOLLECT_PLAYGROUND
+ * - New mandates: transaction_id = value passed to generate access key (blank → CLAC_… auto)
+ * - Migrated mandates retrieve: eNACH → customer_authentication_id; UPI → auto_debit_access_key
  *
  * Smoke test: A generate key → B mandate → D retrieve (authorized) → C presentment.
  */
@@ -212,6 +213,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $result_block === null) {
 }
 
 $cb = $_GET['cb'] ?? '';
+$cb_retrieve = null;
+if (($cb === 'success' || $cb === 'failure') && !empty($flash['transaction_id'])) {
+    $cb_retrieve = creditlab_autocollect_retrieve_mandate($flash['transaction_id']);
+}
 $base = creditlab_get_base_url();
 $default_success = $base . '/payment/autocollect_playground.php?cb=success';
 $default_failure = $base . '/payment/autocollect_playground.php?cb=failure';
@@ -312,8 +317,46 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     <?php if ($cb === 'success'): ?>
         <div class="banner ok-banner">Mandate callback: <strong>success</strong> URL hit. Use Section D to retrieve mandate status.</div>
     <?php elseif ($cb === 'failure'): ?>
-        <div class="banner">Mandate callback: <strong>failure</strong> URL hit. Check retrieve / logs.</div>
+        <div class="banner">Mandate callback: <strong>failure</strong> URL hit. Check retrieve / logs below.</div>
     <?php endif; ?>
+
+    <?php if ($cb_retrieve): ?>
+        <?php
+        $cb_data = $cb_retrieve['data']['data'] ?? [];
+        $cb_status = (string) ($cb_data['status'] ?? 'unknown');
+        $cb_meta = $cb_data['response_meta'] ?? [];
+        $cb_err = is_array($cb_meta) && !empty($cb_meta['description']) ? $cb_meta['description'] : null;
+        ?>
+        <div class="card">
+            <h2>Callback retrieve: <?= htmlspecialchars((string) ($flash['transaction_id'] ?? ''), ENT_QUOTES) ?></h2>
+            <p>Status: <code><?= htmlspecialchars($cb_status, ENT_QUOTES) ?></code>
+                <?php if (!empty($cb_data['sub_status'])): ?>
+                · sub_status: <code><?= htmlspecialchars((string) $cb_data['sub_status'], ENT_QUOTES) ?></code>
+                <?php endif; ?>
+            </p>
+            <?php if ($cb_err): ?>
+                <div class="results err"><?= htmlspecialchars($cb_err, ENT_QUOTES) ?>
+                    <?php if (!empty($cb_meta['code'])): ?> (<code><?= htmlspecialchars((string) $cb_meta['code'], ENT_QUOTES) ?></code>)<?php endif; ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($cb_status === 'failed'): ?>
+                <p class="hint"><strong>Do not reuse this transaction_id.</strong> Leave it blank in Section A for a new <code>CLAC_…</code> ID and retry.</p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <div class="card">
+        <h2>transaction_id rules (Easebuzz Autocollect)</h2>
+        <ul class="smoke">
+            <li><strong>New mandate</strong> (this playground): whatever you pass to generate access key — or leave blank for auto <code>CLAC_…</code>.</li>
+            <li><strong>Retrieve / presentment</strong> for that mandate: use the same ID.</li>
+            <li><strong>Migrated legacy eNACH</strong>: use <code>customer_authentication_id</code> as transaction_id.</li>
+            <li><strong>Migrated UPI</strong>: use <code>auto_debit_access_key</code> as transaction_id.</li>
+        </ul>
+        <?php if ($v_txn && $cb_retrieve && ($cb_data['status'] ?? '') === 'failed'): ?>
+        <p class="hint"><code><?= $v_txn ?></code> is <code>failed</code> — leave transaction_id blank in Section A for a new mandate.</p>
+        <?php endif; ?>
+    </div>
 
     <div class="card">
         <h2>Smoke test (sandbox)</h2>
@@ -367,8 +410,8 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             <input type="hidden" name="action" id="generate_action" value="generate_key">
             <div class="row">
                 <div>
-                    <label>transaction_id (optional)</label>
-                    <input type="text" name="transaction_id" placeholder="CLAC_… auto if blank" value="<?= $v_txn ?>">
+                    <label>transaction_id (optional — leave blank for new CLAC_… ID)</label>
+                    <input type="text" name="transaction_id" placeholder="blank = auto CLAC_… · migrated eNACH = customer_authentication_id" value="<?= $cb === 'failure' ? '' : $v_txn ?>">
                 </div>
                 <div>
                     <label>amount (max mandate)</label>
