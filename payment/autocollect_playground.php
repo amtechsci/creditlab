@@ -339,6 +339,9 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                     <?php if (!empty($cb_meta['code'])): ?> (<code><?= htmlspecialchars((string) $cb_meta['code'], ENT_QUOTES) ?></code>)<?php endif; ?>
                 </div>
             <?php endif; ?>
+            <?php if ($cb_err && stripos($cb_err, 'bank_code') !== false): ?>
+                <p class="hint"><strong>Fix:</strong> On sandbox, use <code>DEFAULT</code> + Section B1 checkout instead of SEAMLESS with <code>EBZS</code> bank_code.</p>
+            <?php endif; ?>
             <?php if ($cb_status === 'failed'): ?>
                 <p class="hint"><strong>Do not reuse this transaction_id.</strong> Leave it blank in Section A for a new <code>CLAC_…</code> ID and retry.</p>
             <?php endif; ?>
@@ -360,13 +363,18 @@ function playground_option_selected($field, $option, array $post_data, array $sa
 
     <div class="card">
         <h2>Smoke test (sandbox)</h2>
+        <div class="banner">
+            <strong>Use DEFAULT (non-seamless) on sandbox.</strong> SEAMLESS with test IFSC
+            <code>EBZS0001987</code> sends <code>bank_code=EBZS</code>, which NPCI rejects
+            (<code>EZD_RM_VL_001_ER: Invalid bank code</code>). Let Easebuzz host bank entry via checkout instead.
+        </div>
         <ol class="smoke">
-            <li><strong>A.</strong> Choose <code>SEAMLESS</code>, fill customer + bank details, click <strong>Generate key &amp; create mandate</strong>.</li>
-            <li>Complete netbanking / debit card auth on the bank page.</li>
+            <li><strong>A.</strong> Choose <code>DEFAULT</code>, leave <code>transaction_id</code> blank, click <strong>Generate Access Key</strong>.</li>
+            <li><strong>B1.</strong> Open checkout on <code>testpay.easebuzz.in</code> and complete eNACH auth there.</li>
             <li><strong>D.</strong> Retrieve until <code>authorized</code>.</li>
-            <li><strong>C.</strong> Debit with a unique merchant_request_number (prod: real ₹1–2; sandbox: include <code>suc</code>).</li>
+            <li><strong>C.</strong> Debit with a unique merchant_request_number (include <code>suc</code> in sandbox).</li>
         </ol>
-        <p class="hint">Sandbox test account is auto-filled in Section A/B2. Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
+        <p class="hint">SEAMLESS sandbox bank fields are only for API payload testing — not a reliable end-to-end path with EBZS IFSC. Full API log: <a href="autocollect_logs.php">autocollect_logs.php</a></p>
     </div>
 
     <?php if ($result_block): ?>
@@ -450,13 +458,13 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             </div>
             <label>request_type</label>
             <select name="request_type" id="request_type">
-                <option value="SEAMLESS" selected>SEAMLESS (fill bank details below)</option>
-                <option value="DEFAULT">DEFAULT (non-seamless checkout)</option>
+                <option value="DEFAULT" selected>DEFAULT (non-seamless checkout) — recommended on sandbox</option>
+                <option value="SEAMLESS">SEAMLESS (fill bank details below — prod / real NPCI bank codes only)</option>
             </select>
 
             <div id="seamless_bank_box" style="margin-top:16px;padding:14px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;">
                 <h3 style="margin-top:0;">Bank details (required for SEAMLESS)</h3>
-                <p class="hint">UAT sandbox test account is pre-filled (<code>282800002828</code> / <code>EBZS0001987</code>). Only this account works on sandbox — edit only if Easebuzz gives you different test credentials.</p>
+                <p class="hint">Sandbox: <code>EBZS</code> is not a valid NPCI bank code — SEAMLESS with this IFSC fails at mandate register. Use DEFAULT checkout instead, or prod bank codes (e.g. HDFC IFSC → <code>HDFC</code>).</p>
                 <div class="row">
                     <div>
                         <label>account_holder_name</label>

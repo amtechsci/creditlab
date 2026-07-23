@@ -170,7 +170,8 @@ function creditlab_autocollect_checkout_url($access_key)
 }
 
 /**
- * Easebuzz sandbox eNACH test account (only valid on sandbox/UAT API).
+ * Easebuzz sandbox eNACH test account fields (for SEAMLESS API payload tests only).
+ * Note: bank_code EBZS is rejected by NPCI on mandate register — use DEFAULT checkout on sandbox.
  *
  * @return array<string, string>|null
  */
