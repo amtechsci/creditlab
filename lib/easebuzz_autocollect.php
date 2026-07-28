@@ -227,7 +227,7 @@ function creditlab_autocollect_sandbox_bank_defaults()
         'account_number' => $first['account_number'],
         'account_type' => 'savings',
         'ifsc' => $first['ifsc'],
-        'bank_code' => 'EBZS',
+        'bank_code' => 'HDFC',
         'auth_mode' => 'netbanking',
     ];
 }
@@ -476,6 +476,11 @@ function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
 {
     $ifsc = strtoupper(trim((string) $ifsc));
     $prefix = strlen($ifsc) >= 4 ? substr($ifsc, 0, 4) : '';
+
+    // Easebuzz sandbox test IFSC (EBZS…) — NPCI bank_code is HDFC (matches DEFAULT checkout mapping).
+    if (creditlab_autocollect_is_sandbox() && $prefix === 'EBZS') {
+        return 'HDFC';
+    }
 
     $bank_code = strtoupper(trim((string) $bank_code));
     if ($bank_code !== '' && preg_match('/^[A-Z]{4}$/', $bank_code)) {

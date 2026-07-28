@@ -340,7 +340,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 </div>
             <?php endif; ?>
             <?php if ($cb_err && stripos($cb_err, 'bank_code') !== false): ?>
-                <p class="hint"><strong>Fix:</strong> On sandbox, use <code>DEFAULT</code> + Section B1 checkout instead of SEAMLESS with <code>EBZS</code> bank_code.</p>
+                <p class="hint"><strong>Fix:</strong> For sandbox IFSC <code>EBZS0001987</code>, use <code>bank_code=HDFC</code> (not <code>EBZS</code>). The playground auto-maps this on SEAMLESS submit.</p>
             <?php endif; ?>
             <?php if ($cb_status === 'failed'): ?>
                 <p class="hint"><strong>Do not reuse this transaction_id.</strong> Leave it blank in Section A for a new <code>CLAC_…</code> ID and retry.</p>
@@ -375,7 +375,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             </tr>
             <?php endforeach; ?>
         </table>
-        <p class="hint">No separate bank name in docs — use these exact values on <code>testpay</code> checkout. IFSC prefix <code>EBZS</code> is Easebuzz sandbox bank.</p>
+        <p class="hint">Sandbox IFSC <code>EBZS0001987</code> → send <code>bank_code=HDFC</code> on SEAMLESS (same as successful DEFAULT checkout).</p>
         <p class="hint"><strong>Mandate timing:</strong> after checkout, status is <code>in_process</code> first; final success/failed may take <strong>~5 minutes</strong> (poll Section D or webhook).</p>
         <p class="hint"><strong>Presentment mock:</strong> <code>merchant_request_number</code> must contain <code>suc</code> for success (e.g. <code>enachReq99suc01</code>).</p>
     </div>
@@ -383,8 +383,8 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     <div class="card">
         <h2>Smoke test (sandbox)</h2>
         <div class="banner">
-            <strong>Use DEFAULT (non-seamless) on sandbox.</strong> Enter the official sandbox account on
-            <code>testpay.easebuzz.in</code> — do not mix real banks (HDFC) with <code>EBZS0001987</code>.
+            <strong>Use DEFAULT or SEAMLESS on sandbox.</strong> Official account on testpay or in Section A; for IFSC
+            <code>EBZS0001987</code> use <code>bank_code=HDFC</code> on SEAMLESS (auto-filled).
         </div>
         <ol class="smoke">
             <li><strong>A.</strong> <code>DEFAULT</code>, leave <code>transaction_id</code> blank → <strong>Generate Access Key</strong>.</li>
@@ -477,7 +477,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             <label>request_type</label>
             <select name="request_type" id="request_type">
                 <option value="DEFAULT" selected>DEFAULT (non-seamless checkout) — recommended on sandbox</option>
-                <option value="SEAMLESS">SEAMLESS (fill bank details below — prod / real NPCI bank codes only)</option>
+                <option value="SEAMLESS">SEAMLESS (bank details below — sandbox EBZS IFSC uses bank_code HDFC)</option>
             </select>
 
             <div id="seamless_bank_box" style="margin-top:16px;padding:14px;background:#f8f9fa;border-radius:6px;border:1px solid #dee2e6;">
@@ -490,7 +490,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                     </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="hint">Official sandbox values from Easebuzz docs. Prefer <strong>DEFAULT checkout</strong> for end-to-end sandbox tests.</p>
+                <p class="hint">Sandbox: IFSC <code>EBZS0001987</code> → <code>bank_code=HDFC</code> (not EBZS). Prod: IFSC prefix → 4-char code (e.g. HDFC000… → <code>HDFC</code>).</p>
                 <div class="row">
                     <div>
                         <label>account_holder_name</label>
@@ -516,8 +516,8 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 letters — Autocollect; EBZS IFSC → EBZS)</label>
-                        <input type="text" name="bank_code" id="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
+                        <label>bank_code (4 letters — sandbox EBZS IFSC → HDFC)</label>
+                        <input type="text" name="bank_code" id="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
                         <span class="hint">Auto-filled from IFSC on blur.</span>
                     </div>
                     <div>
@@ -587,8 +587,8 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 </div>
                 <div class="row">
                     <div>
-                        <label>bank_code (4 letters — Autocollect; EBZS IFSC → EBZS)</label>
-                        <input type="text" name="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. EBZS" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
+                        <label>bank_code (4 letters — sandbox EBZS IFSC → HDFC)</label>
+                        <input type="text" name="bank_code" value="<?= playground_bank_value('bank_code', $seamless_bank_fields, $sandbox_bank) ?>" placeholder="e.g. HDFC" pattern="[A-Za-z]{4}" title="Exactly 4 uppercase letters" style="text-transform:uppercase;">
                     </div>
                     <div>
                         <label>auth_mode</label>
@@ -658,6 +658,9 @@ function playground_option_selected($field, $option, array $post_data, array $sa
 
     function resolveBankCodeFromIfsc(ifsc) {
         ifsc = (ifsc || '').toUpperCase().trim();
+        if (ifsc.indexOf('EBZS') === 0) {
+            return 'HDFC';
+        }
         return ifsc.length >= 4 ? ifsc.substring(0, 4) : '';
     }
 
@@ -679,7 +682,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             var bankInput = form.querySelector('input[name="bank_code"]');
             if (!bankInput) return;
             var code = resolveBankCodeFromIfsc(ifscInput.value);
-            // Always sync from IFSC — Autocollect wants 4-char prefix (HDFC), not legacy HDFCB.
+            // Always sync from IFSC — sandbox EBZS IFSC → HDFC; else 4-char IFSC prefix.
             if (/^[A-Za-z]{4}$/.test(code)) {
                 bankInput.value = code.toUpperCase();
             }
@@ -703,12 +706,14 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 if (field === 'ifsc') el.value = p.ifsc;
             });
         });
+        var bc = resolveBankCodeFromIfsc(p.ifsc);
         document.querySelectorAll('input[name="bank_code"]').forEach(function (el) {
-            el.value = 'EBZS';
+            el.value = bc;
         });
     }
     if (presetSel) {
         presetSel.addEventListener('change', applySandboxPreset);
+        applySandboxPreset();
     }
 })();
 </script>
