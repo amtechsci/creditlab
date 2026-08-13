@@ -96,3 +96,211 @@ function creditlab_start_easebuzz_enach($user_id, array $post, array $context = 
     require_once __DIR__ . '/easebuzz_autocollect.php';
     return creditlab_autocollect_start_user_enach($user_id, $post, $context);
 }
+
+/**
+ * Easebuzz Payment Gateway base URL (legacy initiateLink / initiateDirectDebitRequest).
+ */
+function creditlab_easebuzz_pg_base_url()
+{
+    return strtolower((string) EASEBUZZ_ENV) === 'test'
+        ? 'https://testpay.easebuzz.in'
+        : 'https://pay.easebuzz.in';
+}
+
+/**
+ * True for Autocollect-registered mandates (new cai… signups or AUTOCOLLECT request_flow).
+ */
+function creditlab_easebuzz_is_autocollect_mandate_row(array $row)
+{
+    $flow = strtoupper(trim((string) ($row['request_flow'] ?? '')));
+    if ($flow !== '' && strpos($flow, 'AUTOCOLLECT') === 0) {
+        return true;
+    }
+
+    $customer_auth_id = trim((string) ($row['customer_authentication_id'] ?? ''));
+    if ($customer_auth_id === '') {
+        return false;
+    }
+
+    return (bool) preg_match('/^(cai|clac)/i', $customer_auth_id);
+}
+
+/**
+ * Presentment API to use for an easebuzz_adtd row.
+ *
+ * @return 'autocollect'|'legacy_pg'
+ */
+function creditlab_easebuzz_presentment_api_for_row(array $row)
+{
+    return creditlab_easebuzz_is_autocollect_mandate_row($row) ? 'autocollect' : 'legacy_pg';
+}
+
+/**
+ * Legacy PG eNACH debit — POST initiateDirectDebitRequest (pre-Autocollect mandates).
+ *
+ * @return array{ok:bool, status?:int, error_desc?:string, data?:array, raw?:string, api?:string}
+ */
+function creditlab_easebuzz_legacy_initiate_direct_debit(array $params)
+{
+    $key = (string) EASEBUZZ_MERCHANT_KEY;
+    $salt = (string) EASEBUZZ_SALT;
+    if ($key === '' || $salt === '') {
+        return ['ok' => false, 'error_desc' => 'Easebuzz credentials are not configured.', 'api' => 'legacy_pg'];
+    }
+
+    $txnid = trim((string) ($params['txnid'] ?? ''));
+    if ($txnid === '') {
+        $txnid = 'txn_' . str_replace('.', '', uniqid('', true));
+    }
+
+    $amount = creditlab_easebuzz_clean_field($params['amount'] ?? '0');
+    $productinfo = creditlab_easebuzz_clean_field($params['productinfo'] ?? 'Loan Repayment');
+    $firstname = creditlab_easebuzz_clean_field($params['firstname'] ?? '');
+    $email = creditlab_easebuzz_clean_field($params['email'] ?? '');
+    $phone = creditlab_easebuzz_normalize_phone($params['phone'] ?? '');
+    $customer_authentication_id = trim((string) ($params['customer_authentication_id'] ?? ''));
+    $merchant_debit_id = trim((string) ($params['merchant_debit_id'] ?? ''));
+    if ($merchant_debit_id === '') {
+        $merchant_debit_id = 'CLDR_' . str_replace('.', '', uniqid('', true));
+    }
+    $auto_debit_access_key = trim((string) ($params['auto_debit_access_key'] ?? ''));
+    $sub_merchant_id = trim((string) ($params['sub_merchant_id'] ?? ''));
+
+    if ($customer_authentication_id === '') {
+        return ['ok' => false, 'error_desc' => 'Missing customer_authentication_id.', 'api' => 'legacy_pg'];
+    }
+
+    $base = creditlab_get_base_url();
+    $surl = trim((string) ($params['surl'] ?? ($base . '/payment/cb_auto.php')));
+    $furl = trim((string) ($params['furl'] ?? ($base . '/payment/cb_auto.php')));
+
+    $udf = [];
+    for ($i = 1; $i <= 10; $i++) {
+        $udf[$i] = (string) ($params['udf' . $i] ?? '');
+    }
+
+    $hash_string = $key . '|' . $txnid . '|' . $amount . '|' . $productinfo . '|' . $firstname . '|' . $email . '|'
+        . $udf[1] . '|' . $udf[2] . '|' . $udf[3] . '|' . $udf[4] . '|' . $udf[5] . '|'
+        . $udf[6] . '|' . $udf[7] . '|' . $udf[8] . '|' . $udf[9] . '|' . $udf[10] . '|' . $salt;
+    $hash = hash('sha512', $hash_string);
+
+    $postData = [
+        'key' => $key,
+        'txnid' => $txnid,
+        'hash' => $hash,
+        'amount' => $amount,
+        'productinfo' => $productinfo,
+        'firstname' => $firstname,
+        'email' => $email,
+        'phone' => $phone,
+        'surl' => $surl,
+        'furl' => $furl,
+        'customer_authentication_id' => $customer_authentication_id,
+        'merchant_debit_id' => $merchant_debit_id,
+        'auto_debit_access_key' => $auto_debit_access_key,
+        'sub_merchant_id' => $sub_merchant_id,
+    ];
+    for ($i = 1; $i <= 10; $i++) {
+        $postData['udf' . $i] = $udf[$i];
+    }
+
+    $url = rtrim(creditlab_easebuzz_pg_base_url(), '/') . '/payment/initiateDirectDebitRequest/';
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: application/json',
+        'Content-Type: application/x-www-form-urlencoded',
+    ]);
+    $raw = curl_exec($ch);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+
+    creditlab_easebuzz_enach_log('LEGACY PG DIRECT DEBIT', [
+        'url' => $url,
+        'customer_authentication_id' => $customer_authentication_id,
+        'merchant_debit_id' => $merchant_debit_id,
+        'amount' => $amount,
+        'curl_error' => $curl_error !== '' ? $curl_error : null,
+        'response' => $raw,
+    ]);
+
+    if ($curl_error !== '') {
+        return ['ok' => false, 'error_desc' => 'cURL error: ' . $curl_error, 'api' => 'legacy_pg', 'raw' => (string) $raw];
+    }
+
+    $decoded = json_decode((string) $raw, true);
+    $status = is_array($decoded) && isset($decoded['status']) ? (int) $decoded['status'] : 0;
+    $error_desc = is_array($decoded) ? (string) ($decoded['error_desc'] ?? $decoded['error'] ?? '') : 'Invalid API response';
+
+    return [
+        'ok' => $status === 1,
+        'status' => $status,
+        'error_desc' => $status === 1 ? '' : ($error_desc !== '' ? $error_desc : 'Legacy PG presentment failed.'),
+        'data' => is_array($decoded) ? $decoded : null,
+        'raw' => (string) $raw,
+        'merchant_debit_id' => $merchant_debit_id,
+        'api' => 'legacy_pg',
+    ];
+}
+
+/**
+ * Route loan eNACH presentment to Autocollect or legacy PG based on easebuzz_adtd row.
+ *
+ * @return array{ok:bool, api:string, error_desc?:string, data?:array, merchant_request_number?:string, merchant_debit_id?:string}
+ */
+function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $payment_details)
+{
+    require_once __DIR__ . '/easebuzz_autocollect.php';
+
+    $api = creditlab_easebuzz_presentment_api_for_row($easebuzz_row);
+    $customer_auth_id = trim((string) ($easebuzz_row['customer_authentication_id'] ?? ''));
+    $amount = (string) ($payment_details['amount'] ?? '0');
+    $merchant_ref = trim((string) ($payment_details['merchant_debit_id'] ?? $payment_details['merchant_request_number'] ?? ''));
+
+    if ($api === 'autocollect') {
+        $transaction_id = $customer_auth_id !== '' ? $customer_auth_id : trim((string) ($easebuzz_row['txnid'] ?? ''));
+        $result = creditlab_autocollect_initiate_loan_debit($transaction_id, $amount, $merchant_ref, [
+            'udf1' => $payment_details['udf1'] ?? 'CREDITLAB_ENACH',
+        ]);
+
+        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+        $error = $result['error'] ?? '';
+        if (!$result['ok'] && is_array($data) && !empty($data['message'])) {
+            $error = (string) $data['message'];
+        }
+
+        return [
+            'ok' => !empty($result['ok']),
+            'api' => 'autocollect',
+            'error_desc' => !empty($result['ok']) ? '' : ($error !== '' ? $error : 'Autocollect presentment failed.'),
+            'data' => $data,
+            'merchant_request_number' => $result['merchant_request_number'] ?? $merchant_ref,
+            'transaction_id' => $transaction_id,
+        ];
+    }
+
+    $legacy = creditlab_easebuzz_legacy_initiate_direct_debit([
+        'amount' => $amount,
+        'productinfo' => $payment_details['productinfo'] ?? 'Loan Repayment',
+        'firstname' => $payment_details['firstname'] ?? '',
+        'email' => $payment_details['email'] ?? '',
+        'phone' => $payment_details['phone'] ?? '',
+        'customer_authentication_id' => $customer_auth_id,
+        'merchant_debit_id' => $merchant_ref,
+        'auto_debit_access_key' => trim((string) ($easebuzz_row['auto_debit_access_key'] ?? '')),
+        'sub_merchant_id' => trim((string) ($payment_details['sub_merchant_id'] ?? '')),
+        'udf1' => $payment_details['udf1'] ?? 'CREDITLAB_ENACH',
+    ]);
+
+    return [
+        'ok' => !empty($legacy['ok']),
+        'api' => 'legacy_pg',
+        'error_desc' => $legacy['error_desc'] ?? '',
+        'data' => $legacy['data'] ?? null,
+        'merchant_debit_id' => $legacy['merchant_debit_id'] ?? $merchant_ref,
+        'transaction_id' => $customer_auth_id,
+    ];
+}

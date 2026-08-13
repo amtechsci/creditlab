@@ -33,6 +33,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../lib/auth.php';
 
 require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
+require_once __DIR__ . '/../lib/easebuzz_enach.php';
 
 if ($playground_is_prod) {
     if (!creditlab_autocollect_playground_prod_allowed()) {
@@ -225,7 +226,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $result_block === null) {
                 $_SESSION[$playground_session_key]['transaction_id'] = $txn;
                 $flash = $_SESSION[$playground_session_key];
             }
-            $result_block = ['title' => 'Request eNACH Debit', 'result' => $result];
+            $result_block = ['title' => 'Autocollect Presentment (new cai… / CLAC…)', 'result' => $result];
+            break;
+
+        case 'legacy_request_debit':
+            require_once __DIR__ . '/../lib/easebuzz_enach.php';
+            $result = creditlab_easebuzz_legacy_initiate_direct_debit([
+                'amount' => $_POST['amount'] ?? '1.00',
+                'productinfo' => $_POST['productinfo'] ?? 'Playground Legacy Debit',
+                'firstname' => $_POST['firstname'] ?? 'Test User',
+                'email' => $_POST['email'] ?? 'test@example.com',
+                'phone' => $_POST['phone'] ?? '9999999999',
+                'customer_authentication_id' => $_POST['customer_authentication_id'] ?? '',
+                'auto_debit_access_key' => $_POST['auto_debit_access_key'] ?? '',
+                'merchant_debit_id' => $_POST['merchant_debit_id'] ?? '',
+                'udf1' => 'AUTOCOLLECT_PLAYGROUND_LEGACY',
+            ]);
+            $result_block = ['title' => 'Legacy PG Presentment (old customer_authentication_id)', 'result' => $result];
+            break;
+
+        case 'lookup_mandate':
+            require_once __DIR__ . '/../lib/easebuzz_enach.php';
+            $txn = trim((string) ($_POST['transaction_id'] ?? ''));
+            $customer_auth = trim((string) ($_POST['customer_authentication_id'] ?? ''));
+            $lookup = [
+                'transaction_id' => $txn,
+                'customer_authentication_id' => $customer_auth,
+            ];
+            if ($txn !== '') {
+                $retrieve = creditlab_autocollect_retrieve_mandate($txn);
+                $parsed = creditlab_autocollect_parse_mandate_retrieve_data($retrieve);
+                $lookup['autocollect_retrieve'] = [
+                    'http_code' => $retrieve['http_code'] ?? null,
+                    'ok' => $retrieve['ok'] ?? false,
+                    'status' => $parsed['status'] ?? null,
+                    'sub_status' => $parsed['sub_status'] ?? null,
+                    'umrn' => $parsed['umrn'] ?? null,
+                    'registration_ok' => creditlab_autocollect_mandate_registration_succeeded(
+                        (string) ($parsed['status'] ?? ''),
+                        (string) ($parsed['sub_status'] ?? ''),
+                        (string) ($parsed['umrn'] ?? '')
+                    ),
+                ];
+            }
+            if ($customer_auth !== '') {
+                $row = [
+                    'customer_authentication_id' => $customer_auth,
+                    'request_flow' => trim((string) ($_POST['request_flow'] ?? '')),
+                    'auto_debit_access_key' => trim((string) ($_POST['auto_debit_access_key'] ?? '')),
+                    'txnid' => $txn,
+                ];
+                $lookup['presentment_api'] = creditlab_easebuzz_presentment_api_for_row($row);
+                $lookup['is_autocollect_mandate'] = creditlab_easebuzz_is_autocollect_mandate_row($row);
+            }
+            $result_block = ['title' => 'Mandate lookup (new vs old)', 'result' => $lookup];
             break;
 
         case 'open_checkout':
@@ -355,7 +409,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
 
     <div class="banner">
         <strong>Internal test page.</strong> Live customers use <code>user/easebuzz.php</code> (Autocollect SEAMLESS)
-        and <code>payment/zzenach.php</code> (Autocollect presentment). This playground is for manual API testing only.
+        and <code>payment/zzenach.php</code> (Autocollect or legacy PG presentment, auto-routed).
     </div>
 
     <?php if ($cb === 'success'): ?>
@@ -366,18 +420,27 @@ function playground_option_selected($field, $option, array $post_data, array $sa
 
     <?php if ($cb_retrieve): ?>
         <?php
-        $cb_data = $cb_retrieve['data']['data'] ?? [];
+        $cb_data = creditlab_autocollect_parse_mandate_retrieve_data($cb_retrieve);
         $cb_status = (string) ($cb_data['status'] ?? 'unknown');
+        $cb_sub = (string) ($cb_data['sub_status'] ?? '');
+        $cb_umrn = (string) ($cb_data['umrn'] ?? '');
         $cb_meta = $cb_data['response_meta'] ?? [];
         $cb_err = is_array($cb_meta) && !empty($cb_meta['description']) ? $cb_meta['description'] : null;
+        $cb_reg_ok = creditlab_autocollect_mandate_registration_succeeded($cb_status, $cb_sub, $cb_umrn);
         ?>
         <div class="card">
             <h2>Callback retrieve: <?= htmlspecialchars((string) ($flash['transaction_id'] ?? ''), ENT_QUOTES) ?></h2>
             <p>Status: <code><?= htmlspecialchars($cb_status, ENT_QUOTES) ?></code>
-                <?php if (!empty($cb_data['sub_status'])): ?>
-                · sub_status: <code><?= htmlspecialchars((string) $cb_data['sub_status'], ENT_QUOTES) ?></code>
+                <?php if ($cb_sub !== ''): ?>
+                · sub_status: <code><?= htmlspecialchars($cb_sub, ENT_QUOTES) ?></code>
+                <?php endif; ?>
+                <?php if ($cb_umrn !== ''): ?>
+                · UMRN: <code><?= htmlspecialchars($cb_umrn, ENT_QUOTES) ?></code>
                 <?php endif; ?>
             </p>
+            <?php if ($cb_reg_ok): ?>
+                <div class="banner ok-banner">Registration accepted<?= $cb_status !== 'authorized' ? ' (NPCI accepted — may show initiated/accepted before authorized)' : '' ?>.</div>
+            <?php endif; ?>
             <?php if ($cb_err): ?>
                 <div class="results err"><?= htmlspecialchars($cb_err, ENT_QUOTES) ?>
                     <?php if (!empty($cb_meta['code'])): ?> (<code><?= htmlspecialchars((string) $cb_meta['code'], ENT_QUOTES) ?></code>)<?php endif; ?>
@@ -393,12 +456,38 @@ function playground_option_selected($field, $option, array $post_data, array $sa
     <?php endif; ?>
 
     <div class="card">
-        <h2>transaction_id rules (Easebuzz Autocollect)</h2>
+        <h2>Mandate / presentment ID guide (new vs old)</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;">
+            <tr style="background:#f8f9fa;">
+                <th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Mandate type</th>
+                <th style="text-align:left;padding:8px;border:1px solid #dee2e6;">ID to use</th>
+                <th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Retrieve (Section D)</th>
+                <th style="text-align:left;padding:8px;border:1px solid #dee2e6;">Presentment</th>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #dee2e6;"><strong>New Autocollect</strong><br><code>request_flow=AUTOCOLLECT_SEAMLESS</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code>cai…</code> (same as <code>customer_authentication_id</code>)</td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Autocollect GET <code>/v1/mandate/{id}</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>C</strong> — Autocollect POST presentment</td>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #dee2e6;"><strong>Legacy PG eNACH</strong><br>pre-Autocollect signups</td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code>customer_authentication_id</code> + <code>auto_debit_access_key</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Not on Autocollect — check <code>easebuzz_adtd.authorization_status</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>E</strong> — legacy <code>initiateDirectDebitRequest</code></td>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #dee2e6;"><strong>Migrated on Autocollect</strong></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Old <code>customer_authentication_id</code> as Autocollect <code>transaction_id</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>D</strong> (if Easebuzz migrated the mandate)</td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>C</strong></td>
+            </tr>
+        </table>
+        <p class="hint"><code>payment/zzenach.php</code> auto-routes: <code>cai…</code> / <code>AUTOCOLLECT_*</code> → Autocollect; otherwise → legacy PG.</p>
         <ul class="smoke">
-            <li><strong>New mandate</strong> (this playground): whatever you pass to generate access key — or leave blank for auto <code>CLAC_…</code>.</li>
-            <li><strong>Retrieve / presentment</strong> for that mandate: use the same ID.</li>
-            <li><strong>Migrated legacy eNACH</strong>: use <code>customer_authentication_id</code> as transaction_id.</li>
-            <li><strong>Migrated UPI</strong>: use <code>auto_debit_access_key</code> as transaction_id.</li>
+            <li><strong>New mandate</strong> (playground): leave blank in Section A for auto <code>CLAC_…</code>; customer flow uses <code>cai…</code>.</li>
+            <li><strong>Retrieve / presentment (Autocollect)</strong>: same ID as at mandate creation.</li>
+            <li><strong>Legacy presentment</strong>: needs <code>customer_authentication_id</code> and <code>auto_debit_access_key</code> from <code>easebuzz_adtd</code>.</li>
         </ul>
         <?php if ($v_txn && $cb_retrieve && ($cb_data['status'] ?? '') === 'failed'): ?>
         <p class="hint"><code><?= $v_txn ?></code> is <code>failed</code> — leave transaction_id blank in Section A for a new mandate.</p>
@@ -670,27 +759,46 @@ function playground_option_selected($field, $option, array $post_data, array $sa
         </div>
     </div>
 
-    <!-- D. Retrieve (before C so testers see status first) -->
+    <!-- D. Retrieve -->
     <div class="card">
-        <h2>D. Mandate Retrieve</h2>
-        <p class="hint">GET <code>/v1/mandate/{transaction_id}</code><?= $playground_is_uat ? ' — sandbox: may show <code>in_process</code> for ~5 minutes before final status.' : ' — confirm <code>authorized</code> before debit.' ?> Confirm mandate is ready before debit.</p>
+        <h2>D. Mandate Retrieve (Autocollect — new cai… / migrated ID)</h2>
+        <p class="hint">GET <code>/v1/mandate/{transaction_id}</code>. Use <strong>cai…</strong> for new signups or a migrated legacy <code>customer_authentication_id</code> if Easebuzz moved it to Autocollect.<?= $playground_is_uat ? ' Sandbox: status may stay <code>initiated</code>/<code>accepted</code> before <code>authorized</code>.' : '' ?></p>
         <form method="POST">
             <input type="hidden" name="action" value="retrieve_mandate">
             <label>transaction_id</label>
-            <input type="text" name="transaction_id" value="<?= $v_txn ?>" required>
+            <input type="text" name="transaction_id" value="<?= $v_txn ?>" placeholder="cai… or CLAC_… or migrated customer_authentication_id" required>
             <br>
             <button type="submit">Retrieve mandate</button>
         </form>
     </div>
 
-    <!-- C. Debit -->
+    <!-- D2. Lookup which API -->
     <div class="card">
-        <h2>C. Request eNACH Debit</h2>
-        <p class="hint">POST <code>/v1/mandate/presentment/</code> — eNACH only (not UPI/SI).<?= $playground_is_uat ? ' Sandbox: include <code>suc</code> in merchant_request_number for success mock.' : ' Use a unique merchant_request_number per request.' ?></p>
+        <h2>D2. Lookup — which presentment API?</h2>
+        <p class="hint">Paste IDs from <code>easebuzz_adtd</code> to see whether zzenach will use Autocollect or legacy PG.</p>
+        <form method="POST">
+            <input type="hidden" name="action" value="lookup_mandate">
+            <label>transaction_id (optional — runs Autocollect retrieve if set)</label>
+            <input type="text" name="transaction_id" value="<?= $v_txn ?>" placeholder="cai… or migrated ID">
+            <label>customer_authentication_id</label>
+            <input type="text" name="customer_authentication_id" placeholder="from easebuzz_adtd">
+            <label>request_flow (optional)</label>
+            <input type="text" name="request_flow" placeholder="AUTOCOLLECT_SEAMLESS or blank for legacy">
+            <label>auto_debit_access_key (optional — legacy)</label>
+            <input type="text" name="auto_debit_access_key" placeholder="legacy PG access key">
+            <br>
+            <button type="submit">Lookup mandate</button>
+        </form>
+    </div>
+
+    <!-- C. Autocollect Debit -->
+    <div class="card">
+        <h2>C. Autocollect Presentment (new transaction_id / cai…)</h2>
+        <p class="hint">POST <code>/v1/mandate/presentment/</code> — for <strong>new Autocollect</strong> mandates and migrated IDs on Autocollect.<?= $playground_is_uat ? ' Sandbox: <code>merchant_request_number</code> must contain <code>suc</code>.' : ' Use a unique merchant_request_number. Mandate should be <code>authorized</code> (not just accepted).' ?></p>
         <form method="POST">
             <input type="hidden" name="action" value="request_debit">
             <label>transaction_id</label>
-            <input type="text" name="transaction_id" value="<?= $v_txn ?>" required>
+            <input type="text" name="transaction_id" value="<?= $v_txn ?>" placeholder="cai… or CLAC_…" required>
             <div class="row">
                 <div>
                     <label>amount</label>
@@ -704,7 +812,46 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             <label>presentment_date (optional YYYY-MM-DD)</label>
             <input type="date" name="presentment_date">
             <br>
-            <button type="submit">Initiate presentment</button>
+            <button type="submit">Initiate Autocollect presentment</button>
+        </form>
+    </div>
+
+    <!-- E. Legacy PG Debit -->
+    <div class="card">
+        <h2>E. Legacy PG Presentment (old customer_authentication_id)</h2>
+        <p class="hint">POST <code><?= htmlspecialchars(creditlab_easebuzz_pg_base_url(), ENT_QUOTES) ?>/payment/initiateDirectDebitRequest/</code> — for mandates registered via legacy <code>initiateLink</code> (before Autocollect). Requires <code>customer_authentication_id</code> and <code>auto_debit_access_key</code> from <code>easebuzz_adtd</code>.</p>
+        <form method="POST">
+            <input type="hidden" name="action" value="legacy_request_debit">
+            <label>customer_authentication_id</label>
+            <input type="text" name="customer_authentication_id" placeholder="legacy ID from easebuzz_adtd" required>
+            <label>auto_debit_access_key</label>
+            <input type="text" name="auto_debit_access_key" placeholder="from easebuzz_adtd (legacy PG)">
+            <div class="row">
+                <div>
+                    <label>amount</label>
+                    <input type="text" name="amount" value="1.00" required>
+                </div>
+                <div>
+                    <label>merchant_debit_id (optional)</label>
+                    <input type="text" name="merchant_debit_id" placeholder="unique, e.g. CLDR_test_…">
+                </div>
+            </div>
+            <div class="row">
+                <div>
+                    <label>firstname</label>
+                    <input type="text" name="firstname" value="Test User">
+                </div>
+                <div>
+                    <label>email</label>
+                    <input type="text" name="email" value="test@example.com">
+                </div>
+                <div>
+                    <label>phone</label>
+                    <input type="text" name="phone" value="9999999999">
+                </div>
+            </div>
+            <br>
+            <button type="submit">Initiate legacy PG presentment</button>
         </form>
     </div>
 

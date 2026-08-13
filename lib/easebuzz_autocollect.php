@@ -1164,6 +1164,7 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
     $err_sql = mysqli_real_escape_string($db, $meta_desc);
     $umrn_sql = mysqli_real_escape_string($db, $umrn);
     $bank_ref_sql = mysqli_real_escape_string($db, $bank_ref);
+    $flow_sql = preg_match('/^(cai|clac)/i', $transaction_id) ? ", request_flow='AUTOCOLLECT_SEAMLESS'" : '';
 
     $update = "UPDATE easebuzz_adtd SET
         authorization_status='$auth_sql',
@@ -1171,6 +1172,7 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
         error_message='$err_sql',
         bank_ref_num='$bank_ref_sql',
         auto_debit_access_key='$txn_sql'
+        $flow_sql
         WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql'";
 
     if ($umrn !== '') {
@@ -1181,6 +1183,7 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
             bank_ref_num='$bank_ref_sql',
             auto_debit_access_key='$txn_sql',
             easepayid='$umrn_sql'
+            $flow_sql
             WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql'";
     }
 

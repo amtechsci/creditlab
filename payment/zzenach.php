@@ -1,5 +1,6 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/easebuzz_enach.php';
 
 // --- ENHANCED LOGGING ---
 $current_date = date('Y-m-d');
@@ -215,39 +216,32 @@ function calculateAmountBreakdown($loan, $loan_apply) {
 }
 
 /**
- * Initiates eNACH presentment via Autocollect (replaces legacy initiateDirectDebitRequest).
+ * Initiates eNACH presentment — Autocollect (new cai… mandates) or legacy PG (old customer_authentication_id).
  *
- * @return string JSON for zzenach ({status:1|0, error_desc, ...})
+ * @return string JSON for zzenach ({status:1|0, error_desc, api, ...})
  */
-function initiateEasebuzzDirectDebit(array $postParams): string
+function initiateEasebuzzDirectDebit(array $postParams, array $easebuzz_row = []): string
 {
-    require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
+    require_once __DIR__ . '/../lib/easebuzz_enach.php';
 
-    $transaction_id = trim((string) ($postParams['customer_authentication_id'] ?? ''));
-    $amount = (string) ($postParams['amount'] ?? '0');
-    $merchant_request_number = trim((string) ($postParams['merchant_debit_id'] ?? ''));
-
-    if ($transaction_id === '') {
-        return json_encode(['status' => 0, 'error_desc' => 'Missing customer_authentication_id (Autocollect transaction_id).']);
+    if (!$easebuzz_row) {
+        $easebuzz_row = [
+            'customer_authentication_id' => trim((string) ($postParams['customer_authentication_id'] ?? '')),
+            'auto_debit_access_key' => trim((string) ($postParams['auto_debit_access_key'] ?? '')),
+            'request_flow' => trim((string) ($postParams['request_flow'] ?? '')),
+            'txnid' => trim((string) ($postParams['txnid'] ?? '')),
+        ];
     }
 
-    $result = creditlab_autocollect_initiate_loan_debit($transaction_id, $amount, $merchant_request_number, [
-        'udf1' => $postParams['udf1'] ?? 'CREDITLAB_ZZENACH',
-    ]);
-
-    $api_ok = !empty($result['ok']);
-    $data = is_array($result['data'] ?? null) ? $result['data'] : [];
-    if (!$api_ok && is_array($data) && !empty($data['message'])) {
-        $error = (string) $data['message'];
-    } else {
-        $error = $result['error'] ?? 'Autocollect presentment failed.';
-    }
+    $result = creditlab_easebuzz_initiate_loan_debit($easebuzz_row, $postParams);
 
     return json_encode([
-        'status' => $api_ok ? 1 : 0,
-        'error_desc' => $api_ok ? '' : $error,
-        'data' => $data,
-        'merchant_request_number' => $result['merchant_request_number'] ?? $merchant_request_number,
+        'status' => !empty($result['ok']) ? 1 : 0,
+        'error_desc' => $result['error_desc'] ?? '',
+        'data' => $result['data'] ?? null,
+        'api' => $result['api'] ?? '',
+        'merchant_request_number' => $result['merchant_request_number'] ?? ($result['merchant_debit_id'] ?? ''),
+        'transaction_id' => $result['transaction_id'] ?? ($easebuzz_row['customer_authentication_id'] ?? ''),
     ]);
 }
 
@@ -308,7 +302,7 @@ if($enach_count > 0){
     $auth_count = 0;
     while ($easebuzz_adtdff = towfetch($easebuzz_adtd)) {
         $auth_count++;
-        writeZzenachLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}", $log_file);
+        writeZzenachLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | API: " . creditlab_easebuzz_presentment_api_for_row($easebuzz_adtdff), $log_file);
         
         $paymentDetails = [
             "amount" => "$totalamount",
@@ -318,13 +312,14 @@ if($enach_count > 0){
             "phone" => $userdataff['mobile'],
             "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
             "merchant_debit_id" => "CLL_AUTO_".$lid."_".time(),
-            "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
+            "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key'],
+            "udf1" => "CREDITLAB_ZZENACH",
         ];
         
         // Debug: Log the exact API call data
         writeZzenachLog("Loan CLL$lid: API Call Data - " . json_encode($paymentDetails), $log_file);
         
-        $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
+        $apiResponse = initiateEasebuzzDirectDebit($paymentDetails, $easebuzz_adtdff);
         writeZzenachLog("Loan CLL$lid: API Response - " . $apiResponse, $log_file);
         
         $res = json_decode($apiResponse, true);
