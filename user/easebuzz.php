@@ -105,10 +105,10 @@ if (townum($ub) > 0) {
                         <input type="hidden" name="account_name" value="<?=htmlspecialchars($account_name !== '' ? $account_name : ($user_pan_name ? $user_pan_name : $user_name), ENT_QUOTES)?>">
                         <input type="hidden" name="ifsc" value="<?=htmlspecialchars($ifsc_code, ENT_QUOTES)?>">
                         <p><strong>Authentication mode:</strong></p>
-                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="netbanking" checked> Net Banking (recommended for HDFC/SBI/Kotak)</label>
-                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="debitcard"> Debit Card</label>
-                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="aadhaar"> Aadhaar (if supported by your bank)</label>
-                        <p class="hint" style="font-size:12px;color:#666;">Your bank may not support every mode. If the wrong screen opens, try Net Banking or contact support.</p>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="netbanking" checked> Net Banking (recommended — use this for Kotak/HDFC/SBI)</label>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="debitcard"> Debit Card (not all banks support this for e-NACH)</label>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="aadhaar"> Aadhaar (only if your bank supports Aadhaar e-mandate)</label>
+                        <p class="hint" style="font-size:12px;color:#666;">After clicking Continue, complete bank login on the Easebuzz screen and click <strong>Proceed</strong>. If you are sent back immediately, try Net Banking.</p>
                         <br><br>
                         <button class="btn btn-primary" style="text-align:center;" type="submit">Continue to Easebuzz</button>
                     </form>

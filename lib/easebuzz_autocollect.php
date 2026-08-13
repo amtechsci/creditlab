@@ -618,6 +618,112 @@ function creditlab_autocollect_retrieve_mandate($transaction_id)
 }
 
 /**
+ * Normalize mandate object from GET /v1/mandate/{transaction_id} response.
+ */
+function creditlab_autocollect_parse_mandate_retrieve_data($retrieve)
+{
+    if (!is_array($retrieve['data'] ?? null)) {
+        return [];
+    }
+    $root = $retrieve['data'];
+    if (is_array($root['data'] ?? null)) {
+        $inner = $root['data'];
+        if (isset($inner['status']) || isset($inner['sub_status']) || isset($inner['umrn'])) {
+            return $inner;
+        }
+    }
+    if (isset($root['status']) || isset($root['sub_status']) || isset($root['umrn'])) {
+        return $root;
+    }
+
+    return [];
+}
+
+/**
+ * True when NPCI/Easebuzz has accepted the e-NACH registration (success SMS / UMRN issued).
+ * Prod often returns status=initiated, sub_status=accepted — not status=authorized immediately.
+ */
+function creditlab_autocollect_mandate_registration_succeeded($status, $sub_status, $umrn = '')
+{
+    $status = strtolower(trim((string) $status));
+    $sub_status = strtolower(trim((string) $sub_status));
+    $umrn = trim((string) $umrn);
+
+    if ($status === 'failed' || $sub_status === 'failed') {
+        return false;
+    }
+    if ($status === 'authorized' || $sub_status === 'authorized') {
+        return true;
+    }
+    if ($sub_status === 'accepted' && $umrn !== '') {
+        return true;
+    }
+    if ($status === 'initiated' && $sub_status === 'accepted' && $umrn !== '') {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Mandate statuses that will not change without a new registration attempt.
+ */
+function creditlab_autocollect_mandate_status_is_terminal($status, $sub_status = '', $umrn = '')
+{
+    $status = strtolower(trim((string) $status));
+    $sub_status = strtolower(trim((string) $sub_status));
+
+    if (creditlab_autocollect_mandate_registration_succeeded($status, $sub_status, $umrn)) {
+        return true;
+    }
+
+    return in_array($status, ['authorized', 'failed'], true)
+        || in_array($sub_status, ['authorized', 'failed'], true);
+}
+
+/**
+ * Poll retrieve until mandate reaches a useful state (authorized/failed/in_process) or attempts exhaust.
+ *
+ * @return array{retrieve:array, attempts:int, status:string, sub_status:string, umrn:string}
+ */
+function creditlab_autocollect_poll_mandate_retrieve($transaction_id, $max_attempts = 5, $delay_seconds = 2)
+{
+    $max_attempts = max(1, (int) $max_attempts);
+    $delay_seconds = max(0, (int) $delay_seconds);
+    $retrieve = ['ok' => false, 'data' => null];
+    $status = '';
+    $sub_status = '';
+    $umrn = '';
+    $attempt = 0;
+
+    for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
+        $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
+        $data = creditlab_autocollect_parse_mandate_retrieve_data($retrieve);
+        $status = strtolower((string) ($data['status'] ?? ''));
+        $sub_status = strtolower((string) ($data['sub_status'] ?? ''));
+        $umrn = trim((string) ($data['umrn'] ?? ''));
+
+        if (creditlab_autocollect_mandate_status_is_terminal($status, $sub_status, $umrn)) {
+            break;
+        }
+        if ($status === 'in_process' || $sub_status === 'in_process') {
+            break;
+        }
+        if ($attempt < $max_attempts && $delay_seconds > 0) {
+            sleep($delay_seconds);
+        }
+    }
+
+    return [
+        'retrieve' => $retrieve,
+        'attempts' => $attempt,
+        'status' => $status,
+        'sub_status' => $sub_status,
+        'umrn' => $umrn,
+    ];
+}
+
+/**
  * POST /v1/mandate/presentment/ — eNACH debit / presentment (not for UPI/SI).
  *
  * @param array $params transaction_id, amount, merchant_request_number, presentment_date (optional)
@@ -929,9 +1035,11 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
 /**
  * Apply Autocollect mandate retrieve result to easebuzz_adtd + user.easebuzz.
  *
+ * @param string $transaction_id
+ * @param array{cb?:string} $options cb=success|failure from Easebuzz redirect URL
  * @return array{ok:bool, status:string, message:string, uid?:int}
  */
-function creditlab_autocollect_finalize_user_mandate($transaction_id)
+function creditlab_autocollect_finalize_user_mandate($transaction_id, array $options = [])
 {
     global $db;
 
@@ -940,36 +1048,73 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id)
         return ['ok' => false, 'status' => 'error', 'message' => 'Missing transaction reference.'];
     }
 
+    $callback_type = strtolower(trim((string) ($options['cb'] ?? '')));
+    if ($callback_type !== 'success' && $callback_type !== 'failure') {
+        $callback_type = '';
+    }
+
     $txn_sql = mysqli_real_escape_string($db, $transaction_id);
-    $row_q = towquery("SELECT uid FROM easebuzz_adtd WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql' LIMIT 1");
+    $row_q = towquery("SELECT uid, auth_mode FROM easebuzz_adtd WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql' LIMIT 1");
     if (!$row_q || townum($row_q) === 0) {
         return ['ok' => false, 'status' => 'error', 'message' => 'e-NACH registration record not found.'];
     }
     $row = towfetch($row_q);
     $uid = (int) $row['uid'];
+    $stored_auth_mode = (string) ($row['auth_mode'] ?? '');
 
-    $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
+    $skip_poll = !empty($options['skip_poll']);
+
+    if ($skip_poll) {
+        $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
+        $data = creditlab_autocollect_parse_mandate_retrieve_data($retrieve);
+        $poll = [
+            'retrieve' => $retrieve,
+            'attempts' => 1,
+            'status' => strtolower((string) ($data['status'] ?? '')),
+            'sub_status' => strtolower((string) ($data['sub_status'] ?? '')),
+            'umrn' => trim((string) ($data['umrn'] ?? '')),
+        ];
+    } else {
+        $poll = creditlab_autocollect_poll_mandate_retrieve(
+            $transaction_id,
+            $callback_type === 'success' ? 8 : 5,
+            2
+        );
+    }
+    $retrieve = $poll['retrieve'];
+    $data = creditlab_autocollect_parse_mandate_retrieve_data($retrieve);
+    $status = strtolower((string) ($data['status'] ?? $poll['status'] ?? ''));
+    $sub_status = strtolower((string) ($data['sub_status'] ?? $poll['sub_status'] ?? ''));
+    $meta = is_array($data['response_meta'] ?? null) ? $data['response_meta'] : [];
+    $meta_desc = (string) ($meta['description'] ?? '');
+    $meta_code = (string) ($meta['code'] ?? '');
+    $umrn = trim((string) ($data['umrn'] ?? $poll['umrn'] ?? ''));
+    $bank_ref = (string) ($data['bank_reference_number'] ?? '');
+
     creditlab_autocollect_log('USER ENACH callback retrieve', [
         'transaction_id' => $transaction_id,
         'uid' => $uid,
+        'cb' => $callback_type,
+        'auth_mode' => $stored_auth_mode,
+        'poll_attempts' => $poll['attempts'] ?? 1,
         'http_code' => $retrieve['http_code'] ?? null,
+        'status' => $status,
+        'sub_status' => $sub_status,
+        'umrn' => $umrn !== '' ? $umrn : null,
+        'meta_code' => $meta_code,
+        'meta_description' => $meta_desc,
+        'retrieve_auth_mode' => (string) ($data['auth_mode'] ?? ''),
     ]);
-
-    $data = is_array($retrieve['data']['data'] ?? null) ? $retrieve['data']['data'] : [];
-    $status = strtolower((string) ($data['status'] ?? ''));
-    $sub_status = strtolower((string) ($data['sub_status'] ?? ''));
-    $meta = is_array($data['response_meta'] ?? null) ? $data['response_meta'] : [];
-    $meta_desc = (string) ($meta['description'] ?? '');
-    $umrn = (string) ($data['umrn'] ?? '');
-    $bank_ref = (string) ($data['bank_reference_number'] ?? '');
 
     $authorization_status = 'pending';
     $db_status = 'pending';
     $user_easebuzz = 0;
     $message = 'e-NACH registration is being processed. Please check again in a few minutes.';
+    $is_terminal = creditlab_autocollect_mandate_status_is_terminal($status, $sub_status, $umrn);
+    $registration_ok = creditlab_autocollect_mandate_registration_succeeded($status, $sub_status, $umrn);
 
-    if ($status === 'authorized' || $sub_status === 'authorized') {
-        $authorization_status = 'authorized';
+    if ($registration_ok) {
+        $authorization_status = ($status === 'authorized' || $sub_status === 'authorized') ? 'authorized' : 'accepted';
         $db_status = 'success';
         $user_easebuzz = 1;
         $message = 'e-NACH registration completed successfully.';
@@ -978,13 +1123,40 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id)
         $db_status = 'failure';
         $user_easebuzz = 2;
         $message = $meta_desc !== '' ? $meta_desc : 'e-NACH registration failed. Please try again.';
-    } elseif ($status === 'in_process') {
+    } elseif ($status === 'in_process' || $sub_status === 'in_process') {
         $authorization_status = 'pending';
         $db_status = 'pending';
         $user_easebuzz = 0;
         $message = 'e-NACH registration submitted. NPCI confirmation may take a few minutes — refresh your dashboard shortly.';
+    } elseif (in_array($status, ['requested', 'initiated', 'pending', 'created'], true)
+        || in_array($sub_status, ['requested', 'initiated', 'pending', 'created'], true)) {
+        $authorization_status = 'pending';
+        $db_status = 'pending';
+        $user_easebuzz = 0;
+        if ($callback_type === 'failure') {
+            $user_easebuzz = 2;
+            $authorization_status = 'rejected';
+            $db_status = 'failure';
+            $message = $meta_desc !== ''
+                ? $meta_desc
+                : 'e-NACH registration was not completed. Your bank may not support the selected authentication mode — try Net Banking.';
+        } else {
+            $message = 'e-NACH registration submitted. Complete bank authentication on Easebuzz if you have not already, then check your dashboard in a few minutes.';
+        }
+    } elseif ($callback_type === 'failure') {
+        $authorization_status = 'rejected';
+        $db_status = 'failure';
+        $user_easebuzz = 2;
+        $message = $meta_desc !== ''
+            ? $meta_desc
+            : 'e-NACH registration could not be completed. Please try again using Net Banking.';
     } elseif (!$retrieve['ok']) {
         return ['ok' => false, 'status' => 'error', 'message' => 'Could not verify mandate status. Please try again.', 'uid' => $uid];
+    } elseif ($callback_type === 'success') {
+        $authorization_status = 'pending';
+        $db_status = 'pending';
+        $user_easebuzz = 0;
+        $message = 'e-NACH registration submitted. Final confirmation from NPCI may take up to 5 minutes — refresh your dashboard shortly.';
     }
 
     $auth_sql = mysqli_real_escape_string($db, $authorization_status);
@@ -1021,5 +1193,43 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id)
         'message' => $message,
         'uid' => $uid,
         'user_easebuzz' => $user_easebuzz,
+        'transaction_id' => $transaction_id,
+        'is_terminal' => $is_terminal,
+        'callback_type' => $callback_type,
+        'umrn' => $umrn,
     ];
+}
+
+/**
+ * Re-check latest Autocollect mandate for a user (single retrieve — for dashboard refresh).
+ *
+ * @return array{ok:bool, synced:bool, user_easebuzz?:int, message?:string}
+ */
+function creditlab_autocollect_refresh_user_enach_status($uid)
+{
+    global $db;
+
+    $uid = (int) $uid;
+    if ($uid <= 0) {
+        return ['ok' => false, 'synced' => false];
+    }
+
+    $row_q = towquery("SELECT customer_authentication_id, txnid FROM easebuzz_adtd WHERE uid=$uid ORDER BY id DESC LIMIT 1");
+    if (!$row_q || townum($row_q) === 0) {
+        return ['ok' => false, 'synced' => false];
+    }
+    $row = towfetch($row_q);
+    $transaction_id = trim((string) ($row['customer_authentication_id'] ?? ''));
+    if ($transaction_id === '') {
+        $transaction_id = trim((string) ($row['txnid'] ?? ''));
+    }
+    if ($transaction_id === '') {
+        return ['ok' => false, 'synced' => false];
+    }
+
+    $result = creditlab_autocollect_finalize_user_mandate($transaction_id, ['cb' => 'success', 'skip_poll' => true]);
+
+    return array_merge($result, [
+        'synced' => !empty($result['ok']) && (int) ($result['user_easebuzz'] ?? 0) === 1,
+    ]);
 }

@@ -73,6 +73,13 @@ if (($user_verify == 0) or ($user_verify == 1)) {
                         $page_state = 13; // Needs video KYC
                         $per = 94;
                     } elseif ($user_easebuzz == 0 || $user_easebuzz == 2) {
+                        require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
+                        $enach_refresh = creditlab_autocollect_refresh_user_enach_status((int) $user_id);
+                        if (!empty($enach_refresh['synced'])) {
+                            $user_easebuzz = 1;
+                        }
+                    }
+                    if ($user_easebuzz == 0 || $user_easebuzz == 2) {
                         $page_state = 14; // Needs e-mandate (Easebuzz)
                         $per = 97;
                     } else {
