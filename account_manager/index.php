@@ -1,5 +1,6 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/staff_context.php';
 if (isset($_GET['pageno'])) {
             $pageno = $_GET['pageno'];
         } else {
@@ -86,7 +87,9 @@ if (isset($_GET['pageno'])) {
                                 <li class="<?= $active_tab == 'daily' ? 'active' : '' ?>"><a href="#description">Daily follow ups (less than 35 DPD)</a></li>
                                 <li class="<?= $active_tab == 'default' ? 'active' : '' ?>"><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
                             </ul>
+                            <?php if (creditlab_can_download_account_manager_data()) { ?>
                             <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
+                            <?php } ?>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
                                     <div class="row">

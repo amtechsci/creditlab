@@ -1,7 +1,13 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/staff_context.php';
 
-// Large AM exports were timing out (browser: "Check Internet connection")
+if (!creditlab_can_download_account_manager_data()) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
+// Large AM exports were timed out (browser: "Check Internet connection")
 // due to N+1 queries per loan. Stream one JOIN + flush periodically.
 set_time_limit(3000);
 ignore_user_abort(true);

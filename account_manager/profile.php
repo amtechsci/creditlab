@@ -8,6 +8,7 @@ if (!empty($GLOBALS['creditlab_profile_include_head'])) {
 require_once __DIR__ . '/../lib/profile_tabs.php';
 require_once __DIR__ . '/../lib/loan_dpd.php';
 require_once __DIR__ . '/../lib/staff_context.php';
+require_once __DIR__ . '/../lib/loan_acc_man.php';
 $creditlab_profile_role = $GLOBALS['creditlab_staff_role'] ?? 'account_manager';
 require_once '../lib/s3_upload_helper.php';
 
@@ -2096,7 +2097,11 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
             <tbody>
                   
                                    <?php
-                                   $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' ORDER BY id DESC"); 
+                                   $agencyUpdatesFilter = '';
+                                   if ($is_agency_profile) {
+                                       $agencyUpdatesFilter = creditlab_loan_acc_man_sql_agency_filter((int) ($agency_admin_agency_id ?? 0));
+                                   }
+                                   $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' $agencyUpdatesFilter ORDER BY id DESC"); 
                                    while($bank_fetch = towfetch($ref_data)){
                                    extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
                                    ?>

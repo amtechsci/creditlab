@@ -128,3 +128,16 @@ function creditlab_can_create_pg_link(): bool
     $role = creditlab_staff_role();
     return in_array($role, ['admin', 'account_manager', 'agency_admin'], true);
 }
+
+/** Master admin: internal staff in `user` with active=2 (admin portal). */
+function creditlab_is_master_admin(): bool
+{
+    global $admin;
+    return !empty($admin);
+}
+
+/** Full account-manager CSV export is master-admin only. */
+function creditlab_can_download_account_manager_data(): bool
+{
+    return creditlab_is_master_admin();
+}

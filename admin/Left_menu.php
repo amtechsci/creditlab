@@ -121,6 +121,9 @@ $counts_data = towfetch($counts);
                     <li>
                         <a href="smtp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/smtp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-envelope"></i> <span class="mini-click-non">SMTP Settings</span></a>
                     </li>
+                    <li>
+                        <a href="lsp_partners.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/lsp_partners.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-handshake-o"></i> <span class="mini-click-non">LSP Partners</span></a>
+                    </li>
                 </ul>
             </nav>
         </div>

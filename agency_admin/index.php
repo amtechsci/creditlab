@@ -1,6 +1,7 @@
 <?php
 include_once 'head.php';
 require_once __DIR__ . '/../lib/loan_dpd.php';
+require_once __DIR__ . '/../lib/loan_acc_man.php';
 
 $pageno = isset($_GET['pageno']) ? max(1, (int) $_GET['pageno']) : 1;
 $no_of_records_per_page = 50;
@@ -67,14 +68,11 @@ include_once 'm_menu.php';
                                     $responses = [];
                                     $commit_dates = [];
                                     $updated_ats = [];
-                                    $query_result = towquery('SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=' . (int) $user_lid . ' ORDER BY id DESC LIMIT 3');
-                                    if ($query_result) {
-                                        while ($row = towfetch($query_result)) {
-                                            $responses[] = $row['customer_response'];
-                                            $commit_dates[] = $row['commitment_date'];
-                                            $updated_ats[] = $row['updated_at'];
-                                        }
-                                    }
+                                    $agencyId = (int) ($agency_admin_agency_id ?? 0);
+                                    $recentUpdates = creditlab_loan_acc_man_recent_rows((int) $user_lid, $agencyId, 3);
+                                    $responses = $recentUpdates['responses'];
+                                    $commit_dates = $recentUpdates['commit_dates'];
+                                    $updated_ats = $recentUpdates['updated_ats'];
                                     $concatenated_responses = implode('<br><br>', $responses);
                                     $concatenated_dates = implode('<br><br>', $commit_dates);
                                     $concatenated_updates = implode('<br><br>', $updated_ats);

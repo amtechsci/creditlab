@@ -1,4 +1,9 @@
 <?php
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/lsp_partners.php';
+
+$partners = creditlab_get_lsp_partners(true);
+
 include_once 'head2.php';
 ?>
 
@@ -34,18 +39,19 @@ include_once 'head2.php';
                     <th>category/activities</th>
                     <th>Status</th>
                 </tr>
+                <?php foreach ($partners as $i => $partner) {
+                    $name = htmlspecialchars($partner['name'] ?? '');
+                    $category = htmlspecialchars($partner['category'] ?? '');
+                    $status = htmlspecialchars($partner['status'] ?? 'Active');
+                    $status_color = strtolower($status) === 'active' ? 'red' : '#666';
+                ?>
                 <tr>
-                    <td>1</td>
-                    <td>Fairdebt solutions pvt Ltd</td>
-                    <td>Collection and Recoveries</td>
-                    <td style="color:red;">Active</td>
+                    <td><?= $i + 1 ?></td>
+                    <td><?= $name ?></td>
+                    <td><?= $category ?></td>
+                    <td style="color:<?= $status_color ?>;"><?= $status ?></td>
                 </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Shivtel Communications private limited</td>
-                    <td>Communication Service - Outbound Dialing</td>
-                    <td style="color:red;">Active</td>
-                </tr>
+                <?php } ?>
             </table>
         </div>
 <?php

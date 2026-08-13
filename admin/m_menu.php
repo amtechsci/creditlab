@@ -102,6 +102,9 @@
                         <li>
                             <a class="" href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
                         </li>
+                        <li>
+                            <a class="" href="lsp_partners.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/lsp_partners.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-handshake-o"></i> <span class="mini-click-non">LSP Partners</span></a>
+                        </li>
                         
                         
                     </ul>
