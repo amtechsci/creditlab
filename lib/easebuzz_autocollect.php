@@ -271,6 +271,14 @@ function creditlab_autocollect_mandate_api_url()
 }
 
 /**
+ * Stored in easebuzz_adtd.request_flow (column is VARCHAR(15) on prod — do not use longer values).
+ */
+function creditlab_autocollect_request_flow_label()
+{
+    return 'AUTOCOLLECT';
+}
+
+/**
  * SHA-512 of pipe-joined parts (Autocollect Authorization header).
  */
 function creditlab_autocollect_hash(array $parts)
@@ -1000,8 +1008,10 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
     $final_collection_date = date('d/m/Y', strtotime('+3 years'));
 
     towquery("DELETE FROM `easebuzz_adtd` WHERE `uid` = " . (int) $user_id);
+    $flow_label = creditlab_autocollect_request_flow_label();
+    $flow_sql = mysqli_real_escape_string($db, $flow_label);
     $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`)
-        VALUES (" . (int) $user_id . ", '$transaction_id_sql', '$firstname_sql', '$phone_sql', '$email_sql', '$udf5_sql', 'AUTOCOLLECT_SEAMLESS', '$transaction_id_sql', '$final_collection_date', '', '$access_key_sql', 'EN', '$ifsc_sql', '$account_type_sql', '$account_no_sql', '$auth_mode_sql', '$bank_code_sql')";
+        VALUES (" . (int) $user_id . ", '$transaction_id_sql', '$firstname_sql', '$phone_sql', '$email_sql', '$udf5_sql', '$flow_sql', '$transaction_id_sql', '$final_collection_date', '', '$access_key_sql', 'EN', '$ifsc_sql', '$account_type_sql', '$account_no_sql', '$auth_mode_sql', '$bank_code_sql')";
 
     if (!towquery($insert_query)) {
         creditlab_autocollect_log('USER ENACH DB INSERT FAILED', array_merge($log_context, ['sql_error' => mysqli_error($db)]));
@@ -1164,7 +1174,9 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
     $err_sql = mysqli_real_escape_string($db, $meta_desc);
     $umrn_sql = mysqli_real_escape_string($db, $umrn);
     $bank_ref_sql = mysqli_real_escape_string($db, $bank_ref);
-    $flow_sql = preg_match('/^(cai|clac)/i', $transaction_id) ? ", request_flow='AUTOCOLLECT_SEAMLESS'" : '';
+    $flow_sql = preg_match('/^(cai|clac)/i', $transaction_id)
+        ? ", request_flow='" . mysqli_real_escape_string($db, creditlab_autocollect_request_flow_label()) . "'"
+        : '';
 
     $update = "UPDATE easebuzz_adtd SET
         authorization_status='$auth_sql',

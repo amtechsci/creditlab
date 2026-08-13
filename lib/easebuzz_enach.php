@@ -109,6 +109,8 @@ function creditlab_easebuzz_pg_base_url()
 
 /**
  * True for Autocollect-registered mandates (new cai… signups or AUTOCOLLECT request_flow).
+ *
+ * Legacy PG rows may also have customer_authentication_id starting with cai… but txnid is en… — not Autocollect.
  */
 function creditlab_easebuzz_is_autocollect_mandate_row(array $row)
 {
@@ -118,11 +120,13 @@ function creditlab_easebuzz_is_autocollect_mandate_row(array $row)
     }
 
     $customer_auth_id = trim((string) ($row['customer_authentication_id'] ?? ''));
-    if ($customer_auth_id === '') {
-        return false;
+    $txnid = trim((string) ($row['txnid'] ?? ''));
+    if ($customer_auth_id !== '' && preg_match('/^cai/i', $customer_auth_id)
+        && $txnid !== '' && strcasecmp($customer_auth_id, $txnid) === 0) {
+        return true;
     }
 
-    return (bool) preg_match('/^(cai|clac)/i', $customer_auth_id);
+    return (bool) preg_match('/^clac/i', $customer_auth_id);
 }
 
 /**
