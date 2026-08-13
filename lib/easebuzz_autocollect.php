@@ -536,7 +536,7 @@ function creditlab_autocollect_build_seamless_mandate_form($access_key, array $f
         $ifsc,
         (string) ($fields['bank_code'] ?? '')
     );
-    $auth_mode = strtolower(trim((string) ($fields['auth_mode'] ?? 'netbanking')));
+    $auth_mode = creditlab_autocollect_normalize_auth_mode($fields['auth_mode'] ?? 'netbanking');
 
     $enc_account_number = creditlab_autocollect_aes_encrypt($account_number);
     $enc_account_holder = creditlab_autocollect_aes_encrypt($account_holder_name);
@@ -740,19 +740,26 @@ function creditlab_autocollect_playground_prod_allowed()
 }
 
 /**
- * Map legacy user form auth_mode to Autocollect values.
+ * Autocollect mandate auth_mode values (POST /v1/mandate).
+ * API expects: netbanking | debitcard | aadhaar (not legacy NetBanking / debit_card).
  */
-function creditlab_autocollect_map_auth_mode($auth_mode)
+function creditlab_autocollect_normalize_auth_mode($auth_mode)
 {
-    $normalized = strtolower(preg_replace('/[^a-z]/', '', (string) $auth_mode));
+    $normalized = preg_replace('/[^a-z]/', '', strtolower((string) $auth_mode));
     if ($normalized === 'debitcard') {
-        return 'debit_card';
+        return 'debitcard';
     }
     if ($normalized === 'aadhaar') {
         return 'aadhaar';
     }
 
     return 'netbanking';
+}
+
+/** @deprecated Use creditlab_autocollect_normalize_auth_mode() */
+function creditlab_autocollect_map_auth_mode($auth_mode)
+{
+    return creditlab_autocollect_normalize_auth_mode($auth_mode);
 }
 
 /**
@@ -795,7 +802,7 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
     $email = creditlab_easebuzz_clean_field($post['email']);
     $bank_code = creditlab_easebuzz_clean_field($post['bank_code']);
     $account_no = preg_replace('/\D+/', '', creditlab_easebuzz_clean_field($post['account_no']));
-    $auth_mode = creditlab_autocollect_map_auth_mode($post['auth_mode'] ?? 'netbanking');
+    $auth_mode = creditlab_autocollect_normalize_auth_mode($post['auth_mode'] ?? 'netbanking');
     $account_type = creditlab_easebuzz_clean_field($post['account_type']);
     $ifsc = strtoupper(trim(creditlab_easebuzz_clean_field($post['ifsc'])));
     $account_name = creditlab_easebuzz_clean_field($post['account_name'] ?? $firstname);

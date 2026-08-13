@@ -590,7 +590,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                         <label>auth_mode</label>
                         <select name="auth_mode" id="auth_mode">
                             <option value="netbanking"<?= playground_option_selected('auth_mode', 'netbanking', $seamless_bank_fields, $sandbox_bank) ?>>netbanking</option>
-                            <option value="debit_card"<?= playground_option_selected('auth_mode', 'debit_card', $seamless_bank_fields, $sandbox_bank) ?>>debit_card</option>
+                            <option value="debitcard"<?= playground_option_selected('auth_mode', 'debitcard', $seamless_bank_fields, $sandbox_bank) ?>>debitcard</option>
                             <option value="aadhaar"<?= playground_option_selected('auth_mode', 'aadhaar', $seamless_bank_fields, $sandbox_bank) ?>>aadhaar</option>
                         </select>
                     </div>
@@ -660,7 +660,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                         <label>auth_mode</label>
                         <select name="auth_mode">
                             <option value="netbanking"<?= playground_option_selected('auth_mode', 'netbanking', $seamless_bank_fields, $sandbox_bank) ?>>netbanking</option>
-                            <option value="debit_card"<?= playground_option_selected('auth_mode', 'debit_card', $seamless_bank_fields, $sandbox_bank) ?>>debit_card</option>
+                            <option value="debitcard"<?= playground_option_selected('auth_mode', 'debitcard', $seamless_bank_fields, $sandbox_bank) ?>>debitcard</option>
                             <option value="aadhaar"<?= playground_option_selected('auth_mode', 'aadhaar', $seamless_bank_fields, $sandbox_bank) ?>>aadhaar</option>
                         </select>
                     </div>

@@ -105,8 +105,10 @@ if (townum($ub) > 0) {
                         <input type="hidden" name="account_name" value="<?=htmlspecialchars($account_name !== '' ? $account_name : ($user_pan_name ? $user_pan_name : $user_name), ENT_QUOTES)?>">
                         <input type="hidden" name="ifsc" value="<?=htmlspecialchars($ifsc_code, ENT_QUOTES)?>">
                         <p><strong>Authentication mode:</strong></p>
-                        <label style="margin-right:15px;"><input type="radio" name="auth_mode" value="NetBanking" checked> Net Banking (recommended for HDFC/SBI)</label>
-                        <label><input type="radio" name="auth_mode" value="DebitCard"> Debit Card</label>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="netbanking" checked> Net Banking (recommended for HDFC/SBI/Kotak)</label>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="debitcard"> Debit Card</label>
+                        <label style="display:block;margin-bottom:8px;"><input type="radio" name="auth_mode" value="aadhaar"> Aadhaar (if supported by your bank)</label>
+                        <p class="hint" style="font-size:12px;color:#666;">Your bank may not support every mode. If the wrong screen opens, try Net Banking or contact support.</p>
                         <br><br>
                         <button class="btn btn-primary" style="text-align:center;" type="submit">Continue to Easebuzz</button>
                     </form>
