@@ -4,6 +4,7 @@ if (!function_exists('towquery')) {
 }
 
 require_once __DIR__ . '/../lib/easebuzz_enach.php';
+require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
 
 $udf5 = creditlab_easebuzz_max_debit_amount(
     isset($user_salary) ? (float)$user_salary : 0,
@@ -24,10 +25,10 @@ if (townum($ub) > 0) {
     if (townum($bankcode) > 0) {
         $bankcode = towfetch($bankcode);
         $bankcoden = $bankcode['bank_name'];
-        $bankcodebc = creditlab_resolve_easebuzz_bank_code($ifsc_code, $bankcode['bank_code']);
+        $bankcodebc = creditlab_autocollect_resolve_bank_code($ifsc_code, $bankcode['bank_code'] ?? '');
     } else {
         $bankcoden = $ubf['bank_name'];
-        $bankcodebc = creditlab_resolve_easebuzz_bank_code($ifsc_code, '');
+        $bankcodebc = creditlab_autocollect_resolve_bank_code($ifsc_code, '');
     }
     $bank_setup_error = '';
     if (!creditlab_is_valid_ifsc($ifsc_code)) {
@@ -78,7 +79,7 @@ if (townum($ub) > 0) {
                     </tr>
                     <tr>
                         <td>Easebuzz Bank Code</td>
-                        <td><?=htmlspecialchars($bankcodebc, ENT_QUOTES)?></td>
+                        <td><?=htmlspecialchars($bankcodebc, ENT_QUOTES)?> <span style="color:#666;font-size:12px;">(Autocollect 4-letter NPCI code)</span></td>
                     </tr>
                     <tr>
                         <td>Max Debit Amount</td>

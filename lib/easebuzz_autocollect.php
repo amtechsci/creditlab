@@ -59,7 +59,26 @@ function creditlab_autocollect_log_path()
 
 function creditlab_autocollect_web_log_path()
 {
-    return creditlab_autocollect_log_dir() . '/autocollect_api_web.log';
+    $channel = '';
+    if (defined('CREDITLAB_AUTOCOLLECT_WEB_LOG_CHANNEL')) {
+        $channel = preg_replace('/[^a-z0-9_]/', '', strtolower((string) CREDITLAB_AUTOCOLLECT_WEB_LOG_CHANNEL));
+    }
+    $suffix = $channel !== '' ? '_' . $channel : '';
+
+    return creditlab_autocollect_log_dir() . '/autocollect_api_web' . $suffix . '.log';
+}
+
+function creditlab_autocollect_mask_secret($value, $visible = 4)
+{
+    $value = (string) $value;
+    if ($value === '') {
+        return '—';
+    }
+    if (strlen($value) <= $visible) {
+        return str_repeat('*', strlen($value));
+    }
+
+    return substr($value, 0, $visible) . '…';
 }
 
 function creditlab_autocollect_web_log($title, array $payload = [])
@@ -662,13 +681,39 @@ function creditlab_autocollect_initiate_enach_debit(array $params)
 }
 
 /**
+ * Initiate eNACH presentment (Autocollect) for loan auto-debit.
+ * transaction_id = easebuzz_adtd.customer_authentication_id (new + migrated mandates).
+ *
+ * @return array{ok:bool, data?:array, error?:string, merchant_request_number?:string}
+ */
+function creditlab_autocollect_initiate_loan_debit($transaction_id, $amount, $merchant_request_number, array $extra = [])
+{
+    $result = creditlab_autocollect_initiate_enach_debit([
+        'transaction_id' => trim((string) $transaction_id),
+        'amount' => $amount,
+        'merchant_request_number' => $merchant_request_number,
+        'presentment_date' => $extra['presentment_date'] ?? '',
+        'udf1' => $extra['udf1'] ?? 'CREDITLAB_ZZENACH',
+    ]);
+
+    creditlab_autocollect_log('LOAN ENACH PRESENTMENT', [
+        'transaction_id' => $transaction_id,
+        'amount' => $amount,
+        'merchant_request_number' => $result['merchant_request_number'] ?? $merchant_request_number,
+        'http_code' => $result['http_code'] ?? null,
+        'ok' => $result['ok'] ?? false,
+    ]);
+
+    return $result;
+}
+
+/**
  * Whether the Autocollect playground page may be used.
  *
  * Sandbox (EASEBUZZ_ENV=test): always allowed.
  * Production: set EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 in .env (server-side gate only).
  *
- * This helper is only loaded by payment/autocollect_playground.php — never wire it
- * into user/easebuzz.php, zzenach, or easebuzz_webhook (legacy flow stays separate).
+ * Playground gate only — customer flow uses user/easebuzz.php + zzenach.php directly.
  */
 function creditlab_autocollect_playground_allowed()
 {
@@ -676,4 +721,294 @@ function creditlab_autocollect_playground_allowed()
         return true;
     }
     return (string) EASEBUZZ_AUTOCOLLECT_PLAYGROUND === '1';
+}
+
+/**
+ * Live Autocollect playground (prod API + .env merchant key/salt).
+ * Requires EASEBUZZ_AUTOCOLLECT_PLAYGROUND=1 and EASEBUZZ_ENV=prod (not sandbox/UAT forced).
+ */
+function creditlab_autocollect_playground_prod_allowed()
+{
+    if (creditlab_autocollect_is_uat()) {
+        return false;
+    }
+    if (creditlab_autocollect_is_sandbox()) {
+        return false;
+    }
+
+    return creditlab_autocollect_playground_allowed();
+}
+
+/**
+ * Map legacy user form auth_mode to Autocollect values.
+ */
+function creditlab_autocollect_map_auth_mode($auth_mode)
+{
+    $normalized = strtolower(preg_replace('/[^a-z]/', '', (string) $auth_mode));
+    if ($normalized === 'debitcard') {
+        return 'debit_card';
+    }
+    if ($normalized === 'aadhaar') {
+        return 'aadhaar';
+    }
+
+    return 'netbanking';
+}
+
+/**
+ * Customer e-NACH signup via Autocollect (generate access key + SEAMLESS mandate).
+ * Stores transaction_id in easebuzz_adtd.customer_authentication_id for retrieve/presentment.
+ *
+ * @return array{ok:bool, html?:string, error?:string, transaction_id?:string, log_file?:string}
+ */
+function creditlab_autocollect_start_user_enach($user_id, array $post, array $context = [])
+{
+    global $db;
+
+    require_once __DIR__ . '/easebuzz_enach.php';
+
+    $log_context = [
+        'uid' => (int) $user_id,
+        'rcid' => isset($context['rcid']) ? (string) $context['rcid'] : '',
+        'mobile' => isset($context['mobile']) ? (string) $context['mobile'] : '',
+        'env' => creditlab_autocollect_env_label(),
+        'flow' => 'user_enach',
+    ];
+
+    creditlab_autocollect_log('USER ENACH START', array_merge($log_context, ['post' => $post]));
+
+    $required_fields = ['firstname', 'phone', 'email', 'account_no', 'account_type', 'ifsc', 'bank_code'];
+    foreach ($required_fields as $field) {
+        if (!isset($post[$field]) || trim((string) $post[$field]) === '') {
+            $error = 'Missing required field: ' . $field;
+            creditlab_autocollect_log('USER ENACH VALIDATION FAILED', array_merge($log_context, ['error' => $error]));
+
+            return ['ok' => false, 'error' => $error, 'log_file' => creditlab_autocollect_log_path()];
+        }
+    }
+
+    $firstname = creditlab_easebuzz_clean_field($post['firstname']);
+    $phone = preg_replace('/\D+/', '', creditlab_easebuzz_clean_field($post['phone']));
+    if (strlen($phone) > 10) {
+        $phone = substr($phone, -10);
+    }
+    $email = creditlab_easebuzz_clean_field($post['email']);
+    $bank_code = creditlab_easebuzz_clean_field($post['bank_code']);
+    $account_no = preg_replace('/\D+/', '', creditlab_easebuzz_clean_field($post['account_no']));
+    $auth_mode = creditlab_autocollect_map_auth_mode($post['auth_mode'] ?? 'netbanking');
+    $account_type = creditlab_easebuzz_clean_field($post['account_type']);
+    $ifsc = strtoupper(trim(creditlab_easebuzz_clean_field($post['ifsc'])));
+    $account_name = creditlab_easebuzz_clean_field($post['account_name'] ?? $firstname);
+
+    if (strlen($phone) !== 10) {
+        return ['ok' => false, 'error' => 'Invalid mobile number on profile. Please contact support.', 'log_file' => creditlab_autocollect_log_path()];
+    }
+    if ($account_no === '') {
+        return ['ok' => false, 'error' => 'Invalid bank account number. Please contact support.', 'log_file' => creditlab_autocollect_log_path()];
+    }
+    if (!creditlab_is_valid_ifsc($ifsc)) {
+        return ['ok' => false, 'error' => 'Invalid IFSC code. Please ask support to update your bank IFSC.', 'log_file' => creditlab_autocollect_log_path()];
+    }
+
+    $bank_code = creditlab_autocollect_resolve_bank_code($ifsc, $bank_code);
+    if ($bank_code === '') {
+        return ['ok' => false, 'error' => 'Unable to resolve Easebuzz bank code for this IFSC.', 'log_file' => creditlab_autocollect_log_path()];
+    }
+
+    if (!creditlab_autocollect_credentials_ok()) {
+        return ['ok' => false, 'error' => 'Easebuzz credentials are not configured on the server.', 'log_file' => creditlab_autocollect_log_path()];
+    }
+
+    $salary = isset($context['salary']) ? (float) $context['salary'] : 0;
+    $loan_limit = isset($context['loan_limit']) ? (float) $context['loan_limit'] : 0;
+    $max_amount = creditlab_easebuzz_max_debit_amount($salary, $loan_limit);
+
+    // Autocollect transaction_id — also stored as customer_authentication_id for presentment/retrieve.
+    $transaction_id = str_replace('.', '', uniqid('cai', true));
+    $log_context['transaction_id'] = $transaction_id;
+
+    $callback_base = creditlab_get_base_url();
+    $txn_q = rawurlencode($transaction_id);
+    $success_url = $callback_base . '/user/autocollect_callback.php?cb=success&transaction_id=' . $txn_q;
+    $failure_url = $callback_base . '/user/autocollect_callback.php?cb=failure&transaction_id=' . $txn_q;
+
+    $result = creditlab_autocollect_generate_access_key([
+        'transaction_id' => $transaction_id,
+        'amount' => $max_amount,
+        'email' => $email,
+        'phone' => $phone,
+        'start_date' => date('Y-m-d'),
+        'end_date' => date('Y-m-d', strtotime('+3 years')),
+        'success_url' => $success_url,
+        'failure_url' => $failure_url,
+        'request_type' => 'SEAMLESS',
+        'udf1' => 'CREDITLAB_USER',
+        'udf5' => (string) $max_amount,
+    ]);
+
+    creditlab_autocollect_log('USER ENACH generate access key', array_merge($log_context, [
+        'http_code' => $result['http_code'] ?? null,
+        'ok' => $result['ok'] ?? false,
+        'error' => $result['error'] ?? null,
+    ]));
+
+    if (empty($result['access_key'])) {
+        $err = $result['error'] ?? 'Easebuzz rejected the e-NACH request.';
+        if (is_array($result['data']) && !empty($result['data']['message'])) {
+            $err = (string) $result['data']['message'];
+        }
+
+        return [
+            'ok' => false,
+            'error' => is_string($err) ? $err : 'Easebuzz rejected the e-NACH request.',
+            'transaction_id' => $transaction_id,
+            'log_file' => creditlab_autocollect_log_path(),
+        ];
+    }
+
+    $access_key = $result['access_key'];
+    $account_type_db = creditlab_resolve_easebuzz_account_type($account_type);
+
+    $firstname_sql = mysqli_real_escape_string($db, $firstname);
+    $phone_sql = mysqli_real_escape_string($db, $phone);
+    $email_sql = mysqli_real_escape_string($db, $email);
+    $access_key_sql = mysqli_real_escape_string($db, $access_key);
+    $ifsc_sql = mysqli_real_escape_string($db, $ifsc);
+    $account_type_sql = mysqli_real_escape_string($db, $account_type_db);
+    $account_no_sql = mysqli_real_escape_string($db, $account_no);
+    $auth_mode_sql = mysqli_real_escape_string($db, $auth_mode);
+    $bank_code_sql = mysqli_real_escape_string($db, $bank_code);
+    $transaction_id_sql = mysqli_real_escape_string($db, $transaction_id);
+    $udf5_sql = mysqli_real_escape_string($db, $max_amount . '.0');
+    $final_collection_date = date('d/m/Y', strtotime('+3 years'));
+
+    towquery("DELETE FROM `easebuzz_adtd` WHERE `uid` = " . (int) $user_id);
+    $insert_query = "INSERT INTO `easebuzz_adtd` (`uid`, `txnid`, `firstname`, `phone`, `email`, `udf5`, `request_flow`, `customer_authentication_id`, `final_collection_date`, `hash`, `access_key`, `payment_mode`, `ifsc`, `account_type`, `account_no`, `auth_mode`, `bank_code`)
+        VALUES (" . (int) $user_id . ", '$transaction_id_sql', '$firstname_sql', '$phone_sql', '$email_sql', '$udf5_sql', 'AUTOCOLLECT_SEAMLESS', '$transaction_id_sql', '$final_collection_date', '', '$access_key_sql', 'EN', '$ifsc_sql', '$account_type_sql', '$account_no_sql', '$auth_mode_sql', '$bank_code_sql')";
+
+    if (!towquery($insert_query)) {
+        creditlab_autocollect_log('USER ENACH DB INSERT FAILED', array_merge($log_context, ['sql_error' => mysqli_error($db)]));
+
+        return ['ok' => false, 'error' => 'Could not save e-NACH request. Please try again.', 'transaction_id' => $transaction_id, 'log_file' => creditlab_autocollect_log_path()];
+    }
+
+    $seamless_fields = [
+        'account_holder_name' => $account_name !== '' ? $account_name : $firstname,
+        'account_number' => $account_no,
+        'account_type' => $account_type_db,
+        'ifsc' => $ifsc,
+        'bank_code' => $bank_code,
+        'auth_mode' => $auth_mode,
+    ];
+
+    creditlab_autocollect_log('USER ENACH seamless mandate redirect', array_merge($log_context, [
+        'access_key' => $access_key,
+        'bank_code' => $bank_code,
+        'auth_mode' => $auth_mode,
+    ]));
+
+    return [
+        'ok' => true,
+        'html' => creditlab_autocollect_build_seamless_mandate_form($access_key, $seamless_fields),
+        'transaction_id' => $transaction_id,
+        'log_file' => creditlab_autocollect_log_path(),
+    ];
+}
+
+/**
+ * Apply Autocollect mandate retrieve result to easebuzz_adtd + user.easebuzz.
+ *
+ * @return array{ok:bool, status:string, message:string, uid?:int}
+ */
+function creditlab_autocollect_finalize_user_mandate($transaction_id)
+{
+    global $db;
+
+    $transaction_id = trim((string) $transaction_id);
+    if ($transaction_id === '') {
+        return ['ok' => false, 'status' => 'error', 'message' => 'Missing transaction reference.'];
+    }
+
+    $txn_sql = mysqli_real_escape_string($db, $transaction_id);
+    $row_q = towquery("SELECT uid FROM easebuzz_adtd WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql' LIMIT 1");
+    if (!$row_q || townum($row_q) === 0) {
+        return ['ok' => false, 'status' => 'error', 'message' => 'e-NACH registration record not found.'];
+    }
+    $row = towfetch($row_q);
+    $uid = (int) $row['uid'];
+
+    $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
+    creditlab_autocollect_log('USER ENACH callback retrieve', [
+        'transaction_id' => $transaction_id,
+        'uid' => $uid,
+        'http_code' => $retrieve['http_code'] ?? null,
+    ]);
+
+    $data = is_array($retrieve['data']['data'] ?? null) ? $retrieve['data']['data'] : [];
+    $status = strtolower((string) ($data['status'] ?? ''));
+    $sub_status = strtolower((string) ($data['sub_status'] ?? ''));
+    $meta = is_array($data['response_meta'] ?? null) ? $data['response_meta'] : [];
+    $meta_desc = (string) ($meta['description'] ?? '');
+    $umrn = (string) ($data['umrn'] ?? '');
+    $bank_ref = (string) ($data['bank_reference_number'] ?? '');
+
+    $authorization_status = 'pending';
+    $db_status = 'pending';
+    $user_easebuzz = 0;
+    $message = 'e-NACH registration is being processed. Please check again in a few minutes.';
+
+    if ($status === 'authorized' || $sub_status === 'authorized') {
+        $authorization_status = 'authorized';
+        $db_status = 'success';
+        $user_easebuzz = 1;
+        $message = 'e-NACH registration completed successfully.';
+    } elseif ($status === 'failed' || $sub_status === 'failed') {
+        $authorization_status = 'rejected';
+        $db_status = 'failure';
+        $user_easebuzz = 2;
+        $message = $meta_desc !== '' ? $meta_desc : 'e-NACH registration failed. Please try again.';
+    } elseif ($status === 'in_process') {
+        $authorization_status = 'pending';
+        $db_status = 'pending';
+        $user_easebuzz = 0;
+        $message = 'e-NACH registration submitted. NPCI confirmation may take a few minutes — refresh your dashboard shortly.';
+    } elseif (!$retrieve['ok']) {
+        return ['ok' => false, 'status' => 'error', 'message' => 'Could not verify mandate status. Please try again.', 'uid' => $uid];
+    }
+
+    $auth_sql = mysqli_real_escape_string($db, $authorization_status);
+    $status_sql = mysqli_real_escape_string($db, $db_status);
+    $err_sql = mysqli_real_escape_string($db, $meta_desc);
+    $umrn_sql = mysqli_real_escape_string($db, $umrn);
+    $bank_ref_sql = mysqli_real_escape_string($db, $bank_ref);
+
+    $update = "UPDATE easebuzz_adtd SET
+        authorization_status='$auth_sql',
+        status='$status_sql',
+        error_message='$err_sql',
+        bank_ref_num='$bank_ref_sql',
+        auto_debit_access_key='$txn_sql'
+        WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql'";
+
+    if ($umrn !== '') {
+        $update = "UPDATE easebuzz_adtd SET
+            authorization_status='$auth_sql',
+            status='$status_sql',
+            error_message='$err_sql',
+            bank_ref_num='$bank_ref_sql',
+            auto_debit_access_key='$txn_sql',
+            easepayid='$umrn_sql'
+            WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql'";
+    }
+
+    towquery($update);
+    towquery("UPDATE user SET easebuzz=$user_easebuzz WHERE id=$uid");
+
+    return [
+        'ok' => true,
+        'status' => $status !== '' ? $status : $authorization_status,
+        'message' => $message,
+        'uid' => $uid,
+        'user_easebuzz' => $user_easebuzz,
+    ];
 }

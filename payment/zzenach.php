@@ -215,110 +215,40 @@ function calculateAmountBreakdown($loan, $loan_apply) {
 }
 
 /**
- * Initiates a direct debit payment request with the Easebuzz API.
+ * Initiates eNACH presentment via Autocollect (replaces legacy initiateDirectDebitRequest).
  *
- * @param array $postData An associative array containing the payment details.
- * Expected keys: 'amount', 'productinfo', 'firstname', 'email', 'phone',
- * 'customer_authentication_id', 'merchant_debit_id', 'auto_debit_access_key'.
- * Optional keys: 'udf1' through 'udf10', 'sub_merchant_id'.
- * @return string The JSON response from the Easebuzz API or an error string.
+ * @return string JSON for zzenach ({status:1|0, error_desc, ...})
  */
 function initiateEasebuzzDirectDebit(array $postParams): string
 {
-    // --- Credentials ---
-    // IMPORTANT: Store these securely. Do not hardcode them in a production environment.
-    // Consider using environment variables (.env file) or a secure configuration management system.
-    require_once __DIR__ . '/../config/easebuzz.php';
-    $key = EASEBUZZ_MERCHANT_KEY;
-    $salt = EASEBUZZ_SALT;
+    require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
 
-    // --- Static & Required Data ---
-    $txnid = uniqid("txn_"); // Generate a unique transaction ID for each request
-    $base_url = getAppUrl();
-    $surl = $base_url . "/payment/cb_auto.php"; // Your success URL
-    $furl = $base_url . "/payment/cb_auto.php"; // Your failure URL
+    $transaction_id = trim((string) ($postParams['customer_authentication_id'] ?? ''));
+    $amount = (string) ($postParams['amount'] ?? '0');
+    $merchant_request_number = trim((string) ($postParams['merchant_debit_id'] ?? ''));
 
-    // --- Map and Sanitize Input Parameters ---
-    // This ensures that only expected keys are used and provides default empty values.
-    $requiredKeys = [
-        "amount" => "",
-        "productinfo" => "",
-        "firstname" => "",
-        "email" => "",
-        "phone" => "",
-        "customer_authentication_id" => "",
-        "merchant_debit_id" => "",
-        "auto_debit_access_key" => "",
-        "sub_merchant_id" => ""
-    ];
-
-    // Add User Defined Fields (udf) to the mapping
-    for ($i = 1; $i <= 10; $i++) {
-        $requiredKeys["udf{$i}"] = "";
+    if ($transaction_id === '') {
+        return json_encode(['status' => 0, 'error_desc' => 'Missing customer_authentication_id (Autocollect transaction_id).']);
     }
 
-    // Merge the user-provided data with our safe key structure.
-    // This ensures all keys for the hash string exist.
-    $data = array_merge($requiredKeys, $postParams);
-
-
-    // --- Generate Hash ---
-    // The order of fields is critical for the hash to be valid.
-    $hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
-                   $data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
-                   $data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
-
-    $hash = hash("sha512", $hash_string);
-
-
-    // --- Prepare Data for POST Request ---
-    // This array will be sent as the body of the cURL request.
-    $postData = [
-        "key" => $key,
-        "txnid" => $txnid,
-        "hash" => $hash,
-        "amount" => $data['amount'],
-        "productinfo" => $data['productinfo'],
-        "firstname" => $data['firstname'],
-        "email" => $data['email'],
-        "phone" => $data['phone'],
-        "surl" => $surl,
-        "furl" => $furl,
-        "customer_authentication_id" => $data['customer_authentication_id'],
-        "merchant_debit_id" => $data['merchant_debit_id'],
-        "auto_debit_access_key" => $data['auto_debit_access_key'],
-        "sub_merchant_id" => $data['sub_merchant_id']
-    ];
-    
-    // Add all udf fields to the post data
-    for ($i = 1; $i <= 10; $i++) {
-        $postData["udf{$i}"] = $data["udf{$i}"];
-    }
-
-
-    // --- Initialize and Execute cURL ---
-    $ch = curl_init("https://pay.easebuzz.in/payment/initiateDirectDebitRequest/");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Accept: application/json", // Request JSON response
-        "Content-Type: application/x-www-form-urlencoded"
+    $result = creditlab_autocollect_initiate_loan_debit($transaction_id, $amount, $merchant_request_number, [
+        'udf1' => $postParams['udf1'] ?? 'CREDITLAB_ZZENACH',
     ]);
 
-    $response = curl_exec($ch);
-    
-    if (curl_errno($ch)) {
-        // If cURL itself fails, return a cURL error message.
-        $error_msg = "cURL error: " . curl_error($ch);
-        curl_close($ch);
-        return json_encode(['status' => 0, 'error' => $error_msg]);
+    $api_ok = !empty($result['ok']);
+    $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+    if (!$api_ok && is_array($data) && !empty($data['message'])) {
+        $error = (string) $data['message'];
+    } else {
+        $error = $result['error'] ?? 'Autocollect presentment failed.';
     }
-    
-    curl_close($ch);
 
-    // Return the response from the API.
-    return $response;
+    return json_encode([
+        'status' => $api_ok ? 1 : 0,
+        'error_desc' => $api_ok ? '' : $error,
+        'data' => $data,
+        'merchant_request_number' => $result['merchant_request_number'] ?? $merchant_request_number,
+    ]);
 }
 
 
@@ -362,7 +292,7 @@ $breakdown = calculateAmountBreakdown($userdataff, $loan_fetch);
 writeZzenachLog("Loan CLL$lid: Dynamic calculation completed - Amount: ₹$totalamount", $log_file);
 writeZzenachLog("Loan CLL$lid: Breakdown - Processed: ₹" . number_format($breakdown['processed_amount'], 2) . " | Processing Fee: ₹" . number_format($breakdown['p_fee'], 2) . " | Service Charge: ₹" . number_format($breakdown['service_charge'], 2) . " | Penalty: ₹" . number_format($breakdown['penalty_charge'], 2), $log_file);
 
-// Get ALL E-Nach details for this user (multiple customer_authentication_id)
+// Autocollect mandates: authorized (new) or legacy accepted
 $easebuzz_adtd = towquery("SELECT * FROM `easebuzz_adtd` WHERE uid='{$userdataff['uid']}' AND LOWER(authorization_status) IN ('authorized', 'accepted')");
 $enach_count = townum($easebuzz_adtd);
 

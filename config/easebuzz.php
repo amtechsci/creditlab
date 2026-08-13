@@ -11,6 +11,7 @@ if (!defined('EASEBUZZ_ENV')) {
     define('EASEBUZZ_ENV', env('EASEBUZZ_ENV', 'prod'));
 }
 if (!defined('EASEBUZZ_AUTOCOLLECT_PLAYGROUND')) {
-    // Production: set to 1 in .env to enable payment/autocollect_playground.php (legacy eNACH unchanged)
+    // Production: set to 1 in .env to enable payment/autocollect_playground_prod.php (live API).
+    // UAT sandbox: payment/autocollect_playground.php (hardcoded UAT keys).
     define('EASEBUZZ_AUTOCOLLECT_PLAYGROUND', env('EASEBUZZ_AUTOCOLLECT_PLAYGROUND', '0'));
 }
