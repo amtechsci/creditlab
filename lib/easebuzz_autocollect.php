@@ -821,7 +821,11 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
 
     $salary = isset($context['salary']) ? (float) $context['salary'] : 0;
     $loan_limit = isset($context['loan_limit']) ? (float) $context['loan_limit'] : 0;
-    $max_amount = creditlab_easebuzz_max_debit_amount($salary, $loan_limit);
+    $max_amount = creditlab_easebuzz_max_debit_amount(
+        $salary,
+        $loan_limit,
+        isset($context['mobile']) ? (string) $context['mobile'] : ($phone ?? '')
+    );
 
     // Autocollect transaction_id — also stored as customer_authentication_id for presentment/retrieve.
     $transaction_id = str_replace('.', '', uniqid('cai', true));

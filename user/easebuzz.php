@@ -8,8 +8,14 @@ require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
 
 $udf5 = creditlab_easebuzz_max_debit_amount(
     isset($user_salary) ? (float)$user_salary : 0,
+    isset($user_loan_limit) ? (float)$user_loan_limit : 0,
+    isset($user_mobile) ? (string)$user_mobile : ''
+);
+$udf5_default = creditlab_easebuzz_max_debit_amount(
+    isset($user_salary) ? (float)$user_salary : 0,
     isset($user_loan_limit) ? (float)$user_loan_limit : 0
 );
+$enach_test_cap = ($udf5 !== $udf5_default);
 
 $ub = towquery("SELECT * FROM `user_bank` WHERE uid=$user_id AND verify=1 ORDER BY id DESC");
 if (townum($ub) > 0) {
@@ -83,7 +89,7 @@ if (townum($ub) > 0) {
                     </tr>
                     <tr>
                         <td>Max Debit Amount</td>
-                        <td>₹<?=number_format($udf5)?></td>
+                        <td>₹<?=number_format($udf5)?><?php if ($enach_test_cap): ?> <span style="color:#666;font-size:12px;">(test cap)</span><?php endif; ?></td>
                     </tr>
                 </table>
                 <?php if ($bank_setup_error !== ''): ?>

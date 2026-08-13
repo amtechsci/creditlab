@@ -23,10 +23,41 @@ function creditlab_easebuzz_enach_log($title, array $payload = []) {
     return basename($log_file);
 }
 
-function creditlab_easebuzz_max_debit_amount($salary, $loan_limit) {
-    $amount = round((float)$salary * 0.6);
-    if ((float)$loan_limit > $amount) {
-        $amount = (int)round((float)$loan_limit);
+function creditlab_easebuzz_normalize_phone($phone) {
+    $phone = preg_replace('/\D+/', '', (string) $phone);
+    if (strlen($phone) > 10) {
+        $phone = substr($phone, -10);
+    }
+    return $phone;
+}
+
+/**
+ * Max e-NACH mandate amount (Autocollect access-key `amount`, amount_rule MAX).
+ *
+ * Default: max(60% of salary, loan_limit), floor ₹10,000.
+ * Prod test override: set EASEBUZZ_ENACH_TEST_MOBILES + EASEBUZZ_ENACH_TEST_MAX_AMOUNT in .env.
+ */
+function creditlab_easebuzz_max_debit_amount($salary, $loan_limit, $phone = '') {
+    require_once __DIR__ . '/env.php';
+
+    $phone = creditlab_easebuzz_normalize_phone($phone);
+    $test_max = trim(env('EASEBUZZ_ENACH_TEST_MAX_AMOUNT', ''));
+    $test_phones_raw = trim(env('EASEBUZZ_ENACH_TEST_MOBILES', ''));
+
+    if ($phone !== '' && $test_max !== '' && $test_phones_raw !== '') {
+        $test_phones = array_filter(array_map(function ($entry) {
+            $normalized = creditlab_easebuzz_normalize_phone($entry);
+            return $normalized !== '' ? $normalized : null;
+        }, explode(',', $test_phones_raw)));
+
+        if (in_array($phone, $test_phones, true)) {
+            return max(1, (int) round((float) $test_max));
+        }
+    }
+
+    $amount = round((float) $salary * 0.6);
+    if ((float) $loan_limit > $amount) {
+        $amount = (int) round((float) $loan_limit);
     }
     if ($amount < 10000) {
         $amount = 10000;
