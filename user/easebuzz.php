@@ -85,7 +85,7 @@ if (townum($ub) > 0) {
                     </tr>
                     <tr>
                         <td>Easebuzz Bank Code</td>
-                        <td><?=htmlspecialchars($bankcodebc, ENT_QUOTES)?> <span style="color:#666;font-size:12px;">(Autocollect 4-letter NPCI code)</span></td>
+                        <td><?=htmlspecialchars($bankcodebc, ENT_QUOTES)?> <span style="color:#666;font-size:12px;">(from IFSC <?=htmlspecialchars(substr($ifsc_code, 0, 4), ENT_QUOTES)?>)</span></td>
                     </tr>
                     <tr>
                         <td>Max Debit Amount</td>

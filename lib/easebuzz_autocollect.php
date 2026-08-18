@@ -498,7 +498,7 @@ function creditlab_autocollect_mandate_redirect_url($access_key)
 
 /**
  * Autocollect ENACH bank_code — exactly 4 uppercase letters (IFSC prefix).
- * Legacy PG eNACH uses 5-char codes (e.g. HDFCB); Autocollect rejects those (ADVA00001).
+ * Legacy PG eNACH uses 5-char codes (e.g. HDFCB, SBOI); Autocollect/NPCI expects IFSC prefix (e.g. SBIN).
  */
 function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
 {
@@ -508,6 +508,11 @@ function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
     // Easebuzz sandbox test IFSC (EBZS…) — NPCI bank_code is HDFC (matches DEFAULT checkout mapping).
     if (creditlab_autocollect_is_sandbox() && $prefix === 'EBZS') {
         return 'HDFC';
+    }
+
+    // Valid IFSC → always use first 4 chars (SBIN0020488 → SBIN, not legacy PG code SBOI).
+    if (preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', $ifsc)) {
+        return $prefix;
     }
 
     $bank_code = strtoupper(trim((string) $bank_code));
@@ -520,6 +525,7 @@ function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
     if (preg_match('/^[A-Z]{4}$/', $prefix)) {
         return $prefix;
     }
+
     return '';
 }
 
