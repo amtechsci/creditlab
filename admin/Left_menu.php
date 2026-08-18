@@ -113,6 +113,9 @@ $counts_data = towfetch($counts);
                         <a href="log_viewer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/log_viewer.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Log Viewer</span></a>
                     </li>
                     <li>
+                        <a href="enach_logs.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/enach_logs.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-university"></i> <span class="mini-click-non">e-NACH Logs</span></a>
+                    </li>
+                    <li>
                         <a href="pdf_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/pdf_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-pdf-o"></i> <span class="mini-click-non">PDF Settings</span></a>
                     </li>
                     <li>

@@ -276,7 +276,7 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
             $error = (string) $data['message'];
         }
 
-        return [
+        $autocollect_result = [
             'ok' => !empty($result['ok']),
             'api' => 'autocollect',
             'error_desc' => !empty($result['ok']) ? '' : ($error !== '' ? $error : 'Autocollect presentment failed.'),
@@ -284,6 +284,20 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
             'merchant_request_number' => $result['merchant_request_number'] ?? $merchant_ref,
             'transaction_id' => $transaction_id,
         ];
+
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) ($easebuzz_row['uid'] ?? 0),
+            'mobile' => (string) ($payment_details['phone'] ?? ''),
+            'transaction_id' => $transaction_id,
+            'stage' => 'presentment',
+            'outcome' => !empty($autocollect_result['ok']) ? 'success' : 'failure',
+            'api' => 'autocollect',
+            'amount' => $amount,
+            'message' => !empty($autocollect_result['ok']) ? 'Autocollect presentment initiated.' : ($autocollect_result['error_desc'] ?: 'Autocollect presentment failed.'),
+            'meta' => ['merchant_request_number' => $autocollect_result['merchant_request_number'] ?? $merchant_ref],
+        ]);
+
+        return $autocollect_result;
     }
 
     $legacy = creditlab_easebuzz_legacy_initiate_direct_debit([
@@ -299,7 +313,7 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
         'udf1' => $payment_details['udf1'] ?? 'CREDITLAB_ENACH',
     ]);
 
-    return [
+    $legacy_result = [
         'ok' => !empty($legacy['ok']),
         'api' => 'legacy_pg',
         'error_desc' => $legacy['error_desc'] ?? '',
@@ -307,4 +321,20 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
         'merchant_debit_id' => $legacy['merchant_debit_id'] ?? $merchant_ref,
         'transaction_id' => $customer_auth_id,
     ];
+
+    creditlab_easebuzz_log_user_event([
+        'uid' => (int) ($easebuzz_row['uid'] ?? 0),
+        'mobile' => (string) ($payment_details['phone'] ?? ''),
+        'transaction_id' => $customer_auth_id,
+        'stage' => 'presentment',
+        'outcome' => !empty($legacy_result['ok']) ? 'success' : 'failure',
+        'api' => 'legacy_pg',
+        'amount' => $amount,
+        'message' => !empty($legacy_result['ok']) ? 'Legacy PG presentment initiated.' : ($legacy_result['error_desc'] ?: 'Legacy PG presentment failed.'),
+        'meta' => ['merchant_debit_id' => $legacy_result['merchant_debit_id'] ?? $merchant_ref],
+    ]);
+
+    return $legacy_result;
 }
+
+require_once __DIR__ . '/easebuzz_enach_user_log.php';

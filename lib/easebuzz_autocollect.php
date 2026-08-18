@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../config/easebuzz.php';
 require_once __DIR__ . '/app_url.php';
+require_once __DIR__ . '/easebuzz_enach_user_log.php';
 
 /** UAT credentials — used only when CREDITLAB_AUTOCOLLECT_FORCE_UAT is set (playground/log pages). */
 define('CREDITLAB_AUTOCOLLECT_UAT_MERCHANT_KEY', '53LFWVJQH');
@@ -903,6 +904,14 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
         if (!isset($post[$field]) || trim((string) $post[$field]) === '') {
             $error = 'Missing required field: ' . $field;
             creditlab_autocollect_log('USER ENACH VALIDATION FAILED', array_merge($log_context, ['error' => $error]));
+            creditlab_easebuzz_log_user_event([
+                'uid' => (int) $user_id,
+                'mobile' => (string) ($log_context['mobile'] ?? ''),
+                'stage' => 'mandate_start',
+                'outcome' => 'failure',
+                'api' => 'autocollect',
+                'message' => $error,
+            ]);
 
             return ['ok' => false, 'error' => $error, 'log_file' => creditlab_autocollect_log_path()];
         }
@@ -922,21 +931,41 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
     $account_name = creditlab_easebuzz_clean_field($post['account_name'] ?? $firstname);
 
     if (strlen($phone) !== 10) {
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id, 'mobile' => $phone, 'stage' => 'mandate_start', 'outcome' => 'failure',
+            'api' => 'autocollect', 'message' => 'Invalid mobile number on profile.',
+        ]);
         return ['ok' => false, 'error' => 'Invalid mobile number on profile. Please contact support.', 'log_file' => creditlab_autocollect_log_path()];
     }
     if ($account_no === '') {
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id, 'mobile' => $phone, 'stage' => 'mandate_start', 'outcome' => 'failure',
+            'api' => 'autocollect', 'message' => 'Invalid bank account number.',
+        ]);
         return ['ok' => false, 'error' => 'Invalid bank account number. Please contact support.', 'log_file' => creditlab_autocollect_log_path()];
     }
     if (!creditlab_is_valid_ifsc($ifsc)) {
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id, 'mobile' => $phone, 'stage' => 'mandate_start', 'outcome' => 'failure',
+            'api' => 'autocollect', 'auth_mode' => $auth_mode, 'message' => 'Invalid IFSC code.',
+        ]);
         return ['ok' => false, 'error' => 'Invalid IFSC code. Please ask support to update your bank IFSC.', 'log_file' => creditlab_autocollect_log_path()];
     }
 
     $bank_code = creditlab_autocollect_resolve_bank_code($ifsc, $bank_code);
     if ($bank_code === '') {
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id, 'mobile' => $phone, 'stage' => 'mandate_start', 'outcome' => 'failure',
+            'api' => 'autocollect', 'auth_mode' => $auth_mode, 'message' => 'Unable to resolve Easebuzz bank code.',
+        ]);
         return ['ok' => false, 'error' => 'Unable to resolve Easebuzz bank code for this IFSC.', 'log_file' => creditlab_autocollect_log_path()];
     }
 
     if (!creditlab_autocollect_credentials_ok()) {
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id, 'mobile' => $phone, 'stage' => 'mandate_start', 'outcome' => 'failure',
+            'api' => 'autocollect', 'message' => 'Easebuzz credentials not configured.',
+        ]);
         return ['ok' => false, 'error' => 'Easebuzz credentials are not configured on the server.', 'log_file' => creditlab_autocollect_log_path()];
     }
 
@@ -982,10 +1011,23 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
         if (is_array($result['data']) && !empty($result['data']['message'])) {
             $err = (string) $result['data']['message'];
         }
+        $err_msg = is_string($err) ? $err : 'Easebuzz rejected the e-NACH request.';
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id,
+            'mobile' => $phone,
+            'transaction_id' => $transaction_id,
+            'stage' => 'mandate_start',
+            'outcome' => 'failure',
+            'api' => 'autocollect',
+            'auth_mode' => $auth_mode,
+            'amount' => $max_amount,
+            'message' => $err_msg,
+            'meta' => ['http_code' => $result['http_code'] ?? null],
+        ]);
 
         return [
             'ok' => false,
-            'error' => is_string($err) ? $err : 'Easebuzz rejected the e-NACH request.',
+            'error' => $err_msg,
             'transaction_id' => $transaction_id,
             'log_file' => creditlab_autocollect_log_path(),
         ];
@@ -1015,6 +1057,17 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
 
     if (!towquery($insert_query)) {
         creditlab_autocollect_log('USER ENACH DB INSERT FAILED', array_merge($log_context, ['sql_error' => mysqli_error($db)]));
+        creditlab_easebuzz_log_user_event([
+            'uid' => (int) $user_id,
+            'mobile' => $phone,
+            'transaction_id' => $transaction_id,
+            'stage' => 'mandate_start',
+            'outcome' => 'failure',
+            'api' => 'autocollect',
+            'auth_mode' => $auth_mode,
+            'amount' => $max_amount,
+            'message' => 'Could not save e-NACH request to database.',
+        ]);
 
         return ['ok' => false, 'error' => 'Could not save e-NACH request. Please try again.', 'transaction_id' => $transaction_id, 'log_file' => creditlab_autocollect_log_path()];
     }
@@ -1033,6 +1086,19 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
         'bank_code' => $bank_code,
         'auth_mode' => $auth_mode,
     ]));
+
+    creditlab_easebuzz_log_user_event([
+        'uid' => (int) $user_id,
+        'mobile' => $phone,
+        'transaction_id' => $transaction_id,
+        'stage' => 'mandate_start',
+        'outcome' => 'pending',
+        'api' => 'autocollect',
+        'auth_mode' => $auth_mode,
+        'amount' => $max_amount,
+        'message' => 'Redirected to Easebuzz for bank authentication.',
+        'meta' => ['bank_code' => $bank_code, 'ifsc' => $ifsc],
+    ]);
 
     return [
         'ok' => true,
@@ -1064,15 +1130,16 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
     }
 
     $txn_sql = mysqli_real_escape_string($db, $transaction_id);
-    $row_q = towquery("SELECT uid, auth_mode FROM easebuzz_adtd WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql' LIMIT 1");
+    $row_q = towquery("SELECT uid, auth_mode, phone FROM easebuzz_adtd WHERE customer_authentication_id='$txn_sql' OR txnid='$txn_sql' LIMIT 1");
     if (!$row_q || townum($row_q) === 0) {
         return ['ok' => false, 'status' => 'error', 'message' => 'e-NACH registration record not found.'];
     }
     $row = towfetch($row_q);
     $uid = (int) $row['uid'];
     $stored_auth_mode = (string) ($row['auth_mode'] ?? '');
-
+    $stored_phone = (string) ($row['phone'] ?? '');
     $skip_poll = !empty($options['skip_poll']);
+    $skip_user_log = !empty($options['skip_user_log']);
 
     if ($skip_poll) {
         $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
@@ -1202,6 +1269,26 @@ function creditlab_autocollect_finalize_user_mandate($transaction_id, array $opt
     towquery($update);
     towquery("UPDATE user SET easebuzz=$user_easebuzz WHERE id=$uid");
 
+    if (!$skip_user_log) {
+        creditlab_easebuzz_log_user_event([
+            'uid' => $uid,
+            'mobile' => $stored_phone,
+            'transaction_id' => $transaction_id,
+            'stage' => 'mandate_callback',
+            'outcome' => creditlab_easebuzz_outcome_from_user_easebuzz($user_easebuzz),
+            'api' => 'autocollect',
+            'auth_mode' => $stored_auth_mode,
+            'message' => $message,
+            'meta' => [
+                'cb' => $callback_type,
+                'status' => $status,
+                'sub_status' => $sub_status,
+                'umrn' => $umrn !== '' ? $umrn : null,
+                'meta_code' => $meta_code !== '' ? $meta_code : null,
+            ],
+        ]);
+    }
+
     return [
         'ok' => true,
         'status' => $status !== '' ? $status : $authorization_status,
@@ -1242,7 +1329,7 @@ function creditlab_autocollect_refresh_user_enach_status($uid)
         return ['ok' => false, 'synced' => false];
     }
 
-    $result = creditlab_autocollect_finalize_user_mandate($transaction_id, ['cb' => 'success', 'skip_poll' => true]);
+    $result = creditlab_autocollect_finalize_user_mandate($transaction_id, ['cb' => 'success', 'skip_poll' => true, 'skip_user_log' => true]);
 
     return array_merge($result, [
         'synced' => !empty($result['ok']) && (int) ($result['user_easebuzz'] ?? 0) === 1,
