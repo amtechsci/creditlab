@@ -472,9 +472,15 @@ function playground_option_selected($field, $option, array $post_data, array $sa
             </tr>
             <tr>
                 <td style="padding:8px;border:1px solid #dee2e6;"><strong>Legacy PG eNACH</strong><br>pre-Autocollect signups</td>
+                <td style="padding:8px;border:1px solid #dee2e6;"><code>customer_authentication_id</code> as Autocollect <code>transaction_id</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>D</strong> — GET <code>/v1/mandate/{customer_authentication_id}</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>C</strong> — Autocollect presentment (default in zzenach/cron)</td>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #dee2e6;"><strong>Legacy PG rollback</strong></td>
                 <td style="padding:8px;border:1px solid #dee2e6;"><code>customer_authentication_id</code> + <code>auto_debit_access_key</code></td>
-                <td style="padding:8px;border:1px solid #dee2e6;">Not on Autocollect — check <code>easebuzz_adtd.authorization_status</code></td>
-                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>E</strong> — legacy <code>initiateDirectDebitRequest</code></td>
+                <td style="padding:8px;border:1px solid #dee2e6;">N/A</td>
+                <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>E</strong> or <code>EASEBUZZ_LEGACY_PRESENTMENT_PG=1</code></td>
             </tr>
             <tr>
                 <td style="padding:8px;border:1px solid #dee2e6;"><strong>Migrated on Autocollect</strong></td>
@@ -483,7 +489,7 @@ function playground_option_selected($field, $option, array $post_data, array $sa
                 <td style="padding:8px;border:1px solid #dee2e6;">Section <strong>C</strong></td>
             </tr>
         </table>
-        <p class="hint"><code>payment/zzenach.php</code> auto-routes: <code>cai…</code> / <code>AUTOCOLLECT_*</code> → Autocollect; otherwise → legacy PG.</p>
+        <p class="hint"><code>payment/zzenach.php</code> and cron: Autocollect presentment with <code>customer_authentication_id</code> for authorized/accepted mandates (new <code>cai…</code> and migrated legacy). Legacy PG only if <code>EASEBUZZ_LEGACY_PRESENTMENT_PG=1</code>.</p>
         <ul class="smoke">
             <li><strong>New mandate</strong> (playground): leave blank in Section A for auto <code>CLAC_…</code>; customer flow uses <code>cai…</code>.</li>
             <li><strong>Retrieve / presentment (Autocollect)</strong>: same ID as at mandate creation.</li>

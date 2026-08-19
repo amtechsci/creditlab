@@ -129,14 +129,58 @@ function creditlab_easebuzz_is_autocollect_mandate_row(array $row)
     return (bool) preg_match('/^clac/i', $customer_auth_id);
 }
 
+function creditlab_easebuzz_mandate_authorization_ok(array $row)
+{
+    $auth = strtolower(trim((string) ($row['authorization_status'] ?? '')));
+
+    return in_array($auth, ['authorized', 'accepted'], true);
+}
+
+/**
+ * Autocollect presentment transaction_id — always customer_authentication_id when set (new cai… or migrated legacy).
+ */
+function creditlab_easebuzz_autocollect_transaction_id(array $row)
+{
+    $customer_auth_id = trim((string) ($row['customer_authentication_id'] ?? ''));
+    if ($customer_auth_id !== '') {
+        return $customer_auth_id;
+    }
+
+    return trim((string) ($row['txnid'] ?? ''));
+}
+
+/**
+ * When true, pre-Autocollect mandates use legacy PG initiateDirectDebitRequest (rollback only).
+ */
+function creditlab_easebuzz_legacy_presentment_pg_enabled()
+{
+    return env_bool('EASEBUZZ_LEGACY_PRESENTMENT_PG', false);
+}
+
 /**
  * Presentment API to use for an easebuzz_adtd row.
+ *
+ * Default: Autocollect POST /v1/mandate/presentment/ with customer_authentication_id as transaction_id
+ * (new cai… signups and Easebuzz-migrated legacy mandates). Legacy PG only if EASEBUZZ_LEGACY_PRESENTMENT_PG=1.
  *
  * @return 'autocollect'|'legacy_pg'
  */
 function creditlab_easebuzz_presentment_api_for_row(array $row)
 {
-    return creditlab_easebuzz_is_autocollect_mandate_row($row) ? 'autocollect' : 'legacy_pg';
+    if (creditlab_easebuzz_is_autocollect_mandate_row($row)) {
+        return 'autocollect';
+    }
+
+    if (creditlab_easebuzz_legacy_presentment_pg_enabled()) {
+        return 'legacy_pg';
+    }
+
+    if (creditlab_easebuzz_mandate_authorization_ok($row)
+        && creditlab_easebuzz_autocollect_transaction_id($row) !== '') {
+        return 'autocollect';
+    }
+
+    return 'legacy_pg';
 }
 
 /**
@@ -265,7 +309,7 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
     $merchant_ref = trim((string) ($payment_details['merchant_debit_id'] ?? $payment_details['merchant_request_number'] ?? ''));
 
     if ($api === 'autocollect') {
-        $transaction_id = $customer_auth_id !== '' ? $customer_auth_id : trim((string) ($easebuzz_row['txnid'] ?? ''));
+        $transaction_id = creditlab_easebuzz_autocollect_transaction_id($easebuzz_row);
         $result = creditlab_autocollect_initiate_loan_debit($transaction_id, $amount, $merchant_ref, [
             'udf1' => $payment_details['udf1'] ?? 'CREDITLAB_ENACH',
         ]);
