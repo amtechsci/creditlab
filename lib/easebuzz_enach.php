@@ -337,4 +337,31 @@ function creditlab_easebuzz_initiate_loan_debit(array $easebuzz_row, array $paym
     return $legacy_result;
 }
 
+/**
+ * Initiates eNACH presentment and returns JSON ({status:1|0, error_desc, api, ...}).
+ * Used by zzenach, auto_enach cron, and manual_enach batch.
+ */
+function creditlab_easebuzz_initiate_direct_debit_json(array $postParams, array $easebuzz_row = [])
+{
+    if (!$easebuzz_row) {
+        $easebuzz_row = [
+            'customer_authentication_id' => trim((string) ($postParams['customer_authentication_id'] ?? '')),
+            'auto_debit_access_key' => trim((string) ($postParams['auto_debit_access_key'] ?? '')),
+            'request_flow' => trim((string) ($postParams['request_flow'] ?? '')),
+            'txnid' => trim((string) ($postParams['txnid'] ?? '')),
+        ];
+    }
+
+    $result = creditlab_easebuzz_initiate_loan_debit($easebuzz_row, $postParams);
+
+    return json_encode([
+        'status' => !empty($result['ok']) ? 1 : 0,
+        'error_desc' => $result['error_desc'] ?? '',
+        'data' => $result['data'] ?? null,
+        'api' => $result['api'] ?? '',
+        'merchant_request_number' => $result['merchant_request_number'] ?? ($result['merchant_debit_id'] ?? ''),
+        'transaction_id' => $result['transaction_id'] ?? ($easebuzz_row['customer_authentication_id'] ?? ''),
+    ]);
+}
+
 require_once __DIR__ . '/easebuzz_enach_user_log.php';

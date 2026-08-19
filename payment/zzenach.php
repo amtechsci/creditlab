@@ -223,26 +223,7 @@ function calculateAmountBreakdown($loan, $loan_apply) {
 function initiateEasebuzzDirectDebit(array $postParams, array $easebuzz_row = []): string
 {
     require_once __DIR__ . '/../lib/easebuzz_enach.php';
-
-    if (!$easebuzz_row) {
-        $easebuzz_row = [
-            'customer_authentication_id' => trim((string) ($postParams['customer_authentication_id'] ?? '')),
-            'auto_debit_access_key' => trim((string) ($postParams['auto_debit_access_key'] ?? '')),
-            'request_flow' => trim((string) ($postParams['request_flow'] ?? '')),
-            'txnid' => trim((string) ($postParams['txnid'] ?? '')),
-        ];
-    }
-
-    $result = creditlab_easebuzz_initiate_loan_debit($easebuzz_row, $postParams);
-
-    return json_encode([
-        'status' => !empty($result['ok']) ? 1 : 0,
-        'error_desc' => $result['error_desc'] ?? '',
-        'data' => $result['data'] ?? null,
-        'api' => $result['api'] ?? '',
-        'merchant_request_number' => $result['merchant_request_number'] ?? ($result['merchant_debit_id'] ?? ''),
-        'transaction_id' => $result['transaction_id'] ?? ($easebuzz_row['customer_authentication_id'] ?? ''),
-    ]);
+    return creditlab_easebuzz_initiate_direct_debit_json($postParams, $easebuzz_row);
 }
 
 

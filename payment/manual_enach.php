@@ -270,53 +270,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
         ];
     }
 
-    // This function remains unchanged.
-    function initiateEasebuzzDirectDebit(array $postParams): string {
-        require_once __DIR__ . '/../config/easebuzz.php';
-        $key = EASEBUZZ_MERCHANT_KEY;
-        $salt = EASEBUZZ_SALT;
-        $txnid = uniqid("txn_");
-        $base_url = getAppUrl();
-        $surl = $base_url . "/payment/cb_auto.php";
-        $furl = $base_url . "/payment/cb_auto.php";
-
-        $requiredKeys = [
-            "amount" => "", "productinfo" => "", "firstname" => "", "email" => "", "phone" => "",
-            "customer_authentication_id" => "", "merchant_debit_id" => "", "auto_debit_access_key" => "",
-            "sub_merchant_id" => ""
-        ];
-        for ($i = 1; $i <= 10; $i++) { $requiredKeys["udf{$i}"] = ""; }
-        $data = array_merge($requiredKeys, $postParams);
-
-        $hash_string = $key . '|' . $txnid . '|' . $data['amount'] . '|' . $data['productinfo'] . '|' . $data['firstname'] . '|' . $data['email'] . '|' .
-                       $data['udf1'] . '|' . $data['udf2'] . '|' . $data['udf3'] . '|' . $data['udf4'] . '|' . $data['udf5'] . '|' .
-                       $data['udf6'] . '|' . $data['udf7'] . '|' . $data['udf8'] . '|' . $data['udf9'] . '|' . $data['udf10'] . '|' . $salt;
-        $hash = hash("sha512", $hash_string);
-
-        $postData = [
-            "key" => $key, "txnid" => $txnid, "hash" => $hash, "amount" => $data['amount'],
-            "productinfo" => $data['productinfo'], "firstname" => $data['firstname'], "email" => $data['email'],
-            "phone" => $data['phone'], "surl" => $surl, "furl" => $furl,
-            "customer_authentication_id" => $data['customer_authentication_id'],
-            "merchant_debit_id" => $data['merchant_debit_id'], "auto_debit_access_key" => $data['auto_debit_access_key'],
-            "sub_merchant_id" => $data['sub_merchant_id']
-        ];
-        for ($i = 1; $i <= 10; $i++) { $postData["udf{$i}"] = $data["udf{$i}"]; }
-
-        $ch = curl_init("https://pay.easebuzz.in/payment/initiateDirectDebitRequest/");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Accept: application/json", "Content-Type: application/x-www-form-urlencoded"]);
-        $response = curl_exec($ch);
-        
-        if (curl_errno($ch)) {
-            $error_msg = "cURL error: " . curl_error($ch);
-            curl_close($ch);
-            return json_encode(['status' => 0, 'error' => $error_msg]);
-        }
-        curl_close($ch);
-        return $response;
+    function initiateEasebuzzDirectDebit(array $postParams, array $easebuzz_row = []): string {
+        require_once __DIR__ . '/../lib/easebuzz_enach.php';
+        return creditlab_easebuzz_initiate_direct_debit_json($postParams, $easebuzz_row);
     }
 
     echo "Job Started: " . date('Y-m-d H:i:s') . "\n\n";
@@ -407,10 +363,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
                     "phone" => $userdataff['mobile'],
                     "customer_authentication_id" => $easebuzz_adtdff['customer_authentication_id'],
                     "merchant_debit_id" => "CLL_AUTO_" . $lid . "_" . time(),
-                    "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key']
+                    "auto_debit_access_key" => $easebuzz_adtdff['auto_debit_access_key'],
+                    "udf1" => "CREDITLAB_MANUAL_ENACH",
                 ];
 
-                $apiResponse = initiateEasebuzzDirectDebit($paymentDetails);
+                $apiResponse = initiateEasebuzzDirectDebit($paymentDetails, $easebuzz_adtdff);
                 $res = json_decode($apiResponse, true);
 
                 // Show calculation breakdown
