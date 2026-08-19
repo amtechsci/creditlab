@@ -116,7 +116,8 @@ include_once 'm_menu.php';
         <option value="all"<?= $filters['stage'] === 'all' ? ' selected' : '' ?>>All stages</option>
         <option value="mandate_start"<?= $filters['stage'] === 'mandate_start' ? ' selected' : '' ?>>Mandate start</option>
         <option value="mandate_callback"<?= $filters['stage'] === 'mandate_callback' ? ' selected' : '' ?>>Mandate callback</option>
-        <option value="presentment"<?= $filters['stage'] === 'presentment' ? ' selected' : '' ?>>Presentment</option>
+        <option value="presentment"<?= $filters['stage'] === 'presentment' ? ' selected' : '' ?>>Presentment (initiated)</option>
+        <option value="presentment_webhook"<?= $filters['stage'] === 'presentment_webhook' ? ' selected' : '' ?>>Presentment webhook</option>
     </select>
     <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from'], ENT_QUOTES) ?>">
     <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to'], ENT_QUOTES) ?>">

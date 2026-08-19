@@ -34,7 +34,8 @@ $headers = getallheaders();
 $headersFormatted = "Headers:\n" . serialize($headers);
 $getData = "GET Data:\n" . serialize($_GET);
 $postData = "POST Data:\n" . serialize($_POST);
-$rawBody = "Raw Body:\n" . file_get_contents('php://input');
+$webhook_raw_input = file_get_contents('php://input');
+$rawBody = "Raw Body:\n" . $webhook_raw_input;
 $logData = "\n=== New Request at ".date('Y-m-d H:i:s')." ===\n";
 $logData .= $headersFormatted . "\n";
 $logData .= $getData . "\n";
@@ -110,17 +111,8 @@ function creditlab_webhook_is_autodebit_furl(string $furl, string $baseUrl): boo
  * @return int Credit score points
  */
 function calculateCreditScorePoints($dpd) {
-    if ($dpd > 0) {
-        if ($dpd > 30) {
-            return -50;
-        } elseif ($dpd > 10) {
-            return -8;
-        } else {
-            return 2;
-        }
-    } else {
-        return 8;
-    }
+    require_once __DIR__ . '/lib/loan_enach_settlement.php';
+    return creditlab_enach_calculate_credit_score_points($dpd);
 }
 
 /**
@@ -134,97 +126,38 @@ function calculateCreditScorePoints($dpd) {
  * @return bool Success status
  */
 function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $transaction_flow = 'full') {
-    // Start transaction
-    mysqli_autocommit($db, false);
-    
-    try {
-        // Get loan details for DPD calculation
-        $loan_lid_escaped = mysqli_real_escape_string($db, $loan_lid);
-        $loan_data = webhook_query($db, "SELECT * FROM loan WHERE lid='$loan_lid_escaped'");
-        if (!$loan_data || webhook_num($loan_data) == 0) {
-            throw new Exception("Loan not found: $loan_lid");
-        }
-        $loan_details = webhook_fetch($loan_data);
-        
-        // Fetch loan days from loan_apply table
-        $loan_apply_data = webhook_fetch(webhook_query($db, "SELECT days FROM loan_apply WHERE id='$loan_lid_escaped'"));
-        $loan_days = isset($loan_apply_data['days']) && $loan_apply_data['days'] > 0 ? (int)$loan_apply_data['days'] : 30;
-        
-        // Calculate credit score points
-        $dpd = $loan_details['exhausted_period'] - $loan_days;
-        $point = calculateCreditScorePoints($dpd);
-        
-        // Check if it's EMI and update accordingly
-        $chf_data = webhook_query($db, "SELECT * FROM pay_ref WHERE loan_id='$loan_lid_escaped'");
-        if ($chf_data && webhook_num($chf_data) > 0) {
-            $chf = webhook_fetch($chf_data);
-            if ($chf && isset($chf['is_emi']) && $chf['is_emi'] == 1) {
-                $emi_result = webhook_query($db, "UPDATE `loan` SET `semi`=1,`femi`=1 WHERE lid='$loan_lid_escaped'");
-                if (!$emi_result) {
-                    throw new Exception("Failed to update EMI status");
-                }
-            }
-        }
-        
-        // Update user credit score and loan count
-        $uid_escaped = mysqli_real_escape_string($db, $uid);
-        $point_escaped = mysqli_real_escape_string($db, $point);
-        $user_update = webhook_query($db, "UPDATE `user` SET `sloan`=`sloan`+1, `credit_score`=`credit_score`+$point_escaped WHERE id='$uid_escaped'");
-        if (!$user_update) {
-            throw new Exception("Failed to update user credit score");
-        }
-        
-        // Clear the loan
-        $current_date_escaped = mysqli_real_escape_string($db, date('Y-m-d'));
-        $loan_clear = webhook_query($db, "UPDATE `loan` SET `action`='cleared',`status_log`='cleared',`cleard_date`='$current_date_escaped' WHERE lid='$loan_lid_escaped'");
-        if (!$loan_clear) {
-            throw new Exception("Failed to clear loan");
-        }
-        
-        $user_clear = webhook_query($db, "UPDATE `user` SET `status`='cleared' WHERE id='$uid_escaped'");
-        if (!$user_clear) {
-            throw new Exception("Failed to clear user status");
-        }
-        
-        $loan_apply_clear = webhook_query($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id='$loan_lid_escaped'");
-        if (!$loan_apply_clear) {
-            throw new Exception("Failed to clear loan application");
-        }
-        
-        // Delete payment references
-        $pay_ref_delete = webhook_query($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid_escaped'");
-        if (!$pay_ref_delete) {
-            throw new Exception("Failed to delete payment references");
-        }
-        
-        // Insert transaction details
-        $bank_ref_num_escaped = mysqli_real_escape_string($db, $bank_ref_num);
-        $amount_escaped = mysqli_real_escape_string($db, $amount);
-        $transaction_flow_escaped = mysqli_real_escape_string($db, $transaction_flow);
-        $current_datetime_escaped = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
-        $transaction_insert = webhook_query($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', '$transaction_flow_escaped')");
-        if (!$transaction_insert) {
-            throw new Exception("Failed to insert transaction details");
-        }
-        
-        // Commit transaction
-        mysqli_commit($db);
-        return true;
-        
-    } catch (Exception $e) {
-        // Rollback transaction on error
-        mysqli_rollback($db);
-        error_log("Transaction failed for loan $loan_lid: " . $e->getMessage());
-        return false;
-    } finally {
-        // Re-enable autocommit
-        mysqli_autocommit($db, true);
-    }
+    require_once __DIR__ . '/lib/loan_enach_settlement.php';
+    return creditlab_enach_process_loan_clearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $transaction_flow);
 }
 
 
 // --- 3. MAIN LOGIC ---
 $data = $_POST;
+if ($webhook_raw_input !== '' && empty($data)) {
+    $json_post = json_decode($webhook_raw_input, true);
+    if (is_array($json_post)) {
+        $data = $json_post;
+    }
+}
+
+require_once __DIR__ . '/lib/easebuzz_enach_webhook.php';
+
+// Autocollect presentment JSON/form without legacy furl (also handled by payment/autocollect_webhook.php).
+$autocollect_event = creditlab_enach_webhook_parse_presentment($data, $webhook_raw_input);
+if ($autocollect_event && empty($data['furl'])) {
+    if (creditlab_enach_webhook_verify($data, $webhook_raw_input)) {
+        $base_url_early = getAppUrl();
+        $ac_result = creditlab_enach_webhook_handle_presentment($db, $autocollect_event, $base_url_early, function ($msg) use ($log_file) {
+            writeWebhookLog('Autocollect: ' . $msg, $log_file);
+        });
+        writeWebhookLog('Autocollect presentment webhook: ' . json_encode($ac_result), $log_file);
+        http_response_code(!empty($ac_result['ok']) ? 200 : 500);
+        exit;
+    }
+    writeWebhookLog('REJECTED: Autocollect presentment webhook failed verification', $log_file);
+    http_response_code(403);
+    exit;
+}
 
 require_once __DIR__ . '/lib/easebuzz_verify.php';
 if (!creditlab_easebuzz_validate_callback($data)) {
@@ -266,7 +199,7 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
             http_response_code(400);
             die("Missing required fields: " . implode(', ', $missing_fields));
         }
-        $merchant_debit_id = $data['merchant_debit_id'];
+        $merchant_debit_id = $data['merchant_debit_id'] ?? $data['merchant_request_number'] ?? '';
         $amount = $data['amount'];
         $bank_ref_num = $data['bank_ref_num'] ?? $data['easepayid'] ?? ('AUTO_' . $data['txnid']);
         $txnid = $data['txnid'];
@@ -375,7 +308,7 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
         }
     } elseif (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'] == 'failure') {
         // Handle auto-debit failure
-        $merchant_debit_id = $data['merchant_debit_id'] ?? null;
+        $merchant_debit_id = $data['merchant_debit_id'] ?? $data['merchant_request_number'] ?? null;
         $amount = $data['amount'] ?? 'N/A';
         $error_message = $data['error_Message'] ?? 'Unknown reason';
         $txnid = $data['txnid'] ?? 'N/A';
