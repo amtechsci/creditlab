@@ -16,7 +16,6 @@ $envPath = $projectRoot . '/.env';
 
 require_once $projectRoot . '/lib/env.php';
 require_once $projectRoot . '/lib/database.php';
-require_once $projectRoot . '/lib/easebuzz_enach.php';
 
 if (!is_readable($envPath)) {
     fwrite(STDERR, "Cannot read {$envPath}\n");
@@ -41,9 +40,16 @@ if (!$db) {
     exit(1);
 }
 
+$GLOBALS['db'] = $db;
+if (!defined('CREDITLAB_SKIP_SESSION')) {
+    define('CREDITLAB_SKIP_SESSION', true);
+}
+require_once $projectRoot . '/db.php';
+require_once $projectRoot . '/lib/easebuzz_enach.php';
+
 $uid_sql = (int) $uid;
-$q = mysqli_query($db, "SELECT * FROM easebuzz_adtd WHERE uid=$uid_sql ORDER BY id DESC LIMIT 1");
-$row = mysqli_fetch_assoc($q);
+$q = towquery("SELECT * FROM easebuzz_adtd WHERE uid=$uid_sql ORDER BY id DESC LIMIT 1");
+$row = $q ? towfetch($q) : null;
 if (!$row) {
     fwrite(STDERR, "No easebuzz_adtd row for uid=$uid\n");
     exit(1);
