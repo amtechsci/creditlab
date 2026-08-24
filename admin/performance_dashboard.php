@@ -1,341 +1,219 @@
 <?php
 include_once 'head.php';
 
-// Get filter parameters
 $selected_date = isset($_GET['date']) ? towreal($_GET['date']) : date('Y-m-d');
 $selected_user = isset($_GET['user']) ? towreal($_GET['user']) : '';
-$view_mode = isset($_GET['view']) ? towreal($_GET['view']) : 'userwise'; // 'userwise' or 'updates'
+$view_mode = isset($_GET['view']) ? towreal($_GET['view']) : 'userwise';
+if ($view_mode !== 'updates') {
+    $view_mode = 'userwise';
+}
 
-// Validate date
 if (empty($selected_date) || !strtotime($selected_date)) {
     $selected_date = date('Y-m-d');
 }
 
-// Calculate monthly date range (1st of current month to selected date)
 $month_start = date('Y-m-01', strtotime($selected_date));
 $month_end = $selected_date;
+$day_start = $selected_date . ' 00:00:00';
+$day_end = date('Y-m-d', strtotime($selected_date . ' +1 day')) . ' 00:00:00';
+$month_start_ts = $month_start . ' 00:00:00';
+$month_end_exclusive = date('Y-m-d', strtotime($month_end . ' +1 day')) . ' 00:00:00';
 
-// Define responding and not responding categories (case-insensitive matching)
-// Responding categories
-$responding_categories = [
+$responding_categories_lower = array_unique(array_map('strtolower', [
     'shall pay by eod',
-    'shall pay by EOD',
-    'Shall pay by eod',
-    'Shall pay by EOD',
     'shall pay tomorrow',
-    'Shall pay tomorrow',
     'shall pay ontime',
-    'Shall pay ontime',
     'shall pay on time',
-    'Shall pay on time',
     'need extension',
-    'Need extension',
     'called back',
-    'Called back',
     'shall pay part payment',
-    'Shall pay part payment',
     'Sell pay part payment',
     'already paid',
-    'Already paid',
-    'Already Paid',
     'sms sent by mobile',
-    'SMS sent by mobile',
-    'SMS Sent by mobile'
-];
-
-// Not responding categories
-$not_responding_categories = [
+]));
+$not_responding_categories_lower = array_unique(array_map('strtolower', [
     'call not answering',
-    'Call not answering',
     'cutting call',
-    'Cutting call',
     'Cut the call',
     'cutting the call',
     'switched off',
-    'Switched off',
     'Mobile switched off',
     'out of coverage',
-    'Out of coverage',
     'Out of coverage area',
     'number not working',
-    'Number not working',
     'wrong number',
-    'Wrong number',
     'Wrong no',
     'call answered but no proper response',
-    'Call answered but no proper response',
-    'Call lifted by others'
+    'Call lifted by others',
+]));
+$repayment_responding_lower = [
+    'shall pay by eod',
+    'shall pay tomorrow',
+    'shall pay ontime',
+    'shall pay on time',
+    'need extension',
+    'called back',
+    'shall pay part payment',
+    'already paid',
+    'sms sent by mobile',
 ];
 
-// Build WHERE clause for user filtering
-$user_where = '';
-if (!empty($selected_user)) {
-    $selected_user_escaped = towreal($selected_user);
-    $user_where = "AND lam.updated_by = '$selected_user_escaped'";
-}
-
-// Get today's follow-up calls (loan_acc_man entries created today)
-$today_where = "DATE(lam.updated_at) = '$selected_date' $user_where";
-$today_followup_query = "SELECT COUNT(*) as count FROM loan_acc_man lam WHERE $today_where";
-$today_followup_result = towfetch(towquery($today_followup_query));
-$today_followup_calls = isset($today_followup_result['count']) ? (int)$today_followup_result['count'] : 0;
-
-// Normalize categories to lowercase for comparison
-$responding_categories_lower = array_map('strtolower', $responding_categories);
-$not_responding_categories_lower = array_map('strtolower', $not_responding_categories);
-
-// Get responding count for today
-$responding_conditions = [];
-foreach($responding_categories_lower as $cat) {
-    $responding_conditions[] = "LOWER(TRIM(lam.customer_response)) = '" . towreal($cat) . "'";
-}
-$today_responding_query = "SELECT COUNT(*) as count FROM loan_acc_man lam 
-                          WHERE $today_where 
-                          AND (" . implode(" OR ", $responding_conditions) . ")";
-$today_responding_result = towfetch(towquery($today_responding_query));
-$today_responding = isset($today_responding_result['count']) ? (int)$today_responding_result['count'] : 0;
-
-// Get not responding count for today
-$not_responding_conditions = [];
-foreach($not_responding_categories_lower as $cat) {
-    $not_responding_conditions[] = "LOWER(TRIM(lam.customer_response)) = '" . towreal($cat) . "'";
-}
-$today_not_responding_query = "SELECT COUNT(*) as count FROM loan_acc_man lam 
-                               WHERE $today_where 
-                               AND (" . implode(" OR ", $not_responding_conditions) . ")";
-$today_not_responding_result = towfetch(towquery($today_not_responding_query));
-$today_not_responding = isset($today_not_responding_result['count']) ? (int)$today_not_responding_result['count'] : 0;
-
-// Get monthly follow-up calls
-$monthly_where = "DATE(lam.updated_at) >= '$month_start' AND DATE(lam.updated_at) <= '$month_end' $user_where";
-$monthly_followup_query = "SELECT COUNT(*) as count FROM loan_acc_man lam WHERE $monthly_where";
-$monthly_followup_result = towfetch(towquery($monthly_followup_query));
-$monthly_followup_calls = isset($monthly_followup_result['count']) ? (int)$monthly_followup_result['count'] : 0;
-
-// Get monthly responding count
-$monthly_responding_query = "SELECT COUNT(*) as count FROM loan_acc_man lam 
-                             WHERE $monthly_where 
-                             AND (" . implode(" OR ", $responding_conditions) . ")";
-$monthly_responding_result = towfetch(towquery($monthly_responding_query));
-$monthly_responding = isset($monthly_responding_result['count']) ? (int)$monthly_responding_result['count'] : 0;
-
-// Get monthly not responding count
-$monthly_not_responding_query = "SELECT COUNT(*) as count FROM loan_acc_man lam 
-                                 WHERE $monthly_where 
-                                 AND (" . implode(" OR ", $not_responding_conditions) . ")";
-$monthly_not_responding_result = towfetch(towquery($monthly_not_responding_query));
-$monthly_not_responding = isset($monthly_not_responding_result['count']) ? (int)$monthly_not_responding_result['count'] : 0;
-
-// Calculate performance percentage (fix NaN issue)
-$today_performance = 0;
-if ($today_followup_calls > 0 && $today_responding >= 0) {
-    $today_performance = round(($today_responding / $today_followup_calls) * 100, 2);
-}
-$monthly_performance = 0;
-if ($monthly_followup_calls > 0 && $monthly_responding >= 0) {
-    $monthly_performance = round(($monthly_responding / $monthly_followup_calls) * 100, 2);
-}
-
-// Get repayment statistics
-// Today cleared follow-up (loans cleared today where there was a follow-up entry)
-$today_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                                FROM transaction_details td
-                                INNER JOIN loan_acc_man lam ON td.cllid = lam.lid
-                                WHERE DATE(td.transaction_date) = '$selected_date'
-                                AND td.transaction_flow = 'full'
-                                AND DATE(lam.updated_at) = '$selected_date'";
-if (!empty($selected_user)) {
-    $today_cleared_followup_query .= " AND lam.updated_by = '$selected_user_escaped'";
-}
-$today_cleared_followup_result = towfetch(towquery($today_cleared_followup_query));
-$today_cleared_followup_count = isset($today_cleared_followup_result['count']) ? (int)$today_cleared_followup_result['count'] : 0;
-$today_cleared_followup_amount = isset($today_cleared_followup_result['total_amount']) ? (float)$today_cleared_followup_result['total_amount'] : 0;
-
-// Today cleared auto (loans cleared today via autopay/enach)
-$today_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                            FROM transaction_details td
-                            WHERE DATE(td.transaction_date) = '$selected_date'
-                            AND td.transaction_flow = 'full'
-                            AND td.cllid NOT IN (
-                                SELECT DISTINCT lid FROM loan_acc_man 
-                                WHERE DATE(updated_at) = '$selected_date'";
-if (!empty($selected_user)) {
-    $today_cleared_auto_query .= " AND updated_by = '$selected_user_escaped'";
-}
-$today_cleared_auto_query .= ")";
-$today_cleared_auto_result = towfetch(towquery($today_cleared_auto_query));
-$today_cleared_auto_count = isset($today_cleared_auto_result['count']) ? (int)$today_cleared_auto_result['count'] : 0;
-$today_cleared_auto_amount = isset($today_cleared_auto_result['total_amount']) ? (float)$today_cleared_auto_result['total_amount'] : 0;
-
-// Today part payment
-$today_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                             FROM transaction_details td
-                             WHERE DATE(td.transaction_date) = '$selected_date'
-                             AND td.transaction_flow = 'part'";
-if (!empty($selected_user)) {
-    $today_part_payment_query .= " AND td.cllid IN (
-        SELECT DISTINCT lid FROM loan_acc_man 
-        WHERE DATE(updated_at) = '$selected_date' AND updated_by = '$selected_user_escaped'
-    )";
-}
-$today_part_payment_result = towfetch(towquery($today_part_payment_query));
-$today_part_payment_count = isset($today_part_payment_result['count']) ? (int)$today_part_payment_result['count'] : 0;
-$today_part_payment_amount = isset($today_part_payment_result['total_amount']) ? (float)$today_part_payment_result['total_amount'] : 0;
-
-// Monthly cleared follow-up
-$monthly_cleared_followup_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                                  FROM transaction_details td
-                                  INNER JOIN loan_acc_man lam ON td.cllid = lam.lid
-                                  WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
-                                  AND td.transaction_flow = 'full'
-                                  AND DATE(lam.updated_at) >= '$month_start' AND DATE(lam.updated_at) <= '$month_end'";
-if (!empty($selected_user)) {
-    $monthly_cleared_followup_query .= " AND lam.updated_by = '$selected_user_escaped'";
-}
-$monthly_cleared_followup_result = towfetch(towquery($monthly_cleared_followup_query));
-$monthly_cleared_followup_count = isset($monthly_cleared_followup_result['count']) ? (int)$monthly_cleared_followup_result['count'] : 0;
-$monthly_cleared_followup_amount = isset($monthly_cleared_followup_result['total_amount']) ? (float)$monthly_cleared_followup_result['total_amount'] : 0;
-
-// Monthly cleared auto
-$monthly_cleared_auto_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                              FROM transaction_details td
-                              WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
-                              AND td.transaction_flow = 'full'
-                              AND td.cllid NOT IN (
-                                  SELECT DISTINCT lid FROM loan_acc_man 
-                                  WHERE DATE(updated_at) >= '$month_start' AND DATE(updated_at) <= '$month_end'";
-if (!empty($selected_user)) {
-    $monthly_cleared_auto_query .= " AND updated_by = '$selected_user_escaped'";
-}
-$monthly_cleared_auto_query .= ")";
-$monthly_cleared_auto_result = towfetch(towquery($monthly_cleared_auto_query));
-$monthly_cleared_auto_count = isset($monthly_cleared_auto_result['count']) ? (int)$monthly_cleared_auto_result['count'] : 0;
-$monthly_cleared_auto_amount = isset($monthly_cleared_auto_result['total_amount']) ? (float)$monthly_cleared_auto_result['total_amount'] : 0;
-
-// Monthly part payment
-$monthly_part_payment_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                               FROM transaction_details td
-                               WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
-                               AND td.transaction_flow = 'part'";
-if (!empty($selected_user)) {
-    $monthly_part_payment_query .= " AND td.cllid IN (
-        SELECT DISTINCT lid FROM loan_acc_man 
-        WHERE DATE(updated_at) >= '$month_start' AND DATE(updated_at) <= '$month_end' AND updated_by = '$selected_user_escaped'
-    )";
-}
-$monthly_part_payment_result = towfetch(towquery($monthly_part_payment_query));
-$monthly_part_payment_count = isset($monthly_part_payment_result['count']) ? (int)$monthly_part_payment_result['count'] : 0;
-$monthly_part_payment_amount = isset($monthly_part_payment_result['total_amount']) ? (float)$monthly_part_payment_result['total_amount'] : 0;
-
-// Calculate totals
-$today_total_cleared = $today_cleared_followup_count + $today_cleared_auto_count;
-$monthly_total_cleared = $monthly_cleared_followup_count + $monthly_cleared_auto_count;
-
-// Get user-wise performance data for selected date
-$user_wise_query = "SELECT 
-                    lam.updated_by,
-                    COUNT(*) as total_calls,
-                    SUM(CASE WHEN (" . implode(" OR ", $responding_conditions) . ") THEN 1 ELSE 0 END) as responding_count,
-                    SUM(CASE WHEN (" . implode(" OR ", $not_responding_conditions) . ") THEN 1 ELSE 0 END) as not_responding_count
-                    FROM loan_acc_man lam
-                    WHERE DATE(lam.updated_at) = '$selected_date'
-                    AND lam.updated_by IS NOT NULL AND lam.updated_by != ''
-                    GROUP BY lam.updated_by
-                    ORDER BY total_calls DESC";
-$user_wise_results = towquery($user_wise_query);
-
-// Function to get user repayment data
-function getUserRepaymentData($user_name, $selected_date, $month_start, $month_end, $responding_conditions) {
-    $user_escaped = towreal($user_name);
-    
-    // Today cleared follow-up (loans cleared today where user's last update was responding)
-    // Get loans where the last update by this user was responding and loan was cleared today
-    $today_cleared_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                           FROM transaction_details td
-                           INNER JOIN (
-                               SELECT lam1.lid, lam1.customer_response
-                               FROM loan_acc_man lam1
-                               INNER JOIN (
-                                   SELECT lid, MAX(id) as max_id
-                                   FROM loan_acc_man
-                                   WHERE updated_by = '$user_escaped'
-                                   GROUP BY lid
-                               ) lam2 ON lam1.id = lam2.max_id
-                               WHERE lam1.updated_by = '$user_escaped'
-                               AND LOWER(TRIM(lam1.customer_response)) IN ('" . implode("','", array_map('strtolower', ['shall pay by eod', 'shall pay tomorrow', 'shall pay ontime', 'shall pay on time', 'need extension', 'called back', 'shall pay part payment', 'already paid', 'sms sent by mobile'])) . "')
-                           ) lam ON td.cllid = lam.lid
-                           WHERE DATE(td.transaction_date) = '$selected_date'
-                           AND td.transaction_flow = 'full'";
-    $today_result = towfetch(towquery($today_cleared_query));
-    $today_count = isset($today_result['count']) ? (int)$today_result['count'] : 0;
-    $today_amount = isset($today_result['total_amount']) ? (float)$today_result['total_amount'] : 0;
-    
-    // Monthly cleared follow-up (loans cleared in month where user's last update was responding)
-    $monthly_cleared_query = "SELECT COUNT(DISTINCT td.cllid) as count, COALESCE(SUM(td.transaction_amount), 0) as total_amount
-                             FROM transaction_details td
-                             INNER JOIN (
-                                 SELECT lam1.lid, lam1.customer_response
-                                 FROM loan_acc_man lam1
-                                 INNER JOIN (
-                                     SELECT lid, MAX(id) as max_id
-                                     FROM loan_acc_man
-                                     WHERE updated_by = '$user_escaped'
-                                     AND DATE(updated_at) <= '$month_end'
-                                     GROUP BY lid
-                                 ) lam2 ON lam1.id = lam2.max_id
-                                 WHERE lam1.updated_by = '$user_escaped'
-                                 AND LOWER(TRIM(lam1.customer_response)) IN ('" . implode("','", array_map('strtolower', ['shall pay by eod', 'shall pay tomorrow', 'shall pay ontime', 'shall pay on time', 'need extension', 'called back', 'shall pay part payment', 'already paid', 'sms sent by mobile'])) . "')
-                             ) lam ON td.cllid = lam.lid
-                             WHERE DATE(td.transaction_date) >= '$month_start' AND DATE(td.transaction_date) <= '$month_end'
-                             AND td.transaction_flow = 'full'";
-    $monthly_result = towfetch(towquery($monthly_cleared_query));
-    $monthly_count = isset($monthly_result['count']) ? (int)$monthly_result['count'] : 0;
-    $monthly_amount = isset($monthly_result['total_amount']) ? (float)$monthly_result['total_amount'] : 0;
-    
-    return [
-        'today_count' => $today_count,
-        'today_amount' => $today_amount,
-        'monthly_count' => $monthly_count,
-        'monthly_amount' => $monthly_amount
-    ];
-}
-
-// Get updates summary for date range (for AM Updates Report functionality)
 $from_date = isset($_GET['from_date']) ? towreal($_GET['from_date']) : $month_start;
 $to_date = isset($_GET['to_date']) ? towreal($_GET['to_date']) : $month_end;
-$date_where_updates = "DATE(updated_at) >= '$from_date' AND DATE(updated_at) <= '$to_date'";
-$user_where_updates = '';
-if (!empty($selected_user)) {
-    $user_where_updates = "AND updated_by = '$selected_user_escaped'";
+if (empty($from_date) || !strtotime($from_date)) {
+    $from_date = $month_start;
+}
+if (empty($to_date) || !strtotime($to_date)) {
+    $to_date = $month_end;
+}
+$from_ts = $from_date . ' 00:00:00';
+$to_exclusive = date('Y-m-d', strtotime($to_date . ' +1 day')) . ' 00:00:00';
+
+$selected_user_escaped = !empty($selected_user) ? towreal($selected_user) : '';
+
+function performance_dashboard_sql_in(array $values): string
+{
+    $parts = [];
+    foreach ($values as $value) {
+        $parts[] = "'" . towreal($value) . "'";
+    }
+    return implode(',', $parts);
 }
 
-// Get total updates count
-$total_updates_query = "SELECT COUNT(*) as total FROM loan_acc_man WHERE $date_where_updates $user_where_updates";
-$total_updates_result = towfetch(towquery($total_updates_query));
-$total_updates = isset($total_updates_result['total']) ? $total_updates_result['total'] : 0;
+function performance_dashboard_fetch_all($result): array
+{
+    $rows = [];
+    if ($result) {
+        while ($row = towfetch($result)) {
+            $rows[] = $row;
+        }
+    }
+    return $rows;
+}
 
-// Get updates grouped by user (for summary table)
-$summary_query = "SELECT updated_by, COUNT(*) as update_count, 
-                  MIN(updated_at) as first_update, 
-                  MAX(updated_at) as last_update
-                  FROM loan_acc_man 
-                  WHERE $date_where_updates $user_where_updates AND updated_by IS NOT NULL AND updated_by != ''
-                  GROUP BY updated_by 
-                  ORDER BY update_count DESC";
-$summary_results = towquery($summary_query);
-
-// Get all updates with details (for detailed table)
-$details_query = "SELECT lam.*, u.name as customer_name, u.mobile as customer_mobile, u.email as customer_email
+function performance_dashboard_repayments_by_user(string $pay_start, string $pay_end, string $responding_in, ?string $lam_before = null): array
+{
+    $map = [];
+    $lam_date_sql = $lam_before !== null ? "AND updated_at < '" . towreal($lam_before) . "'" : '';
+    $query = "SELECT last_lam.updated_by,
+                     COUNT(DISTINCT td.cllid) AS cnt,
+                     COALESCE(SUM(td.transaction_amount), 0) AS total_amount
+              FROM transaction_details td
+              INNER JOIN (
+                  SELECT lam.lid, lam.updated_by
                   FROM loan_acc_man lam
-                  LEFT JOIN user u ON lam.uid = u.id
-                  WHERE $date_where_updates $user_where_updates
-                  ORDER BY lam.updated_at DESC
-                  LIMIT 500";
-$details_results = towquery($details_query);
+                  INNER JOIN (
+                      SELECT lid, updated_by, MAX(id) AS max_id
+                      FROM loan_acc_man
+                      WHERE updated_by IS NOT NULL AND updated_by != ''
+                        $lam_date_sql
+                        AND lid IN (
+                            SELECT cllid FROM transaction_details
+                            WHERE transaction_date >= '$pay_start'
+                              AND transaction_date < '$pay_end'
+                              AND transaction_flow = 'full'
+                        )
+                      GROUP BY lid, updated_by
+                  ) t ON lam.id = t.max_id
+                  WHERE LOWER(TRIM(lam.customer_response)) IN ($responding_in)
+              ) last_lam ON last_lam.lid = td.cllid
+              WHERE td.transaction_date >= '$pay_start'
+                AND td.transaction_date < '$pay_end'
+                AND td.transaction_flow = 'full'
+              GROUP BY last_lam.updated_by";
+    foreach (performance_dashboard_fetch_all(towquery($query)) as $row) {
+        $map[$row['updated_by']] = [
+            'count' => (int) $row['cnt'],
+            'amount' => (float) $row['total_amount'],
+        ];
+    }
+    return $map;
+}
 
-// Get list of account managers for filter
-$account_managers_query = "SELECT DISTINCT updated_by FROM loan_acc_man WHERE updated_by IS NOT NULL AND updated_by != '' ORDER BY updated_by";
-$account_managers = towquery($account_managers_query);
+$user_wise_rows = [];
+$today_repay_by_user = [];
+$monthly_repay_by_user = [];
+$total_updates = 0;
+$summary_rows = [];
+$details_rows = [];
+$account_managers = [];
+
+$responding_in = performance_dashboard_sql_in($responding_categories_lower);
+$not_responding_in = performance_dashboard_sql_in($not_responding_categories_lower);
+$repay_responding_in = performance_dashboard_sql_in($repayment_responding_lower);
+
+if ($view_mode === 'userwise') {
+    $user_wise_query = "SELECT
+                        lam.updated_by,
+                        COUNT(*) as total_calls,
+                        SUM(CASE WHEN LOWER(TRIM(lam.customer_response)) IN ($responding_in) THEN 1 ELSE 0 END) as responding_count,
+                        SUM(CASE WHEN LOWER(TRIM(lam.customer_response)) IN ($not_responding_in) THEN 1 ELSE 0 END) as not_responding_count
+                        FROM loan_acc_man lam
+                        WHERE lam.updated_at >= '$day_start' AND lam.updated_at < '$day_end'
+                        AND lam.updated_by IS NOT NULL AND lam.updated_by != ''
+                        GROUP BY lam.updated_by
+                        ORDER BY total_calls DESC";
+    $user_wise_rows = performance_dashboard_fetch_all(towquery($user_wise_query));
+
+    if (!empty($user_wise_rows)) {
+        // Today: last follow-up by that user on loans cleared today (no date cap on last update).
+        $today_repay_by_user = performance_dashboard_repayments_by_user(
+            $day_start,
+            $day_end,
+            $repay_responding_in
+        );
+        $monthly_repay_by_user = performance_dashboard_repayments_by_user(
+            $month_start_ts,
+            $month_end_exclusive,
+            $repay_responding_in,
+            $month_end_exclusive
+        );
+    }
+} else {
+    $user_where_updates = '';
+    if ($selected_user_escaped !== '') {
+        $user_where_updates = "AND updated_by = '$selected_user_escaped'";
+    }
+
+    $total_updates_result = towfetch(towquery(
+        "SELECT COUNT(*) as total FROM loan_acc_man
+         WHERE updated_at >= '$from_ts' AND updated_at < '$to_exclusive' $user_where_updates"
+    ));
+    $total_updates = isset($total_updates_result['total']) ? (int) $total_updates_result['total'] : 0;
+
+    $summary_query = "SELECT updated_by, COUNT(*) as update_count,
+                      MIN(updated_at) as first_update,
+                      MAX(updated_at) as last_update
+                      FROM loan_acc_man
+                      WHERE updated_at >= '$from_ts' AND updated_at < '$to_exclusive'
+                        $user_where_updates
+                        AND updated_by IS NOT NULL AND updated_by != ''
+                      GROUP BY updated_by
+                      ORDER BY update_count DESC";
+    $summary_rows = performance_dashboard_fetch_all(towquery($summary_query));
+
+    $details_query = "SELECT lam.id, lam.uid, lam.lid, lam.customer_response, lam.commitment_date,
+                             lam.commitment_text, lam.default_type, lam.updated_at, lam.updated_by,
+                             u.name as customer_name, u.mobile as customer_mobile, u.email as customer_email
+                      FROM loan_acc_man lam
+                      LEFT JOIN user u ON lam.uid = u.id
+                      WHERE lam.updated_at >= '$from_ts' AND lam.updated_at < '$to_exclusive' $user_where_updates
+                      ORDER BY lam.updated_at DESC
+                      LIMIT 500";
+    $details_rows = performance_dashboard_fetch_all(towquery($details_query));
+
+    $account_managers = performance_dashboard_fetch_all(towquery(
+        "SELECT DISTINCT updated_by FROM loan_acc_man
+         WHERE updated_by IS NOT NULL AND updated_by != ''
+         ORDER BY updated_by"
+    ));
+}
+
+$userwise_url = 'performance_dashboard.php?view=userwise&date=' . urlencode($selected_date);
+$updates_url = 'performance_dashboard.php?view=updates&from_date=' . urlencode($from_date) . '&to_date=' . urlencode($to_date);
+if ($selected_user !== '') {
+    $updates_url .= '&user=' . urlencode($selected_user);
+}
 ?>
 
 <body>
@@ -374,12 +252,15 @@ $account_managers = towquery($account_managers_query);
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         <ul id="myTabedu1" class="tab-review-design">
-                            <li class="<?=$view_mode == 'userwise' ? 'active' : '';?>"><a href="#userwise">User-wise Report</a></li>
-                            <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="#updates">Updates Report</a></li>
+                            <li class="<?=$view_mode == 'userwise' ? 'active' : '';?>"><a href="<?= htmlspecialchars($userwise_url) ?>">User-wise Report</a></li>
+                            <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="<?= htmlspecialchars($updates_url) ?>">Updates Report</a></li>
                         </ul>
                         <div id="myTabContent" class="tab-content custom-product-edit">
                             <!-- User-wise Report Tab -->
                             <div class="product-tab-list tab-pane fade <?=$view_mode == 'userwise' ? 'active in' : '';?>" id="userwise">
+                                <?php if ($view_mode !== 'userwise'): ?>
+                                <p style="padding: 20px;">Open the User-wise Report tab to load this data.</p>
+                                <?php else: ?>
                                 <form method="GET" action="" class="form-inline" style="padding: 20px;">
                                     <input type="hidden" name="view" value="userwise">
                                     <div class="form-group" style="margin-right: 20px;">
@@ -393,12 +274,18 @@ $account_managers = towquery($account_managers_query);
                                     <h3 style="margin-bottom: 20px;">User-wise Performance Report (<?=date('d-M-Y', strtotime($selected_date));?>)</h3>
                                     <div class="row">
                                         <?php
-                                        $user_wise_results_rewind = towquery($user_wise_query);
-                                        while($user_data = towfetch($user_wise_results_rewind)) {
+                                        foreach ($user_wise_rows as $user_data) {
                                             $user_total = $user_data['total_calls'];
                                             $user_responding = $user_data['responding_count'];
                                             $user_not_responding = $user_data['not_responding_count'];
                                             $user_performance = ($user_total > 0) ? round(($user_responding / $user_total) * 100, 2) : 0;
+                                            $by = $user_data['updated_by'];
+                                            $repayment_data = [
+                                                'today_count' => $today_repay_by_user[$by]['count'] ?? 0,
+                                                'today_amount' => $today_repay_by_user[$by]['amount'] ?? 0,
+                                                'monthly_count' => $monthly_repay_by_user[$by]['count'] ?? 0,
+                                                'monthly_amount' => $monthly_repay_by_user[$by]['amount'] ?? 0,
+                                            ];
                                             ?>
                                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12" style="margin-bottom: 30px;">
                                                 <div class="product-payment-inner-st" style="border: 1px solid #ddd; border-radius: 5px; padding: 20px;">
@@ -445,10 +332,6 @@ $account_managers = towquery($account_managers_query);
                                                     </div>
                                                     
                                                     <!-- Repayments Section -->
-                                                    <?php
-                                                    // Get repayment data for this user
-                                                    $repayment_data = getUserRepaymentData($user_data['updated_by'], $selected_date, $month_start, $month_end, $responding_conditions);
-                                                    ?>
                                                     <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
                                                         <h4 style="margin-bottom: 15px; color: #666;">Repayments</h4>
                                                         <div class="row">
@@ -476,18 +359,20 @@ $account_managers = towquery($account_managers_query);
                                             </div>
                                             <?php
                                         }
-                                        // Check if no data found
-                                        $user_wise_check = towquery($user_wise_query);
-                                        if(townum($user_wise_check) == 0) {
+                                        if (empty($user_wise_rows)) {
                                             echo '<div class="col-lg-12"><div class="alert alert-info">No data found for the selected date.</div></div>';
                                         }
                                         ?>
                                     </div>
                                 </div>
+                                <?php endif; ?>
                             </div>
                             
                             <!-- Updates Report Tab -->
                             <div class="product-tab-list tab-pane fade <?=$view_mode == 'updates' ? 'active in' : '';?>" id="updates">
+                                <?php if ($view_mode !== 'updates'): ?>
+                                <p style="padding: 20px;">Open the Updates Report tab to load this data.</p>
+                                <?php else: ?>
                                 <form method="GET" action="" class="form-inline" style="padding: 20px;">
                                     <input type="hidden" name="view" value="updates">
                                     <div class="form-group" style="margin-right: 15px;">
@@ -502,13 +387,11 @@ $account_managers = towquery($account_managers_query);
                                         <label for="user" style="margin-right: 10px;">Filter by User:</label>
                                         <select name="user" id="user" class="form-control">
                                             <option value="">All Users</option>
-                                            <?php 
-                                            $account_managers_rewind2 = towquery($account_managers_query);
-                                            while($am = towfetch($account_managers_rewind2)): ?>
+                                            <?php foreach ($account_managers as $am): ?>
                                                 <option value="<?=htmlspecialchars($am['updated_by']);?>" <?=$selected_user == $am['updated_by'] ? 'selected' : '';?>>
                                                     <?=htmlspecialchars($am['updated_by']);?>
                                                 </option>
-                                            <?php endwhile; ?>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                     <button type="submit" class="btn btn-success" style="margin-right: 10px;">Apply Filters</button>
@@ -550,8 +433,7 @@ $account_managers = towquery($account_managers_query);
                                             <tbody>
                                                 <?php
                                                 $row_num = 1;
-                                                $summary_results_rewind = towquery($summary_query);
-                                                while($summary = towfetch($summary_results_rewind)) {
+                                                foreach ($summary_rows as $summary) {
                                                     $first_update = $summary['first_update'] ? date('d M Y H:i', strtotime($summary['first_update'])) : 'N/A';
                                                     $last_update = $summary['last_update'] ? date('d M Y H:i', strtotime($summary['last_update'])) : 'N/A';
                                                     ?>
@@ -567,7 +449,7 @@ $account_managers = towquery($account_managers_query);
                                                     </tr>
                                                     <?php
                                                 }
-                                                if($row_num == 1) {
+                                                if ($row_num == 1) {
                                                     echo "<tr><td colspan='6' class='text-center'>No updates found for the selected date range.</td></tr>";
                                                 }
                                                 ?>
@@ -597,8 +479,7 @@ $account_managers = towquery($account_managers_query);
                                             <tbody>
                                                 <?php
                                                 $detail_num = 1;
-                                                $details_results_rewind = towquery($details_query);
-                                                while($detail = towfetch($details_results_rewind)) {
+                                                foreach ($details_rows as $detail) {
                                                     $updated_at = $detail['updated_at'] ? date('d M Y H:i:s', strtotime($detail['updated_at'])) : 'N/A';
                                                     $commitment_date = $detail['commitment_date'] ? date('d M Y', strtotime($detail['commitment_date'])) : 'N/A';
                                                     ?>
@@ -623,7 +504,7 @@ $account_managers = towquery($account_managers_query);
                                                     </tr>
                                                     <?php
                                                 }
-                                                if($detail_num == 1) {
+                                                if ($detail_num == 1) {
                                                     echo "<tr><td colspan='9' class='text-center'>No updates found for the selected filters.</td></tr>";
                                                 }
                                                 ?>
@@ -631,6 +512,7 @@ $account_managers = towquery($account_managers_query);
                                         </table>
                                     </div>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -644,12 +526,11 @@ $account_managers = towquery($account_managers_query);
     ?>
     
     <script>
-    // Initialize DataTable if available
     $(document).ready(function() {
-        if ($.fn.DataTable) {
+        if ($.fn.DataTable && $('#updatesTable').length) {
             $('#updatesTable').DataTable({
                 "pageLength": 25,
-                "order": [[ 8, "desc" ]], // Sort by Updated At column
+                "order": [[ 8, "desc" ]],
                 "language": {
                     "search": "Search:",
                     "lengthMenu": "Show _MENU_ entries",

@@ -14,6 +14,7 @@ if (isset($_GET['pageno'])) {
         $rec_result = towfetch(towquery("SELECT SUM(transaction_amount) as triss FROM `transaction_details` WHERE transaction_flow IN ('part','renew','full')"));
         $rec_amt = isset($rec_result['triss']) ? $rec_result['triss'] : 0;
         $rec_lc = townum(towquery("SELECT `cllid` as trcou FROM `transaction_details` WHERE transaction_flow IN ('part','renew','full') GROUP BY `cllid`"));
+        $total_pages = 1;
 ?>
 <body>
     <?php
@@ -87,7 +88,7 @@ if (isset($_GET['pageno'])) {
                                     <tr>  
                                         <th>icici bank</th>
                                         <td data-title="CID"><?=$iss_amt?></td>
-                                        <td data-title="Name"><?=$iss_lc?><?php if($users_loan > 0){echo "<span style='color:red'>#</span>";}?></td>
+                                        <td data-title="Name"><?=$iss_lc?></td>
                                         <td data-title="Email"><?=$rec_amt?></td>
                                         <td data-title="Email"><?=$rec_lc?></td>
                                     </tr>

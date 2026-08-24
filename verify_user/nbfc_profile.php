@@ -37,20 +37,24 @@ if(isset($_GET['id'])){
                    <p>Mobile : <?=maskPhone($userpro_mobile);?></p>
                 </div>
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <?php $account_manager = towquery("SELECT * FROM `account_manager` WHERE id=$userpro_assign_account_manager");
-                    $account_manager = towfetch($account_manager);
+                    <?php
+                    $account_manager = null;
+                    if (!empty($userpro_assign_account_manager) && ctype_digit((string) $userpro_assign_account_manager)) {
+                        $account_manager = towfetch(towquery("SELECT * FROM `account_manager` WHERE id=".(int)$userpro_assign_account_manager));
+                    }
+                    $recovery_officer = null;
+                    if (!empty($userpro_assign_recovery_officer) && ctype_digit((string) $userpro_assign_recovery_officer)) {
+                        $recovery_officer = towfetch(towquery("SELECT * FROM `recovery_officer` WHERE id=".(int)$userpro_assign_recovery_officer));
+                    }
                     ?>
-                    <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
-                    $recovery_officer = towfetch($recovery_officer);
-                    ?>
-                   <p>Account Manager : <?=$account_manager['name'];?> </p><p>Recovery Officer : <?=$recovery_officer['name'];?></p>
+                   <p>Account Manager : <?=is_array($account_manager) ? ($account_manager['name'] ?? '') : '';?> </p><p>Recovery Officer : <?=is_array($recovery_officer) ? ($recovery_officer['name'] ?? '') : '';?></p>
                    <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
                    <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                   $totalflss = $totalfls['total'] ? $totalfls['total'] : 0;
+                   $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
                    $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $totalflssp = $totalflsp['total'] ? $totalflsp['total'] : 0;
+                   $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
                    $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $forgstf = $forgst['total'] ? $forgst['total'] : 0;
+                   $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
                    ?>
                    <p>limit score <span class="bread-slash">:</span> <span class="bread-blod">
                     <?php $azxs =((0.12*$forgstf)/1.18); ?>
@@ -501,7 +505,7 @@ if(isset($_GET['id'])){
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Account Name</lable>
-                                                                <input disabled name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=$userpro_ac_name?>">
+                                                                <input disabled name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?= htmlspecialchars((string) ($userpro_account_name ?? $userpro_ac_name ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                                             </div>
                                                         </div>
                                                     </div>

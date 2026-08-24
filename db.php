@@ -264,13 +264,17 @@ function towquery($query)
 }
  function townum($query)
 {
-	$re = mysqli_num_rows($query);
-	return $re;
+	if (!($query instanceof mysqli_result)) {
+		return 0;
+	}
+	return mysqli_num_rows($query);
 }
  function towfetch($query)
 {
-	$re = mysqli_fetch_array($query);
-	return $re;
+	if (!($query instanceof mysqli_result)) {
+		return null;
+	}
+	return mysqli_fetch_array($query);
 }
  function towfetchassoc($query)
 {

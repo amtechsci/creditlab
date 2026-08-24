@@ -490,7 +490,7 @@ if(isset($_POST['loan_acc_man'])){
                     <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
                     $recovery_officer = towfetch($recovery_officer);
                     ?>
-                   <p>Account Manager : <?=$account_manager['name'];?> </p><p>Recovery Officer : <?=$recovery_officer['name'];?></p>
+                   <p>Account Manager : <?=is_array($account_manager) ? ($account_manager['name'] ?? '') : '';?> </p><p>Recovery Officer : <?=is_array($recovery_officer) ? ($recovery_officer['name'] ?? '') : '';?></p>
                    <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p>
                 </div>
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">

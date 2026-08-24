@@ -1148,11 +1148,11 @@
                     <p>Account Manager : <?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?> </p><p>Recovery Officer : <?=isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';?></p>
                     <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
                     <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                    $totalflss = $totalfls['total'] ? $totalfls['total'] : 0;
+                    $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
                     $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                    $totalflssp = $totalflsp['total'] ? $totalflsp['total'] : 0;
+                    $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
                     $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                    $forgstf = $forgst['total'] ? $forgst['total'] : 0;
+                    $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
                     ?>
                     <p>Creditlab score<span class="bread-slash">:</span> <span class="bread-blod"><?=$userpro_credit_score?></span></p>
                     </div>

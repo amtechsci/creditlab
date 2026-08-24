@@ -114,16 +114,28 @@ function creditlab_easebuzz_outcome_from_user_easebuzz($user_easebuzz): string
     return 'pending';
 }
 
+if (!function_exists('creditlab_easebuzz_normalize_phone')) {
+    $enachLib = __DIR__ . '/easebuzz_enach.php';
+    if (is_file($enachLib)) {
+        require_once $enachLib;
+    }
+}
+if (!function_exists('creditlab_easebuzz_normalize_phone')) {
+    function creditlab_easebuzz_normalize_phone($phone) {
+        $phone = preg_replace('/\D+/', '', (string) $phone);
+        if (strlen($phone) > 10) {
+            $phone = substr($phone, -10);
+        }
+        return $phone;
+    }
+}
+
 /**
  * @return array{rows:array,totals:array{success:int,failure:int,pending:int,all:int}}
  */
 function creditlab_easebuzz_query_user_events(array $filters = []): array
 {
     global $db;
-
-    if (!function_exists('creditlab_easebuzz_normalize_phone')) {
-        require_once __DIR__ . '/easebuzz_enach.php';
-    }
 
     if (!creditlab_ensure_easebuzz_enach_event_log_table()) {
         return ['rows' => [], 'totals' => ['success' => 0, 'failure' => 0, 'pending' => 0, 'all' => 0]];

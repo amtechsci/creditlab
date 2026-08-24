@@ -18,6 +18,7 @@ if (isset($_GET['pageno'])) {
         $cle_result = towfetch(towquery("SELECT SUM(processed_amount) as disb FROM `loan` WHERE status_log='cleared'"));
         $cle = isset($cle_result['disb']) ? $cle_result['disb'] : 0;
         $ccle = townum(towquery("SELECT processed_amount FROM `loan` WHERE status_log='cleared'"));
+        $total_pages = 1;
         
         // Remove duplicate lines - keeping only the first calculation
         

@@ -239,7 +239,7 @@ if ($dq) {
                                     <td><?php if ($aa['type'] == 1) { echo "Verify user"; } else { echo "NBFC"; } ?></td>
                                     <td><?= $aa['name']; ?></td>
                                     <td><?= $aa['email']; ?></td>
-                                    <td><?= $aa['number']; ?></td>
+                                    <td><?= htmlspecialchars((string) ($aa['number'] ?? $aa['mobile'] ?? '')) ?></td>
                                     <td><?= $aa['password']; ?></td>
                                     <td><a href="deleteuser.php?id=<?= $aa['id']; ?>&type=verify_user">Delete</a></td>
                                 </tr>
@@ -248,7 +248,7 @@ if ($dq) {
                                     <td>Account manager</td>
                                     <td><?= $bb['name']; ?></td>
                                     <td><?= $bb['email']; ?></td>
-                                    <td><?= $bb['number']; ?></td>
+                                    <td><?= htmlspecialchars((string) ($bb['number'] ?? $bb['mobile'] ?? '')) ?></td>
                                     <td><?= $bb['password']; ?></td>
                                     <td><a href="deleteuser.php?id=<?= $bb['id']; ?>&type=account_manager">Delete</a></td>
                                 </tr>
@@ -257,7 +257,7 @@ if ($dq) {
                                     <td>Recovery officer</td>
                                     <td><?= $cc['name']; ?></td>
                                     <td><?= $cc['email']; ?></td>
-                                    <td><?= $cc['number']; ?></td>
+                                    <td><?= htmlspecialchars((string) ($cc['number'] ?? $cc['mobile'] ?? '')) ?></td>
                                     <td><?= $cc['password']; ?></td>
                                     <td><a href="deleteuser.php?id=<?= $cc['id']; ?>&type=recovery_officer">Delete</a></td>
                                 </tr>
