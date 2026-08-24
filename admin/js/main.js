@@ -21,8 +21,12 @@
 		  $(this).tab('show')
 		});
 		$('#myTabedu1 a').on('click', function (e) {
-		  e.preventDefault()
-		  $(this).tab('show')
+		  var href = $(this).attr('href') || '';
+		  if (href.charAt(0) !== '#') {
+			  return;
+		  }
+		  e.preventDefault();
+		  $(this).tab('show');
 		});
 
 	  $('#single-product-tab a').on('click', function (e) {
