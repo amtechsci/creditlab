@@ -1,7 +1,10 @@
 <?php
 include_once 'head.php';
 require_once __DIR__ . '/../lib/performance_dashboard.php';
-$pd = creditlab_performance_dashboard_load();
+
+$show_performance = creditlab_performance_dashboard_is_active();
+$pd = $show_performance ? creditlab_performance_dashboard_load() : [];
+
 if (isset($_GET['pageno'])) {
             $pageno = intval($_GET['pageno']);
         } else {
@@ -10,10 +13,14 @@ if (isset($_GET['pageno'])) {
         if ($pageno < 1) { $pageno = 1; }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC");
-        $usersquery =  towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC LIMIT ".$offset.", ".$no_of_records_per_page);
-        $total_rows = townum($ress);
-        $total_pages = ceil($total_rows / $no_of_records_per_page);
+        $usersquery = null;
+        $total_pages = 1;
+        if (!$show_performance) {
+            $ress = towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC");
+            $usersquery =  towquery("SELECT * FROM user WHERE NOT active=2 ORDER BY id DESC LIMIT ".$offset.", ".$no_of_records_per_page);
+            $total_rows = townum($ress);
+            $total_pages = ceil($total_rows / $no_of_records_per_page);
+        }
 ?>
 <body>
 <?php
@@ -33,8 +40,18 @@ if (isset($_GET['pageno'])) {
                 </div>
             </div>
         </div>
-        <div class="analytics-sparkle-area">
+        <div class="single-pro-review-area mt-t-30 mg-b-15">
             <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        <div class="product-payment-inner-st">
+                            <ul id="myTabedu1" class="tab-review-design">
+                                <li class="<?= $show_performance ? '' : 'active' ?>"><a href="index.php">Dashboard</a></li>
+                                <li class="<?= $show_performance ? 'active' : '' ?>"><a href="index.php?tab=performance">Performance Dashboard</a></li>
+                            </ul>
+                            <div id="myTabContent" class="tab-content custom-product-edit">
+                                <div class="product-tab-list tab-pane fade <?= $show_performance ? '' : 'active in' ?>" id="dashboard">
+        <div class="analytics-sparkle-area">
                 <div class="row text-center">
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="analytics-sparkle-line reso-mg-b-30">
@@ -70,8 +87,6 @@ if (isset($_GET['pageno'])) {
                     </div>
                 </div>
                 <br>
-                <?php include __DIR__ . '/inc_performance_dashboard.php'; ?>
-                <br>
             
                 
                 <div class="row text-center">
@@ -96,7 +111,7 @@ if (isset($_GET['pageno'])) {
         </thead>
         <tbody>
                   
-                                   <?php while($loanfetch = towfetch($usersquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users"); ?>
+                                   <?php if ($usersquery) { while($loanfetch = towfetch($usersquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users"); ?>
                                     <tr>
                                         <td data-title="RCID"><?=$users_rcid?></td>
                                         <td data-title="Name"><?=$users_name?><?php if($users_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
@@ -105,7 +120,7 @@ if (isset($_GET['pageno'])) {
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($users_status == "waiting"){echo "Just Registered";}else{echo $users_status;}?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$users_id?>" target="_blank">View</a></td>
                                     </tr>
-                                <?php } ?>
+                                <?php } } ?>
             </tbody>
     </table>
 							<nav aria-label="Page navigation example">
@@ -130,6 +145,15 @@ if (isset($_GET['pageno'])) {
     </div>
     </div>
     </div></div>
+            </div>
+                                </div>
+                                <div class="product-tab-list tab-pane fade <?= $show_performance ? 'active in' : '' ?>" id="performance">
+                                    <?php if ($show_performance) { include __DIR__ . '/inc_performance_dashboard.php'; } ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

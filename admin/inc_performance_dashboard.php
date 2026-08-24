@@ -4,21 +4,19 @@ if (!isset($pd) || !is_array($pd)) {
 }
 extract($pd, EXTR_SKIP);
 ?>
-<div id="performance-dashboard" class="single-pro-review-area mt-t-30 mg-b-15">
-    <div class="row">
-        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-            <div class="product-payment-inner-st">
-                <h3 style="padding: 15px 20px 0;">Performance Dashboard</h3>
-                <ul id="myTabedu1" class="tab-review-design">
+<div id="performance-dashboard">
+                <h4 style="padding: 15px 20px 0; margin: 0;">Performance Dashboard</h4>
+                <ul id="perfInnerTabs" class="tab-review-design">
                     <li class="<?=$view_mode == 'userwise' ? 'active' : '';?>"><a href="<?= htmlspecialchars($userwise_url) ?>">User-wise Report</a></li>
                     <li class="<?=$view_mode == 'updates' ? 'active' : '';?>"><a href="<?= htmlspecialchars($updates_url) ?>">Updates Report</a></li>
                 </ul>
-                <div id="myTabContent" class="tab-content custom-product-edit">
+                <div id="perfTabContent" class="tab-content custom-product-edit">
                     <div class="product-tab-list tab-pane fade <?=$view_mode == 'userwise' ? 'active in' : '';?>" id="userwise">
                         <?php if ($view_mode !== 'userwise'): ?>
                         <p style="padding: 20px;">Open the User-wise Report tab to load this data.</p>
                         <?php else: ?>
                         <form method="GET" action="index.php" class="form-inline" style="padding: 20px;">
+                            <input type="hidden" name="tab" value="performance">
                             <input type="hidden" name="view" value="userwise">
                             <div class="form-group" style="margin-right: 20px;">
                                 <label for="perf_date" style="margin-right: 10px;">Date:</label>
@@ -116,6 +114,7 @@ extract($pd, EXTR_SKIP);
                         <p style="padding: 20px;">Open the Updates Report tab to load this data.</p>
                         <?php else: ?>
                         <form method="GET" action="index.php" class="form-inline" style="padding: 20px;">
+                            <input type="hidden" name="tab" value="performance">
                             <input type="hidden" name="view" value="updates">
                             <div class="form-group" style="margin-right: 15px;">
                                 <label for="from_date" style="margin-right: 10px;">From Date:</label>
@@ -137,7 +136,7 @@ extract($pd, EXTR_SKIP);
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-success" style="margin-right: 10px;">Apply Filters</button>
-                            <a href="index.php?view=updates" class="btn btn-default">Reset</a>
+                            <a href="index.php?tab=performance&view=updates" class="btn btn-default">Reset</a>
                         </form>
 
                         <div class="analytics-sparkle-area" style="margin-top: 20px;">
@@ -184,7 +183,7 @@ extract($pd, EXTR_SKIP);
                                                 <td><?=$first_update;?></td>
                                                 <td><?=$last_update;?></td>
                                                 <td>
-                                                    <a href="index.php?view=updates&from_date=<?=$from_date;?>&to_date=<?=$to_date;?>&user=<?=urlencode($summary['updated_by']);?>" class="btn btn-sm btn-info">View Details</a>
+                                                    <a href="index.php?tab=performance&view=updates&from_date=<?=$from_date;?>&to_date=<?=$to_date;?>&user=<?=urlencode($summary['updated_by']);?>" class="btn btn-sm btn-info">View Details</a>
                                                 </td>
                                             </tr>
                                             <?php
@@ -254,7 +253,4 @@ extract($pd, EXTR_SKIP);
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 </div>

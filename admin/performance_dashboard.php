@@ -1,4 +1,9 @@
 <?php
+include_once 'head.php';
 $query = $_GET;
-header('Location: index.php' . ($query ? ('?' . http_build_query($query)) : '') . '#performance-dashboard');
+$query['tab'] = 'performance';
+if (!isset($query['view']) || ($query['view'] !== 'userwise' && $query['view'] !== 'updates')) {
+    $query['view'] = 'userwise';
+}
+header('Location: index.php?' . http_build_query($query));
 exit;

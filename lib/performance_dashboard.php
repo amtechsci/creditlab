@@ -62,6 +62,13 @@ function performance_dashboard_repayments_by_user(string $pay_start, string $pay
     return $map;
 }
 
+function creditlab_performance_dashboard_is_active(): bool
+{
+    $tab = isset($_GET['tab']) ? (string) $_GET['tab'] : '';
+    $view = isset($_GET['view']) ? (string) $_GET['view'] : '';
+    return $tab === 'performance' || $view === 'userwise' || $view === 'updates';
+}
+
 function creditlab_performance_dashboard_load(): array
 {
     $selected_date = isset($_GET['date']) ? towreal($_GET['date']) : date('Y-m-d');
@@ -212,8 +219,8 @@ function creditlab_performance_dashboard_load(): array
         ));
     }
 
-    $userwise_url = 'index.php?view=userwise&date=' . urlencode($selected_date);
-    $updates_url = 'index.php?view=updates&from_date=' . urlencode($from_date) . '&to_date=' . urlencode($to_date);
+    $userwise_url = 'index.php?tab=performance&view=userwise&date=' . urlencode($selected_date);
+    $updates_url = 'index.php?tab=performance&view=updates&from_date=' . urlencode($from_date) . '&to_date=' . urlencode($to_date);
     if ($selected_user !== '') {
         $updates_url .= '&user=' . urlencode($selected_user);
     }
