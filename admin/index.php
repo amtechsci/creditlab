@@ -157,9 +157,6 @@ if (isset($_GET['pageno'])) {
             </div>
         </div>
 
-        <br>
-        <br>
-        <br>
 <?php
 include_once 'foot.php';
 ?>
