@@ -89,7 +89,7 @@ $counts_data = towfetch($counts);
                         <a href="bank_statistics.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/bank_statistics.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Bank Statistics</span></a>
                     </li>
                     <li>
-                        <a href="performance_dashboard.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/performance_dashboard.php" || strpos($_SERVER['REQUEST_URI'], "/admin/performance_dashboard.php") !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
+                        <a href="index.php#performance-dashboard" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/index.php') !== false || preg_match('#/admin/?(\?|$)#', $_SERVER['REQUEST_URI'])){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
                     </li>
                     <li>
                         <a href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
@@ -98,7 +98,7 @@ $counts_data = towfetch($counts);
                         <a href="downloader.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/downloader.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Downloader</span></a>
                     </li>
                     <li>
-                        <a href="logs.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/logs.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Logs</span></a>
+                        <a href="logs.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/logs.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-file-lines"></i> <span class="mini-click-non">Logs</span></a>
                     </li>
                     <li>
                         <a href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>

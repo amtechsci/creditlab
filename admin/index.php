@@ -1,5 +1,7 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/performance_dashboard.php';
+$pd = creditlab_performance_dashboard_load();
 if (isset($_GET['pageno'])) {
             $pageno = intval($_GET['pageno']);
         } else {
@@ -67,6 +69,8 @@ if (isset($_GET['pageno'])) {
                         </div>
                     </div>
                 </div>
+                <br>
+                <?php include __DIR__ . '/inc_performance_dashboard.php'; ?>
                 <br>
             
                 
@@ -136,6 +140,21 @@ if (isset($_GET['pageno'])) {
 include_once 'foot.php';
 ?>
 <script>
+    $(document).ready(function() {
+        if ($.fn.DataTable && $('#updatesTable').length) {
+            $('#updatesTable').DataTable({
+                "pageLength": 25,
+                "order": [[ 8, "desc" ]],
+                "language": {
+                    "search": "Search:",
+                    "lengthMenu": "Show _MENU_ entries",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                    "infoEmpty": "No entries found",
+                    "infoFiltered": "(filtered from _TOTAL_ total entries)"
+                }
+            });
+        }
+    });
     function search(){
         var searchtext = $('#searchtext').val();
         $.post("searchtable.php",
