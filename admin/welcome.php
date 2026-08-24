@@ -24,12 +24,9 @@
                                     </div>
                                     <div class="col-lg-6 col-md-7 col-sm-6 col-xs-12">
                                         <div class="header-top-menu tabl-d-n">
-                                            <form action="sea.php" method="get" target="_blank" style="margin-top:13px"><div class="col-md-6">
-                                                <input type="text" name="sea" class="btn">
-                                                </div>
-                                                <div class="col-md-6">
-                                                <input type="submit" class="btn btn-success">
-                                                </div>
+                                            <form action="sea.php" method="get" target="_blank" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                                                <input type="text" name="sea" class="form-control" placeholder="Search users..." style="height:34px; max-width:280px; border-radius:4px;">
+                                                <button type="submit" class="btn btn-success" style="height:34px; padding:6px 14px;">Search</button>
                                             </form>
                                            
                                         </div>

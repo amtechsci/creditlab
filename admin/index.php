@@ -1,6 +1,7 @@
 <?php
 include_once 'head.php';
 require_once __DIR__ . '/../lib/performance_dashboard.php';
+require_once __DIR__ . '/../lib/admin_ui.php';
 
 $show_performance = creditlab_performance_dashboard_is_active();
 $pd = $show_performance ? creditlab_performance_dashboard_load() : [];
@@ -28,7 +29,7 @@ if (isset($_GET['pageno'])) {
     include_once 'welcome.php';
     include_once 'm_menu.php';
     ?>
-            <div class="breadcome-area">
+            <div class="breadcome-area" style="display:none;">
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
@@ -51,101 +52,137 @@ if (isset($_GET['pageno'])) {
                             </ul>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade <?= $show_performance ? '' : 'active in' ?>" id="dashboard">
-        <div class="analytics-sparkle-area">
-                <div class="row text-center">
+<style>
+#dashboard .dash-stats { margin: 4px 0 16px; }
+#dashboard .dash-stat {
+    display: block;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 12px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: 12px;
+}
+#dashboard .dash-stat:hover, #dashboard .dash-stat:focus {
+    border-color: #006DF0;
+    text-decoration: none;
+    color: inherit;
+}
+#dashboard .dash-stat span { display: block; font-size: 12px; color: #6b7280; font-weight: 600; }
+#dashboard .dash-stat strong { display: block; font-size: 22px; font-weight: 700; color: #111827; margin-top: 4px; }
+#dashboard .dash-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+#dashboard .dash-toolbar .form-control { height: 34px; max-width: 260px; }
+#dashboard .dash-toolbar .btn { height: 34px; padding: 6px 14px; }
+#dashboard .table th { background: #f3f4f6; font-size: 12px; }
+#dashboard .table td { font-size: 13px; vertical-align: middle; }
+#dashboard .dash-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+#dashboard .dash-muted { color: #9ca3af; }
+#dashboard .pagination { margin: 12px 0 0; }
+</style>
+                <div class="row dash-stats">
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line reso-mg-b-30">
-                            <a href="users.php"><div class="analytics-content">
-                                <h5>Verify Users</h5>
-                                <h2><span class="counter"><?= (int) ($verifyquery_count ?? 0) ?></span></h2>
-                            </div></a>
-                        </div>
+                        <a class="dash-stat" href="users.php">
+                            <span>Verified users</span>
+                            <strong><?= (int) ($verifyquery_count ?? 0) ?></strong>
+                        </a>
                     </div>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line reso-mg-b-30">
-                            <a href="newusers.php"><div class="analytics-content">
-                                <h5>New Users</h5>
-                                <h2><?= (int) ($newquery_count ?? 0) ?></h2>
-                            </div></a>
-                        </div>
+                        <a class="dash-stat" href="newusers.php">
+                            <span>New users</span>
+                            <strong><?= (int) ($newquery_count ?? 0) ?></strong>
+                        </a>
                     </div>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line reso-mg-b-30">
-                            <a href="loan.php"><div class="analytics-content">
-                                <h5>Loan Approved</h5>
-                                <h2><?= (int) ($loanquery_count ?? 0) ?></h2>
-                            </div></a>
-                        </div>
+                        <a class="dash-stat" href="loan.php">
+                            <span>Loan approved</span>
+                            <strong><?= (int) ($loanquery_count ?? 0) ?></strong>
+                        </a>
                     </div>
                     <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line reso-mg-b-30">
-                            <a href="newloan.php"><div class="analytics-content">
-                                <h5>New Loan Applied</h5>
-                                <h2><?= (int) ($newloanquery_count ?? 0) ?></h2>
-                            </div></a>
-                        </div>
+                        <a class="dash-stat" href="newloan.php">
+                            <span>New loan applied</span>
+                            <strong><?= (int) ($newloanquery_count ?? 0) ?></strong>
+                        </a>
                     </div>
                 </div>
-                <br>
-            
-                
-                <div class="row text-center">
-                    <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                <div class="analytics-sparkle-line table-mg-t-pro dk-res-t-pro-30">
-                    <div class="row">
-                    <div class="col-md-8"></div>
-                    <div class="col-md-3">
-        <input type="text" id="searchtext" style="float:left;height:35px;border-radius:5%;border:1px solid #ddd;" class="form-control" placeholder="Search..."></div><div class="col-md-1"><span><button class="btn btn-primary" onclick="search()">Enter</button></span></div></div><br>
+
+                <div class="dash-toolbar">
+                    <input type="text" id="searchtext" class="form-control" placeholder="Search RCID, name, mobile, email...">
+                    <button type="button" class="btn btn-primary" onclick="search()">Search</button>
+                </div>
 
                 <div class="table-responsive" id="searchtable">
         <table class="table table-bordered" id="loan_history_datatable">
-        <thead class="thead-light">
-            <tr>                
-                                        <th>RCID</th>        
-                                        <th>Name</th>        
-                                        <th>Email</th>        
-                                        <th>Mobile</th>    
-                                        <th>Status</th>    
-                                        <th>Actions</th>     
+        <thead>
+            <tr>
+                                        <th>RCID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Mobile</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
         </thead>
         <tbody>
-                  
                                    <?php if ($usersquery) { while($loanfetch = towfetch($usersquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users"); ?>
                                     <tr>
-                                        <td data-title="RCID"><?=$users_rcid?></td>
-                                        <td data-title="Name"><?=$users_name?><?php if($users_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
-                                        <td data-title="Email"><?=$users_email?></td>
-                                        <td data-title="Mobile"><?=$users_mobile?></td>
-                                        <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($users_status == "waiting"){echo "Just Registered";}else{echo $users_status;}?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$users_id?>" target="_blank">View</a></td>
+                                        <td data-title="RCID"><?= creditlab_dash_text($users_rcid ?? '') ?></td>
+                                        <td data-title="Name"><?php
+                                            echo creditlab_dash_text($users_name ?? '');
+                                            if (!empty($users_loan)) { echo "<span style='color:#dc2626'>#</span>"; }
+                                            if (!empty($users_sloan)) { echo "<span style='color:#dc2626'>@</span>"; }
+                                        ?></td>
+                                        <td data-title="Email"><?= creditlab_dash_text($users_email ?? '') ?></td>
+                                        <td data-title="Mobile"><?= creditlab_dash_text($users_mobile ?? '') ?></td>
+                                        <td data-title="Status"><?= creditlab_status_badge($users_status ?? '') ?></td>
+                                        <td data-title="Actions"><a class="btn btn-xs btn-primary" href="profile.php?id=<?= (int) $users_id ?>" target="_blank">View</a></td>
                                     </tr>
                                 <?php } } ?>
             </tbody>
     </table>
-							<nav aria-label="Page navigation example">
+							<nav aria-label="Page navigation">
   <ul class="pagination">
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
+    <li class="page-item <?= $pageno <= 1 ? 'disabled' : '' ?>">
+      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">&laquo;</a>
     </li>
-    <?php $i = 1; while($i <= $total_pages){?>
-    <li class="page-item"><a class="page-link" href="?pageno=<?=$i;?>"><?=$i;?></a></li>
-    <?php $i++; }?>
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages){ echo '#'; } else { echo "?pageno=".($pageno + 1); } ?>" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
+    <?php
+    $win_start = max(1, $pageno - 2);
+    $win_end = min($total_pages, $pageno + 2);
+    if ($win_start > 1) {
+        echo '<li class="page-item"><a class="page-link" href="?pageno=1">1</a></li>';
+        if ($win_start > 2) { echo '<li class="page-item disabled"><span class="page-link">…</span></li>'; }
+    }
+    for ($i = $win_start; $i <= $win_end; $i++) {
+        $active = $i == $pageno ? ' active' : '';
+        echo '<li class="page-item'.$active.'"><a class="page-link" href="?pageno='.$i.'">'.$i.'</a></li>';
+    }
+    if ($win_end < $total_pages) {
+        if ($win_end < $total_pages - 1) { echo '<li class="page-item disabled"><span class="page-link">…</span></li>'; }
+        echo '<li class="page-item"><a class="page-link" href="?pageno='.$total_pages.'">'.$total_pages.'</a></li>';
+    }
+    ?>
+    <li class="page-item <?= $pageno >= $total_pages ? 'disabled' : '' ?>">
+      <a class="page-link" href="<?php if($pageno >= $total_pages){ echo '#'; } else { echo "?pageno=".($pageno + 1); } ?>" aria-label="Next">&raquo;</a>
     </li>
   </ul>
 </nav>
     </div>
-    </div>
-    </div></div>
-            </div>
                                 </div>
                                 <div class="product-tab-list tab-pane fade <?= $show_performance ? 'active in' : '' ?>" id="performance">
                                     <?php if ($show_performance) { include __DIR__ . '/inc_performance_dashboard.php'; } ?>
@@ -162,6 +199,12 @@ include_once 'foot.php';
 ?>
 <script>
     $(document).ready(function() {
+        $('#searchtext').on('keydown', function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                search();
+            }
+        });
         if ($.fn.DataTable && $('#updatesTable').length) {
             $('#updatesTable').DataTable({
                 "pageLength": 25,
