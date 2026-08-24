@@ -70,9 +70,6 @@
                         <li>
                             <a class="" href="loan_slider.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loan_slider.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Loan slider</span></a>
                         </li>
-                        <li>
-                            <a class="" href="emi_calculator.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/emi_calculator.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">EMI Calculator</span></a>
-                        </li>
                          <li>
                             <a class="" href="dynamic_search.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/dynamic_search.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Dynamic Search</span></a>
                         </li>
@@ -100,10 +97,7 @@
                             <a class="" href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
                         </li>
                         <li>
-                            <a class="" href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="lsp_partners.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/lsp_partners.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-handshake-o"></i> <span class="mini-click-non">LSP Partners</span></a>
+                            <a class="" href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
                         </li>
                         
                         

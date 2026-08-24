@@ -18,7 +18,6 @@ function writeWebhookLog($message, $log_file) {
     $timestamp = date('Y-m-d H:i:s');
     $log_entry = "[$timestamp] $message\n";
     file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
-    error_log($message); // Also log to system error log
 }
 
 // Initialize transaction tracking arrays

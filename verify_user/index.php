@@ -78,11 +78,12 @@ if (isset($_GET['pageno'])) {
                                    <?php while($loanfetch = towfetch($newloanquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users");
                                    $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
                                    $b = towfetch($a);
+                                   if (!$b) { continue; }
                                    extract($b,EXTR_PREFIX_ALL,"user");
                                    ?>
                                     <tr>
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?><?php if(isset($users_sloan)){ if($users_sloan > 0){echo "<span style='color:red'>@</span>";}}?><?php if(empty($user_conpanydocument) or empty($user_personaldocument) or empty($user_salarydocument) or empty($user_bankdocument) or empty($user_addressdocument) or empty($user_companyidcard)){}else{echo " <span style='color:green; font-size:18px;'>✔</span>";}?></td>
+                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><?php if(empty($user_conpanydocument) or empty($user_personaldocument) or empty($user_salarydocument) or empty($user_bankdocument) or empty($user_addressdocument) or empty($user_companyidcard)){}else{echo " <span style='color:green; font-size:18px;'>✔</span>";}?></td>
                                         <td data-title="Email"><?=maskEmail($user_email)?></td>
                                         <td data-title="Mobile"><?=maskPhone($user_mobile)?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($user_status == "waiting"){echo "Just Register";}else{echo $user_status;}?></td>

@@ -71,9 +71,6 @@ $counts_data = towfetch($counts);
                         <a href="loan_slider.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loan_slider.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Loan slider</span></a>
                     </li>
                     <li>
-                        <a href="emi_calculator.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/emi_calculator.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">EMI Calculator</span></a>
-                    </li>
-                    <li>
                         <a href="agency_admins.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/agency_admins.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-building"></span> <span class="mini-click-non">Agency admins</span></a>
                     </li>
                     <li>
@@ -107,25 +104,13 @@ $counts_data = towfetch($counts);
                         <a href="report_downloads.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/report_downloads.php" || strpos($_SERVER['REQUEST_URI'], "/admin/report_downloads.php") !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Report Downloads</span></a>
                     </li>
                     <li>
-                        <a href="server_health.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/server_health.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-heartbeat"></i> <span class="mini-click-non">Server Health</span></a>
-                    </li>
-                    <li>
                         <a href="log_viewer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/log_viewer.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Log Viewer</span></a>
                     </li>
                     <li>
                         <a href="enach_logs.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/enach_logs.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-university"></i> <span class="mini-click-non">e-NACH Logs</span></a>
                     </li>
                     <li>
-                        <a href="pdf_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/pdf_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-pdf-o"></i> <span class="mini-click-non">PDF Settings</span></a>
-                    </li>
-                    <li>
-                        <a href="whatsapp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/whatsapp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fab fa-whatsapp" style="color: #25D366;"></i> <span class="mini-click-non">WhatsApp Settings</span></a>
-                    </li>
-                    <li>
-                        <a href="smtp_settings.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/smtp_settings.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-envelope"></i> <span class="mini-click-non">SMTP Settings</span></a>
-                    </li>
-                    <li>
-                        <a href="lsp_partners.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/lsp_partners.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-handshake-o"></i> <span class="mini-click-non">LSP Partners</span></a>
+                        <a href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
                     </li>
                 </ul>
             </nav>

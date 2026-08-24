@@ -401,9 +401,9 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     $selfie = $userpro_email.'selfie'.date('YmdHis').'.'.$selfie;
     list($success, $message) = s3_upload_file_from_upload($_FILES["selfie"]["tmp_name"], $selfie, $_FILES["selfie"]["type"]);
     }else{
-        $selfie = "$userpro_$selfie";
+        $selfie = isset($userpro_selfie) ? $userpro_selfie : '';
     }}else{
-        $selfie = "$userpro_$selfie";
+        $selfie = isset($userpro_selfie) ? $userpro_selfie : '';
     }
     $document_password = array();
     $extract = towrealarray($_POST);
@@ -556,7 +556,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                     <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
                     $recovery_officer = towfetch($recovery_officer);
                     ?>
-                   <p>Account Manager : <?=$account_manager['name'];?> </p><p>Recovery Officer : <?=$recovery_officer['name'];?></p>
+                   <p>Account Manager : <?=is_array($account_manager) ? ($account_manager['name'] ?? '') : '';?> </p><p>Recovery Officer : <?=is_array($recovery_officer) ? ($recovery_officer['name'] ?? '') : '';?></p>
                    <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
                    <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
                    $totalflss = $totalfls['total'] ? $totalfls['total'] : 0;
@@ -1284,7 +1284,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                                                             </div>
                                                             <div class="form-group">
                                                                 <lable>Account Name</lable>
-                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=$userpro_ac_name?>">
+                                                                <input name="account_name" type="text" class="form-control" placeholder="Account Name" value="<?=isset($userpro_account_name) ? $userpro_account_name : ''?>">
                                                             </div>
                                                         </div>
                                                     </div>

@@ -5,6 +5,10 @@ if(isset($_GET['id'])){
 $loan  = towquery("SELECT loan_apply.*,user.name,user.father_name,user.permanent_address,user.mobile,user.altmobile,user.email,user.signature,user.personaldocument,user.conpanydocument,user.marital_status FROM `loan_apply` INNER JOIN user
       ON loan_apply.uid=user.id WHERE loan_apply.id='$id'");
 $loanf = towfetch($loan);
+if (!$loanf) {
+    http_response_code(404);
+    exit('Loan not found');
+}
 $a = towquery("SELECT * FROM user_login_details WHERE uid='".$loanf['uid']."' ORDER BY id DESC");
 $b = $loanf;
 // print_r($b);exit;
@@ -40,6 +44,9 @@ $b = $loanf;
              $tint = $dint*65;
                 //  print_r($tint);exit;
 
+} else {
+    http_response_code(400);
+    exit('Missing loan id');
 }
 ?>
 <!DOCTYPE html>

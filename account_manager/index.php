@@ -89,6 +89,8 @@ if (isset($_GET['pageno'])) {
                             </ul>
                             <?php if (creditlab_can_download_account_manager_data()) { ?>
                             <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
+                            <?php } else { ?>
+                            <button type="button" class="btn btn-primary" style="color:#fff; float: right;">Download</button>
                             <?php } ?>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">

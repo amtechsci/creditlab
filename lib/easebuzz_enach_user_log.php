@@ -121,6 +121,10 @@ function creditlab_easebuzz_query_user_events(array $filters = []): array
 {
     global $db;
 
+    if (!function_exists('creditlab_easebuzz_normalize_phone')) {
+        require_once __DIR__ . '/easebuzz_enach.php';
+    }
+
     if (!creditlab_ensure_easebuzz_enach_event_log_table()) {
         return ['rows' => [], 'totals' => ['success' => 0, 'failure' => 0, 'pending' => 0, 'all' => 0]];
     }
