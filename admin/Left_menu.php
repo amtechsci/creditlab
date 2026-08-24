@@ -71,9 +71,6 @@ $counts_data = towfetch($counts);
                         <a href="loan_slider.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loan_slider.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Loan slider</span></a>
                     </li>
                     <li>
-                        <a href="agency_admins.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/agency_admins.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-building"></span> <span class="mini-click-non">Agency admins</span></a>
-                    </li>
-                    <li>
                         <a href="dynamic_search.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/dynamic_search.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Dynamic Search</span></a>
                     </li>
                     <li>
@@ -83,7 +80,7 @@ $counts_data = towfetch($counts);
                         <a href="recovery_officer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/recovery_officer.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Recovery Officer (<?= $counts_data['recovery_officer_count']; ?>)</span></a>
                     </li>
                     <li>
-                        <a href="add_user.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/add_user.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Add User</span></a>
+                        <a href="add_user.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/add_user.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Users</span></a>
                     </li>
                     <li>
                         <a href="email.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/email.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Email</span></a>
@@ -98,16 +95,10 @@ $counts_data = towfetch($counts);
                         <a href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
                     </li>
                     <li>
-                        <a href="downloader.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/downloader.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Downloader</span></a>
+                        <a href="downloader.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/downloader.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Downloader</span></a>
                     </li>
                     <li>
-                        <a href="report_downloads.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/report_downloads.php" || strpos($_SERVER['REQUEST_URI'], "/admin/report_downloads.php") !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Report Downloads</span></a>
-                    </li>
-                    <li>
-                        <a href="log_viewer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/log_viewer.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Log Viewer</span></a>
-                    </li>
-                    <li>
-                        <a href="enach_logs.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/enach_logs.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-university"></i> <span class="mini-click-non">e-NACH Logs</span></a>
+                        <a href="logs.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/logs.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-file-text-o"></i> <span class="mini-click-non">Logs</span></a>
                     </li>
                     <li>
                         <a href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>

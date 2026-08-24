@@ -4,7 +4,7 @@
  * 
  * Usage:
  * - Command line: php cron/get_download_links.php
- * - Browser (admin): use /admin/report_downloads.php instead
+ * - Browser (admin): use /admin/downloader.php?tab=reports instead
  * 
  * Query Parameters:
  * - date: Filter by report_date (format: Y-m-d)
@@ -14,7 +14,7 @@
 
 if (php_sapi_name() !== 'cli') {
 	header('HTTP/1.1 403 Forbidden');
-	header('Location: /admin/report_downloads.php');
+	header('Location: /admin/downloader.php?tab=reports');
 	exit;
 }
 

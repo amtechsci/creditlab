@@ -82,7 +82,7 @@
                             <a class="" href="recovery_officer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/recovery_officer.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Recovery Officer (<?=townum($recovery_officer);?>)</span></a>
                         </li>
                         <li>
-                            <a class="" href="add_user.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/add_user.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Add User</span></a>
+                            <a class="" href="add_user.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/add_user.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Users</span></a>
                         </li>
                         <li>
                             <a class="" href="email.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/email.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Email</span></a>

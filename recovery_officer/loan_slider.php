@@ -57,18 +57,6 @@ include_once 'head.php';
                                                                 <div class="slidecontainer">
                                                                 <input type="range" min="1000" max="10000" value="10000" class="slider" id="myRange" step="500" name="amount">
                                                                 <br>
-                                                                <script><
-                                                                // Space out values
-                                                                var vals = opt.max - opt.min;
-  for (var i = 0; i <= vals; i++) {
-    
-    var el = $('<label>'+(i+1)+'k</label>').css('left',(i/vals*100)+'%'); 
-  
-    $( "#myRange" ).append(el);
-    <?=$el?>
-    
-  }
-                                                                </script>
                                                                 <h4><span id="demo">10000</span></h4>
                                                                 </div>
                                                                 <br><br>

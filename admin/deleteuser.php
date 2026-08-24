@@ -13,6 +13,6 @@ if(isset($admin)){
 if(isset($_GET['id'])and isset($_GET['type'])){
     $extract = towrealarray($_GET);
     towquery("DELETE FROM `".$extract['type']."` WHERE id=".$extract['id']);
-    header('location:/admin/add_user.php');
+    header('location:/admin/add_user.php?tab=users');
 }
 ?>

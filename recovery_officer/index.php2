@@ -33,41 +33,32 @@ if (isset($_GET['pageno'])) {
         <div class="analytics-sparkle-area">
             <div class="container-fluid">
                 <div class="row text-center">
-                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
                         <div class="analytics-sparkle-line reso-mg-b-30">
                             <a href="users.php"><div class="analytics-content">
                                 <h5>Verify Users</h5>
-                                
-                                <h2><span class="counter"><?=townum($verifyquery);?></span></span></h2>
-                                </div></a>
-                        </div>
-                    </div>
-                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line reso-mg-b-30">
-                            <a href="newusers.php"><div class="analytics-content">
-                                <h5>New Users</h5>
-                                
-                                <h2><?=townum($newquery);?></h2>
-                                
+                                <h2><span class="counter"><?=townum($verifyquery);?></span></h2>
                             </div></a>
                         </div>
                     </div>
-                    
-                    
-                </div>
-                <br>
-                <div class="row text-center">
-                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line table-mg-t-pro dk-res-t-pro-30">
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="analytics-sparkle-line reso-mg-b-30">
+                            <a href="newusers.php"><div class="analytics-content">
+                                <h5>New Users</h5>
+                                <h2><?=townum($newquery);?></h2>
+                            </div></a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="analytics-sparkle-line reso-mg-b-30">
                             <a href="loan.php"><div class="analytics-content">
                                 <h5>Loan Approved</h5>
                                 <h2><?=townum($loanquery);?></h2>
                             </div></a>
                         </div>
                     </div>
-                
-                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                        <div class="analytics-sparkle-line table-mg-t-pro dk-res-t-pro-30">
+                    <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                        <div class="analytics-sparkle-line reso-mg-b-30">
                             <a href="newloan.php"><div class="analytics-content">
                                 <h5>New Loan Applied</h5>
                                 <h2><?=townum($newloanquery);?></h2>
