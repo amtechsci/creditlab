@@ -2,21 +2,23 @@
 /**
  * Daily MariaDB backup → S3 + email notification
  *
- * Uploads a gzipped mysqldump to s3://{bucket}/backups/db/{dbname}_YYYY-MM-DD_HHMMSS.sql.gz
- * Emails amproapk@gmail.com (or BACKUP_EMAIL) with size + 7-day presigned download URL.
- * Does NOT attach the dump (Gmail ~25MB limit; dumps are much larger).
+ * Uploads a gzipped mysqldump to
+ *   s3://{bucket}/{BACKUP_S3_PREFIX}{dbname}_YYYY-MM-DD_HHMMSS.sql.gz
+ * Emails BACKUP_EMAIL with size + 7-day presigned download URL (no attachment).
+ *
+ * Default prefix is uploads/db-backups/ so existing EC2 role PutObject on uploads/* works.
+ * Prefer a dedicated backups/ prefix once IAM allows it.
  *
  * Cron (Asia/Kolkata 02:15 daily), as www-data:
- *   15 2 * * * www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php >> /var/www/creditlab.in/cron/backup_cron.log 2>&1
+ *   15 2 * * * www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php >> /var/log/creditlab-db-backup.log 2>&1
  *
  * Manual test:
  *   sudo -u www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php
  *
  * Env (.env):
  *   BACKUP_EMAIL=amproapk@gmail.com
- *   BACKUP_S3_PREFIX=backups/db/
+ *   BACKUP_S3_PREFIX=uploads/db-backups/
  *   BACKUP_RETENTION_DAYS=30
- *   BACKUP_MYSQLDUMP=/usr/bin/mysqldump
  */
 
 declare(strict_types=1);
@@ -44,18 +46,22 @@ require_once __DIR__ . '/../lib/s3_aws_sdk.php';
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
 
-$logFile = __DIR__ . '/backup_cron.log';
+$workDir = '/tmp/creditlab-db-backups';
+$logFile = $workDir . '/backup.log';
 $recipient = env('BACKUP_EMAIL', 'amproapk@gmail.com');
-$s3Prefix = rtrim(env('BACKUP_S3_PREFIX', 'backups/db/'), '/') . '/';
+// Default under uploads/ — creditlab-ec2-s3-role typically allows PutObject there, not backups/
+$s3Prefix = rtrim(env('BACKUP_S3_PREFIX', 'uploads/db-backups/'), '/') . '/';
 $retentionDays = max(1, (int) env('BACKUP_RETENTION_DAYS', '30'));
 $mysqldumpBin = env('BACKUP_MYSQLDUMP', '/usr/bin/mysqldump');
-$workDir = '/tmp/creditlab-db-backups';
 
 function backup_log(string $msg): void
 {
-	global $logFile;
+	global $logFile, $workDir;
 	$line = '[' . date('Y-m-d H:i:s') . '] ' . $msg . "\n";
 	echo $line;
+	if (!is_dir($workDir)) {
+		@mkdir($workDir, 0700, true);
+	}
 	@file_put_contents($logFile, $line, FILE_APPEND);
 }
 
