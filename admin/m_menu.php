@@ -2,21 +2,6 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <!-- Mobile Search Box -->
-                            <div class="mobile-search-box" style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
-                                <form method="GET" action="dynamic_search.php" style="margin: 0;">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" name="search" placeholder="Search users, loans, mobile..."
-                                               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>"
-                                               style="border-radius: 20px 0 0 20px; border-right: none;">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" type="submit" style="border-radius: 0 20px 20px 0; border-left: none;">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
                             <div class="mobile-menu">
                                 <nav id="dropdown">
                                    <ul class="metismenu" id="menu1">

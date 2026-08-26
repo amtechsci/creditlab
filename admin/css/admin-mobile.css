@@ -1,0 +1,346 @@
+/* Admin panel — phones and tablets */
+.header-mobile-search {
+	display: none;
+}
+
+@media (max-width: 991px) {
+	html,
+	body {
+		max-width: 100%;
+		overflow-x: hidden;
+	}
+
+	.all-content-wrapper {
+		margin-left: 0 !important;
+		width: 100%;
+		overflow-x: hidden;
+	}
+
+	.container,
+	.container-fluid {
+		width: 100% !important;
+		max-width: 100% !important;
+		padding-left: 12px;
+		padding-right: 12px;
+	}
+
+	.row {
+		margin-left: -8px;
+		margin-right: -8px;
+	}
+
+	.row > [class*="col-"] {
+		padding-left: 8px;
+		padding-right: 8px;
+	}
+
+	.logo-pro {
+		display: block;
+		text-align: center;
+		background: #fff;
+		padding: 8px 12px;
+	}
+
+	.logo-pro h1 {
+		margin: 0;
+		padding: 4px 0;
+		font-size: 22px;
+		line-height: 1.2;
+	}
+
+	.header-top-area {
+		position: relative !important;
+		left: 0 !important;
+		right: 0 !important;
+		top: auto !important;
+	}
+
+	.header-top-wraper {
+		padding: 0;
+	}
+
+	.header-top-inner {
+		display: flex;
+		align-items: center;
+		margin: 0 !important;
+	}
+
+	.header-right-col {
+		width: 100%;
+		float: none;
+		padding: 0 12px !important;
+	}
+
+	.header-right-info {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		min-height: 48px;
+		padding: 6px 0;
+	}
+
+	.header-view-site {
+		margin-top: 0 !important;
+		flex-shrink: 0;
+		padding: 6px 12px;
+		font-size: 13px;
+		line-height: 1.3;
+	}
+
+	.header-right-info .navbar-nav {
+		float: none !important;
+		margin: 0 !important;
+		max-width: none !important;
+		text-align: right;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.header-right-info ul.header-right-menu {
+		margin: 0;
+		padding: 0;
+	}
+
+	.header-right-info ul.header-right-menu > li {
+		display: inline-block;
+		float: none;
+	}
+
+	.header-right-info ul.header-right-menu > li > a,
+	.header-right-info .nav > li > a {
+		display: flex !important;
+		align-items: center;
+		flex-direction: row;
+		white-space: nowrap;
+		padding: 0 !important;
+		line-height: 1.2;
+		gap: 6px;
+	}
+
+	.header-right-info .admin-name,
+	.header-right-info .fa,
+	.header-right-info .edu-icon {
+		display: inline-block !important;
+		vertical-align: middle;
+		position: static !important;
+		top: auto !important;
+	}
+
+	.header-right-info .fa-user-circle {
+		font-size: 22px !important;
+	}
+
+	.header-right-info ul.header-right-menu li .author-log {
+		left: auto !important;
+		right: 0 !important;
+		width: 160px !important;
+		top: 120% !important;
+	}
+
+	.header-right-info ul.header-right-menu li.open .author-log {
+		top: 120% !important;
+	}
+
+	.header-mobile-search {
+		display: flex;
+		align-items: stretch;
+		width: 100%;
+		padding: 0 12px 10px;
+		box-sizing: border-box;
+	}
+
+	.header-mobile-search input {
+		flex: 1 1 auto;
+		min-width: 0;
+		width: auto;
+		height: 38px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 4px 0 0 4px;
+		font-size: 14px;
+		color: #333;
+		background: #fff;
+	}
+
+	.header-mobile-search button {
+		flex: 0 0 44px;
+		width: 44px;
+		height: 38px;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: 0 4px 4px 0;
+		background: #15803d;
+		color: #fff;
+		font-size: 16px;
+		line-height: 38px;
+	}
+
+	.mobile-menu-area {
+		display: block;
+		width: 100%;
+		overflow: visible;
+		background: #262626;
+	}
+
+	.mobile-menu-area .container {
+		width: 100% !important;
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.mean-container,
+	.mean-container .mean-bar {
+		width: 100%;
+		float: none;
+		background: #262626;
+	}
+
+	.breadcome-list {
+		padding: 12px !important;
+		margin-bottom: 0;
+	}
+
+	.breadcome-list .row > [class*="col-"] {
+		width: 100%;
+		float: none;
+		margin-bottom: 8px;
+	}
+
+	.product-payment-inner-st,
+	.profile-info-inner,
+	.review-content-section,
+	.dropzone-custom-sys {
+		padding: 12px !important;
+	}
+
+	.dropzone-custom-sys {
+		padding: 16px 12px !important;
+	}
+
+	ul.tab-review-design,
+	ul.tab-custon-design,
+	.settings-nav.nav-tabs {
+		display: flex;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		white-space: nowrap;
+		margin-bottom: 8px;
+		padding-bottom: 8px !important;
+	}
+
+	ul.tab-review-design li,
+	ul.tab-custon-design li,
+	.settings-nav.nav-tabs > li {
+		flex: 0 0 auto;
+		float: none;
+		display: inline-block;
+	}
+
+	ul.tab-review-design li a,
+	ul.tab-custon-design li a {
+		display: inline-block !important;
+		margin: 0 8px 0 0 !important;
+		font-size: 14px !important;
+		padding-right: 8px !important;
+	}
+
+	#myTab3.tab-review-design li a:before,
+	#myTab4.tab-review-design li a:before,
+	#myTabedu1.tab-review-design li a:before,
+	#myTab3.tab-review-design li.active a:before,
+	#myTab4.tab-review-design li.active a:before,
+	#myTabedu1.tab-review-design li.active a:before {
+		display: none;
+	}
+
+	.table-responsive,
+	.review-content-section,
+	.product-tab-list,
+	.custom-product-edit,
+	.product-status-wrap {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		max-width: 100%;
+	}
+
+	.table-responsive table.table,
+	table#loan_history_datatable {
+		min-width: 560px;
+	}
+
+	.form-control,
+	.btn,
+	select.form-control {
+		max-width: 100%;
+	}
+
+	img,
+	iframe,
+	video {
+		max-width: 100%;
+		height: auto;
+	}
+
+	.modal-dialog {
+		width: auto !important;
+		max-width: calc(100% - 20px) !important;
+		margin: 10px auto !important;
+	}
+
+	.dash-toolbar {
+		flex-wrap: wrap !important;
+		justify-content: stretch !important;
+	}
+
+	.dash-toolbar .form-control {
+		max-width: none !important;
+		width: 100%;
+		flex: 1 1 100%;
+	}
+
+	.dash-toolbar .btn {
+		width: 100%;
+	}
+
+	#performance-dashboard .perf-toolbar .form-control {
+		min-width: 0;
+		width: 100%;
+	}
+
+	.pagination {
+		display: flex;
+		flex-wrap: wrap;
+		padding-left: 0;
+	}
+
+	.footer-copy-right {
+		padding: 12px;
+		font-size: 12px;
+		text-align: center;
+	}
+}
+
+@media (max-width: 767px) {
+	.single-pro-review-area {
+		margin-top: 10px !important;
+	}
+
+	.header-right-info .admin-name {
+		max-width: 120px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.btn,
+	.btn-group {
+		margin-bottom: 6px;
+	}
+
+	.btn-group .btn {
+		margin-bottom: 0;
+	}
+}

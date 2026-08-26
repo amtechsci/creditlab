@@ -78,6 +78,7 @@ extract(creditlab_staff_head_count_queries());
     <!-- responsive CSS
 		============================================ -->
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/admin-mobile.css">
     <!-- modernizr JS
 		============================================ -->
     <script src="js/vendor/modernizr-2.8.3.min.js"></script>

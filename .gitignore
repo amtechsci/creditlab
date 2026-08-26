@@ -1,4 +1,7 @@
-﻿user/uploads/*
+user/uploads/*
 zxc/uploads/*
 .env
 config_s3.php
+zzre/*.csv
+*.sql.gz
+u969389823_credit.sql
