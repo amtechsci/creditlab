@@ -81,13 +81,13 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         $id = $aa['id'];
         if($aa['active'] == 1){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['user'] = $email;
-        setcookie('user', $email, time() + (86400 * 30), "/");
+        require_once __DIR__ . '/../../lib/auth.php';
+        creditlab_establish_login('user', $email);
         header("location:../../user/");
     }elseif($aa['active'] == 2){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['admin'] = $email;
-        setcookie('admin', $email, time() + (86400 * 30), "/");
+        require_once __DIR__ . '/../../lib/auth.php';
+        creditlab_establish_login('admin', $email);
         header("location:../../admin/");
     }
     }else{
@@ -97,7 +97,8 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         $aa = towfetch($result);
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (700$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['verify_user'] = $email;
+        require_once __DIR__ . '/../../lib/auth.php';
+        creditlab_establish_login('verify_user', $email);
         header("location:/verify_user/");
         exit;
     }else{
@@ -107,7 +108,8 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         $aa = towfetch($result);
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (100$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['account_manager'] = $email;
+        require_once __DIR__ . '/../../lib/auth.php';
+        creditlab_establish_login('account_manager', $email);
         header("location:/account_manager/");
         exit;
     }else{
@@ -117,7 +119,8 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         $aa = towfetch($result);
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (200$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['recovery_officer'] = $email;
+        require_once __DIR__ . '/../../lib/auth.php';
+        creditlab_establish_login('recovery_officer', $email);
         header("location:/recovery_officer/");
         exit;
     }else{
@@ -154,8 +157,8 @@ $assign_recovery = 0;
     
     $a = towquery("INSERT INTO `user`(`rcid`, `name`, `email`, `password`, `active`, `verify`, `otp`, `validation`, `reg_date`, `status`, `document_password`, `loan_limit`, `assign_account_manager`, `assign_recovery_officer`, `star_member`) VALUES ('$rcid','$name','$email','$password',1,0,$otp,'','$reg_date','waiting','pan no password pan#aadhar no password aadhar#aadha2 no password aadha2#salary no password salary#bank no password bank#address no password address#bank2 no password bank2#bank3 no password bank3',10000,$assign_account,$assign_recovery,2)");
     
-    $_SESSION['user'] = $email;
-        setcookie('user', $email, time() + (86400 * 30), "/");
+    require_once __DIR__ . '/../../lib/auth.php';
+    creditlab_establish_login('user', $email);
         header("location:../../user/");
 #     $headers = "MIME-Version: 1.0" . "\r\n";
 #$headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";

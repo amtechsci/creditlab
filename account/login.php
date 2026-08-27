@@ -52,14 +52,12 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         $id = $aa['id'];
         if($aa['active'] == 1){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['user'] = $email;
-        creditlab_set_auth_cookie('user', $email);
+        creditlab_establish_login('user', $email);
         header("location:../../user/");
         exit;
     }elseif($aa['active'] == 2){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['admin'] = $email;
-        creditlab_set_auth_cookie('admin', $email);
+        creditlab_establish_login('admin', $email);
         header('Location: ' . ($login_next !== '' ? $login_next : '../../admin/'));
         exit;
     }
@@ -73,8 +71,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (700$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['verify_user'] = $email;
-        creditlab_set_auth_cookie('verify_user', $email);
+        creditlab_establish_login('verify_user', $email);
         header("location:/verify_user/");
         exit;
         }
@@ -86,8 +83,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (100$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['account_manager'] = $email;
-        creditlab_set_auth_cookie('account_manager', $email);
+        creditlab_establish_login('account_manager', $email);
         header("location:/account_manager/");
         exit;
         }
@@ -99,8 +95,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (200$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['recovery_officer'] = $email;
-        creditlab_set_auth_cookie('recovery_officer', $email);
+        creditlab_establish_login('recovery_officer', $email);
         header("location:/recovery_officer/");
         exit;
         }
@@ -112,8 +107,7 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
         if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES (300$id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['agency_admin'] = $email;
-        creditlab_set_auth_cookie('agency_admin', $email);
+        creditlab_establish_login('agency_admin', $email);
         header("location:/agency_admin/");
         exit;
         }

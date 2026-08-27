@@ -2,8 +2,6 @@
 include_once '../db.php';
 if (isset($_SESSION['user'])) {
     header('Location:index.php');
-}elseif(isset($_COOKIE['user'])){
-    header('Location:index.php');
 }else{
     function get_client_ip() {
     $ipaddress = '';
@@ -54,8 +52,8 @@ if (isset($_POST['submit'])) {
         $aa = towfetch($result);
         $id = $aa['id'];
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`,`latitude`,`longitude`, `mobile_handset_uid`) VALUES ($id,'$userbrowser','$userip','$login_time','$lat','$long','$mobile_handset_uid')");
-        $_SESSION['user'] = $mobile;
-        setcookie('user', $mobile, time() + (86400 * 30), "/");
+        require_once __DIR__ . '/../lib/auth.php';
+        creditlab_establish_login('user', $mobile);
         header("location:../user/");
     }
     else{

@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/lib/env.php';
+require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/database.php';
 
 if (!defined('CREDITLAB_SKIP_SESSION')) {
-	session_start();
+	creditlab_session_start();
 }
 
 if (env_bool('APP_DEBUG', false)) {
@@ -348,46 +349,47 @@ function towquery($query)
 	return $re;
 }
  
-if (isset($_SESSION['user'])) {
-    $user = towreal($_SESSION['user']);
-}elseif(isset($_COOKIE['user'])){
-    $user = towreal($_COOKIE['user']);
+// Auth is session-only. Never trust legacy role cookies (plain email/mobile were forgeable).
+$legacyCookiePresent = false;
+foreach (creditlab_auth_role_keys() as $_authCookie) {
+	if (isset($_COOKIE[$_authCookie])) {
+		$legacyCookiePresent = true;
+		break;
+	}
+}
+if ($legacyCookiePresent) {
+	creditlab_clear_legacy_auth_cookies();
+}
+unset($_authCookie, $legacyCookiePresent);
+
+if (!empty($_SESSION['user'])) {
+	$user = towreal($_SESSION['user']);
 }
 
-if (isset($_SESSION['admin'])) {
-    $admin = towreal($_SESSION['admin']);
-}elseif(isset($_COOKIE['admin'])){
-    $cookie_admin = towreal($_COOKIE['admin']);
-    $chk = towquery("SELECT id, active FROM user WHERE email='".$cookie_admin."' LIMIT 1");
-    if ($chk && ($row = towfetchassoc($chk)) && isset($row['active']) && (string)$row['active'] === '2') {
-        $_SESSION['admin'] = $cookie_admin;
-        $admin = $cookie_admin;
-    } else {
-        setcookie('admin', '', time() - 3600, '/');
-    }
+if (!empty($_SESSION['admin'])) {
+	$session_admin = towreal($_SESSION['admin']);
+	$chk = towquery("SELECT id, active FROM user WHERE email='" . $session_admin . "' LIMIT 1");
+	if ($chk && ($row = towfetchassoc($chk)) && isset($row['active']) && (string) $row['active'] === '2') {
+		$admin = $session_admin;
+	} else {
+		unset($_SESSION['admin']);
+	}
 }
 
-if (isset($_SESSION['account_manager'])) {
-    $account_manager = towreal($_SESSION['account_manager']);
-}elseif(isset($_COOKIE['account_manager'])){
-    $account_manager = towreal($_COOKIE['account_manager']);
+if (!empty($_SESSION['account_manager'])) {
+	$account_manager = towreal($_SESSION['account_manager']);
 }
 
-if (isset($_SESSION['recovery_officer'])) {
-    $recovery_officer = towreal($_SESSION['recovery_officer']);
-}elseif(isset($_COOKIE['recovery_officer'])){
-    $recovery_officer = towreal($_COOKIE['recovery_officer']);
-}
-if (isset($_SESSION['verify_user'])) {
-    $verify_user = towreal($_SESSION['verify_user']);
-}elseif(isset($_COOKIE['verify_user'])){
-    $verify_user = towreal($_COOKIE['verify_user']);
+if (!empty($_SESSION['recovery_officer'])) {
+	$recovery_officer = towreal($_SESSION['recovery_officer']);
 }
 
-if (isset($_SESSION['agency_admin'])) {
-    $agency_admin = towreal($_SESSION['agency_admin']);
-} elseif (isset($_COOKIE['agency_admin'])) {
-    $agency_admin = towreal($_COOKIE['agency_admin']);
+if (!empty($_SESSION['verify_user'])) {
+	$verify_user = towreal($_SESSION['verify_user']);
+}
+
+if (!empty($_SESSION['agency_admin'])) {
+	$agency_admin = towreal($_SESSION['agency_admin']);
 }
 
 date_default_timezone_set('Asia/Kolkata');

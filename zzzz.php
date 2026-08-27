@@ -1,5 +1,6 @@
 <?php
 include 'db.php';
+require_once __DIR__ . '/lib/auth.php';
 function calculateEMI($loan_amount,$pro_fee_per = 13) {
     $processing_fee_rate = $pro_fee_per / 100; // 13%
     $interest_rate_per_month = 0.03; // 3%
@@ -20,7 +21,7 @@ function calculateEMI($loan_amount,$pro_fee_per = 13) {
     ];
 }
 if(isset($_GET['id'])){
-    $id = towreal($_GET['id']);
+    $id = creditlab_require_loan_apply_access();
 $loan  = towquery("SELECT loan_apply.*,user.name,user.father_name,user.permanent_address,user.mobile,user.altmobile,user.email,user.signature,user.personaldocument,user.conpanydocument,user.marital_status FROM `loan_apply` INNER JOIN user
       ON loan_apply.uid=user.id WHERE loan_apply.id='$id'");
 $loanf = towfetch($loan);

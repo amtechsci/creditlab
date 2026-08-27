@@ -1,9 +1,7 @@
 <?php
 session_start();
 include_once '../db.php';
-if (isset($_SESSION['email'])) {
-    header('Location:index.php');
-}elseif(isset($_COOKIE['email'])){
+if (isset($_SESSION['email']) || isset($_SESSION['user'])) {
     header('Location:index.php');
 }else{
 if (isset($_POST['submit'])) {
@@ -13,8 +11,8 @@ if (isset($_POST['submit'])) {
     $result=towquery($sqll);
     if (townum($result)==1) {
         towquery("UPDATE `user` SET `active`=1 WHERE `email`='$email'");
-        $_SESSION['user'] = $email;
-        setcookie('user', $email, time() + (86400 * 30), "/");
+        require_once __DIR__ . '/../lib/auth.php';
+        creditlab_establish_login('user', $email);
         header("location:../user/");
     }
     else{
