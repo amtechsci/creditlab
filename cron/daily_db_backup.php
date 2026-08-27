@@ -4,21 +4,20 @@
  *
  * Uploads a gzipped mysqldump to
  *   s3://{bucket}/{BACKUP_S3_PREFIX}{dbname}_YYYY-MM-DD_HHMMSS.sql.gz
- * Emails BACKUP_EMAIL with size + 7-day presigned download URL (no attachment).
+ * Emails BACKUP_EMAIL with a 7-day site download link (HMAC → streams from S3).
+ * (Do not use raw S3 +7d presigns with EC2 instance-role — those die with STS ~6h.)
  *
- * Default prefix is uploads/db-backups/ so existing EC2 role PutObject on uploads/* works.
- * Prefer a dedicated backups/ prefix once IAM allows it.
- *
- * Cron (Asia/Kolkata 02:15 daily), as www-data:
- *   15 2 * * * www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php >> /var/log/creditlab-db-backup.log 2>&1
- *
- * Manual test:
- *   sudo -u www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php
+ * Cron (Asia/Kolkata; on UTC hosts use 45 20 * * * = 02:15 IST):
+ *   45 20 * * * www-data /usr/bin/php /var/www/creditlab.in/cron/daily_db_backup.php >> /var/log/creditlab-db-backup.log 2>&1
  *
  * Env (.env):
  *   BACKUP_EMAIL=amproapk@gmail.com
  *   BACKUP_S3_PREFIX=uploads/db-backups/
  *   BACKUP_RETENTION_DAYS=30
+ *   BACKUP_SMTP_USER=alertz@creditlab.in
+ *   BACKUP_SMTP_PASSWORD=...
+ *   BACKUP_DOWNLOAD_SECRET=long-random-string
+ *   APP_URL=https://creditlab.in
  */
 
 declare(strict_types=1);
@@ -42,6 +41,7 @@ require_once __DIR__ . '/../config_s3.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../zxc/class/class.phpmailer.php';
 require_once __DIR__ . '/../lib/s3_aws_sdk.php';
+require_once __DIR__ . '/../lib/backup_link.php';
 
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
@@ -53,6 +53,7 @@ $recipient = env('BACKUP_EMAIL', 'amproapk@gmail.com');
 $s3Prefix = rtrim(env('BACKUP_S3_PREFIX', 'uploads/db-backups/'), '/') . '/';
 $retentionDays = max(1, (int) env('BACKUP_RETENTION_DAYS', '30'));
 $mysqldumpBin = env('BACKUP_MYSQLDUMP', '/usr/bin/mysqldump');
+$linkTtlDays = max(1, (int) env('BACKUP_LINK_DAYS', '7'));
 
 function backup_log(string $msg): void
 {
@@ -79,16 +80,27 @@ function backup_human_size(int $bytes): string
 
 function backup_send_mail(string $to, string $subject, string $htmlBody, string $textBody): bool
 {
+	// Backup mail uses dedicated mailbox (default alertz@) — not Note@ / nudge@
+	$host = env('BACKUP_SMTP_HOST', env('MAIL_SMTP_HOST', MAIL_SMTP_HOST));
+	$port = env('BACKUP_SMTP_PORT', (string) (defined('MAIL_SMTP_PORT') ? MAIL_SMTP_PORT : 465));
+	$user = env('BACKUP_SMTP_USER', 'alertz@creditlab.in');
+	$pass = env('BACKUP_SMTP_PASSWORD', '');
+	if ($pass === '' && defined('MAIL_SMTP_PASSWORD')) {
+		$pass = (string) MAIL_SMTP_PASSWORD;
+	}
+	$secure = env('BACKUP_SMTP_SECURE', env('MAIL_SMTP_SECURE', defined('MAIL_SMTP_SECURE') ? MAIL_SMTP_SECURE : 'ssl'));
+	$fromName = env('BACKUP_FROM_NAME', 'CreditLab Backups');
+
 	$mail = new PHPMailer();
 	$mail->IsSMTP();
-	$mail->Host = MAIL_SMTP_HOST;
-	$mail->Port = (string) MAIL_SMTP_PORT;
+	$mail->Host = $host;
+	$mail->Port = (string) $port;
 	$mail->SMTPAuth = true;
-	$mail->Username = MAIL_SMTP_USER;
-	$mail->Password = MAIL_SMTP_PASSWORD;
-	$mail->SMTPSecure = MAIL_SMTP_SECURE;
-	$mail->From = MAIL_SMTP_USER;
-	$mail->FromName = defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'CreditLab';
+	$mail->Username = $user;
+	$mail->Password = $pass;
+	$mail->SMTPSecure = $secure;
+	$mail->From = $user;
+	$mail->FromName = $fromName;
 	$mail->AddAddress($to);
 	$mail->IsHTML(true);
 	$mail->Subject = $subject;
@@ -208,18 +220,10 @@ try {
 
 @unlink($localGz);
 
-$presignUrl = '';
+$downloadUrl = '';
 if ($uploadOk) {
-	try {
-		$cmd = $s3->getCommand('GetObject', [
-			'Bucket' => S3_BUCKET,
-			'Key' => $s3Key,
-		]);
-		$request = $s3->createPresignedRequest($cmd, '+7 days');
-		$presignUrl = (string) $request->getUri();
-	} catch (Throwable $e) {
-		backup_log('WARN: presign failed: ' . $e->getMessage());
-	}
+	$downloadUrl = creditlab_backup_download_url($s3Key, $linkTtlDays * 86400);
+	backup_log('Download link OK (valid ' . $linkTtlDays . ' days): ' . $downloadUrl);
 }
 
 $deleted = 0;
@@ -269,13 +273,13 @@ if ($uploadOk) {
 		. '<li><strong>Retention:</strong> ' . (int) $retentionDays . ' days'
 		. ($deleted > 0 ? ' (deleted ' . (int) $deleted . ' old)' : '') . '</li>'
 		. '</ul>';
-	if ($presignUrl !== '') {
-		$html .= '<p><strong>Download (valid 7 days):</strong><br><a href="'
-			. htmlspecialchars($presignUrl) . '">' . htmlspecialchars($presignUrl) . '</a></p>';
+	if ($downloadUrl !== '') {
+		$html .= '<p><strong>Download (valid ' . (int) $linkTtlDays . ' days):</strong><br><a href="'
+			. htmlspecialchars($downloadUrl) . '">' . htmlspecialchars($downloadUrl) . '</a></p>';
 	}
 	$html .= '<p>The dump is stored privately in S3 (not attached — too large for email).</p>'
 		. '</body></html>';
-	$text = "CreditLab daily DB backup OK\nDB={$dbName}\nSize={$sizeHuman}\n{$s3Uri}\n{$presignUrl}\n";
+	$text = "CreditLab daily DB backup OK\nDB={$dbName}\nSize={$sizeHuman}\n{$s3Uri}\n{$downloadUrl}\n";
 	$mailOk = backup_send_mail($recipient, $subject, $html, $text);
 	backup_log($mailOk ? "Email sent to {$recipient}" : "Email FAILED to {$recipient}");
 	backup_log('=== Daily DB backup done ===');
