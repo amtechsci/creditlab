@@ -51,8 +51,17 @@ function creditlab_write_agency_payments_csv($output, ?string $fromDate = null, 
     $agencyNameExpr = creditlab_pg_link_agency_name_expr('pl', 'pt');
     $agencyJoins = creditlab_pg_link_agency_join_sql('pl', 'pt');
 
+    // transaction_details is utf8mb4_unicode_ci; pg_transaction bank_ref is often
+    // utf8mb4_general_ci — bare '=' throws "Illegal mix of collations" and the
+    // export silently returns headers only.
     $sql = "SELECT
+                pl.id,
+                pl.txnid,
                 pl.loan_lid,
+                pl.created_by_id,
+                pl.created_by_role,
+                pl.created_by_name,
+                pl.agency_id,
                 {$agencyNameExpr} AS agency_name,
                 pt.amount AS pg_amount,
                 pl.link_type,
@@ -72,16 +81,21 @@ function creditlab_write_agency_payments_csv($output, ?string $fromDate = null, 
             LEFT JOIN loan_apply la ON la.id = pl.loan_lid
             LEFT JOIN transaction_details td
                 ON td.cllid = pl.loan_lid
-                AND td.transaction_number = pt.bank_reference_number
                 AND td.transaction_number <> ''
+                AND td.transaction_number = CONVERT(pt.bank_reference_number USING utf8mb4) COLLATE utf8mb4_unicode_ci
                 AND td.transaction_flow IN ('full', 'part')
             WHERE pl.status = 'paid'
               AND pt.status = 'success'
-              AND (pl.created_by_role = 'agency_admin' OR pl.agency_id IS NOT NULL)
+              AND (
+                    pl.created_by_role = 'agency_admin'
+                    OR pl.agency_id IS NOT NULL
+                    OR pl.txnid LIKE 'PG_agency_admin_%'
+                  )
             ORDER BY agency_name ASC, COALESCE(pl.paid_at, pt.created_at) ASC";
 
     $result = towquery($sql);
     if (!$result) {
+        error_log('agency_payments_export query failed');
         return;
     }
 
