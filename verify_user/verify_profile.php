@@ -256,7 +256,7 @@ if(isset($_POST['conta'])){
 if(isset($_POST['document'])){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['conpanydocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $conpanydocument = $_FILES["conpanydocument"]["name"];
@@ -291,7 +291,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument'
     
     
     if(!empty($_FILES["salarydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['salarydocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['salarydocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $salarydocument = $_FILES["salarydocument"]["name"];
@@ -303,7 +303,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument'
     }else{$salarydocument = $userpro_salarydocument;}
     
     if(!empty($_FILES['bankdocument']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument']['name'];
@@ -319,7 +319,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument']['t
     }
     
     if(!empty($_FILES['bankdocument2']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument2']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument2']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument2']['name'];
@@ -335,7 +335,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument2']['
     }
     
     if(!empty($_FILES['bankdocument3']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument3']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument3']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument3']['name'];
@@ -351,7 +351,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["addressdocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['addressdocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['addressdocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $addressdocument = $_FILES["addressdocument"]["name"];
@@ -366,7 +366,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["companyidcard"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['companyidcard']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['companyidcard']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $companyidcard = $_FILES["companyidcard"]["name"];
@@ -381,7 +381,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["signature"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['signature']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['signature']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $signature = $_FILES["signature"]["name"];
@@ -395,7 +395,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
         $signature = "$userpro_signature";
     }
     if(!empty($_FILES["selfie"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['selfie']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['selfie']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("mkv", "mp4");
     if(in_array($file_type, $allowed)) {
     $selfie = $_FILES["selfie"]["name"];
@@ -1687,8 +1687,8 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td>CLL<?=$usersd_lid?></td>
                                         <td><?=$usersd_processed_date?></td>
                                         <td>
-                                        <?php $azxs = (0.12*$papay)/1.18;
-                                        $papay = ($usersd_processed_amount + $usersd_p_fee + ($usersd_p_fee*0.18));
+                                        <?php $papay = ((float)$usersd_processed_amount + (float)$usersd_p_fee + ((float)$usersd_p_fee*0.18));
+                                        $azxs = (0.12*$papay)/1.18;
                                         echo $papay;
                                         ?></td>
                                         <td><?=$usersd_processed_amount?></td>

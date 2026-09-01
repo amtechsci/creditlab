@@ -83,7 +83,7 @@ $data = $_POST;
 
 require_once __DIR__ . '/../lib/easebuzz_verify.php';
 if (!creditlab_easebuzz_validate_callback($data)) {
-	creditlab_easebuzz_reject_invalid_callback();
+	creditlab_easebuzz_reject_invalid_callback($data);
 }
 
 // Validate required fields for auto-debit processing

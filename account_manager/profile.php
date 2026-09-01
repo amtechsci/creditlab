@@ -267,7 +267,7 @@ if(isset($_POST['conta'])){
 if(isset($_POST['document']) && creditlab_can_view_documents()){
     
     if(!empty($_FILES["conpanydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['conpanydocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['conpanydocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $conpanydocument = $_FILES["conpanydocument"]["name"];
@@ -302,7 +302,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument'
     
     
     if(!empty($_FILES["salarydocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['salarydocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['salarydocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $salarydocument = $_FILES["salarydocument"]["name"];
@@ -314,7 +314,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['personaldocument'
     }else{$salarydocument = $userpro_salarydocument;}
     
     if(!empty($_FILES['bankdocument']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument']['name'];
@@ -330,7 +330,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument']['t
     }
     
     if(!empty($_FILES['bankdocument2']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument2']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument2']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument2']['name'];
@@ -346,7 +346,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument2']['
     }
     
     if(!empty($_FILES['bankdocument3']['name'])){
-    $file_type = strtolower(end(explode('.',$_FILES['bankdocument3']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['bankdocument3']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
         $a = $_FILES['bankdocument3']['name'];
@@ -362,7 +362,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["addressdocument"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['addressdocument']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['addressdocument']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $addressdocument = $_FILES["addressdocument"]["name"];
@@ -377,7 +377,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["companyidcard"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['companyidcard']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['companyidcard']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $companyidcard = $_FILES["companyidcard"]["name"];
@@ -392,7 +392,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
     }
     
     if(!empty($_FILES["signature"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['signature']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['signature']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("jpeg", "JPEG",  "JPG", "jpg", "png", "PNG", "PDF", "pdf");
     if(in_array($file_type, $allowed)) {
     $signature = $_FILES["signature"]["name"];
@@ -406,7 +406,7 @@ list($success, $message) = s3_upload_file_from_upload($_FILES['bankdocument3']['
         $signature = "$userpro_signature";
     }
     if(!empty($_FILES["selfie"]["name"])){
-    $file_type = strtolower(end(explode('.',$_FILES['selfie']['name'])));
+    $file_type = strtolower((string) pathinfo((string) ($_FILES['selfie']['name'] ?? ''), PATHINFO_EXTENSION));
     $allowed = array("mkv", "mp4");
     if(in_array($file_type, $allowed)) {
     $selfie = $_FILES["selfie"]["name"];
@@ -527,8 +527,11 @@ if(isset($_POST['follow_up_mess'])){
 if(isset($_POST['loan_acc_man'])){
     $extract = towrealarray($_POST);
     extract($extract);
-    $updated_by_escaped = towreal($user_name);
-    towquery("INSERT INTO `loan_acc_man`(`uid`, `lid`, `customer_response`, `commitment_date`, `commitment_text`, `default_type`, `updated_by`) VALUES ('$id','$loan_id','$customer_response','$commitment_date','$commitment_text','$default_type','$updated_by_escaped')");
+    $loan_id = isset($loan_id) ? (int) $loan_id : 0;
+    if ($loan_id > 0) {
+        $updated_by_escaped = towreal($user_name);
+        towquery("INSERT INTO `loan_acc_man`(`uid`, `lid`, `customer_response`, `commitment_date`, `commitment_text`, `default_type`, `updated_by`) VALUES ('$id','$loan_id','$customer_response','$commitment_date','$commitment_text','$default_type','$updated_by_escaped')");
+    }
     print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
 }
 if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty($_POST['reset'])) {
@@ -2015,10 +2018,12 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                                              
                                                               <div class="form-group">
                                                                   <lable>Loan Id</lable>
-                                                                <select name="loan_id" class="form-control">
+                                                                <select name="loan_id" class="form-control" required>
                                                                     <?php 
                                                                     $date = date('Y-m-d');
-                                                                    $loan_data = towquery("SELECT * FROM loan_apply WHERE uid=$userpro_id AND status='account manager' ORDER BY id ASC"); while($loan_fetch = towfetch($loan_data)){ extract($loan_fetch,EXTR_PREFIX_ALL,"follow");
+                                                                    $loan_data = towquery("SELECT * FROM loan_apply WHERE uid=$userpro_id AND status='account manager' ORDER BY id ASC");
+                                                                    echo "<option value=''>Select loan</option>";
+                                                                    while($loan_fetch = towfetch($loan_data)){ extract($loan_fetch,EXTR_PREFIX_ALL,"follow");
                                                                         echo "<option value='".$follow_id."'>CLL".$follow_id."</option>";
                                                                     }
                                                                     ?>

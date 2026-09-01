@@ -47,9 +47,11 @@ function creditlab_easebuzz_validate_callback(array $data): bool
     return false;
 }
 
-function creditlab_easebuzz_reject_invalid_callback(): void
+function creditlab_easebuzz_reject_invalid_callback(?array $data = null): void
 {
-    error_log('Easebuzz callback rejected: invalid or missing hash/secret');
+    $src = $data ?? $_POST;
+    $txn = (string) ($src['txnid'] ?? ($src['merchant_txn'] ?? ''));
+    error_log('Easebuzz callback rejected: invalid or missing hash/secret' . ($txn !== '' ? ' txnid=' . $txn : ''));
     if (!headers_sent()) {
         http_response_code(403);
     }

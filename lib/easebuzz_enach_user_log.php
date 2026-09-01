@@ -3,6 +3,20 @@
  * Per-user e-NACH / Autocollect event log (DB) — mandate signup, callback, presentment.
  */
 
+/**
+ * Cron scripts (auto_enach) define towquery($db, $sql). Web uses towquery($sql).
+ * Always query via mysqli so presentment logging cannot fatal the debit batch.
+ */
+function creditlab_easebuzz_enach_db_query(string $sql)
+{
+    global $db;
+    if (!isset($db) || !@mysqli_ping($db)) {
+        return false;
+    }
+
+    return mysqli_query($db, $sql);
+}
+
 function creditlab_ensure_easebuzz_enach_event_log_table(): bool
 {
     global $db;
@@ -42,6 +56,7 @@ function creditlab_easebuzz_log_user_event(array $event): bool
 {
     global $db;
 
+    try {
     if (!function_exists('creditlab_easebuzz_normalize_phone')) {
         require_once __DIR__ . '/easebuzz_enach.php';
     }
@@ -53,9 +68,9 @@ function creditlab_easebuzz_log_user_event(array $event): bool
     $uid = (int) ($event['uid'] ?? 0);
     $mobile = creditlab_easebuzz_normalize_phone($event['mobile'] ?? '');
     if ($mobile === '' && $uid > 0) {
-        $uq = towquery("SELECT mobile FROM user WHERE id=$uid LIMIT 1");
-        if ($uq && townum($uq) > 0) {
-            $ur = towfetch($uq);
+        $uq = creditlab_easebuzz_enach_db_query("SELECT mobile FROM user WHERE id=$uid LIMIT 1");
+        if ($uq && mysqli_num_rows($uq) > 0) {
+            $ur = mysqli_fetch_assoc($uq);
             $mobile = creditlab_easebuzz_normalize_phone($ur['mobile'] ?? '');
         }
     }
@@ -96,9 +111,13 @@ function creditlab_easebuzz_log_user_event(array $event): bool
 
     $amount_part = $amount_sql === 'NULL' ? 'NULL' : "'" . mysqli_real_escape_string($db, $amount_sql) . "'";
 
-    return (bool) towquery("INSERT INTO easebuzz_enach_event_log
+    return (bool) creditlab_easebuzz_enach_db_query("INSERT INTO easebuzz_enach_event_log
         (uid, mobile, transaction_id, stage, outcome, api, auth_mode, amount, message, meta_json)
         VALUES ($uid_sql, '$mobile_sql', '$txn_sql', '$stage_sql', '$outcome_sql', '$api_sql', '$auth_sql', $amount_part, '$msg_sql', '$meta_sql')");
+    } catch (Throwable $e) {
+        error_log('easebuzz_enach_event_log failed: ' . $e->getMessage());
+        return false;
+    }
 }
 
 function creditlab_easebuzz_outcome_from_user_easebuzz($user_easebuzz): string
@@ -187,17 +206,17 @@ function creditlab_easebuzz_query_user_events(array $filters = []): array
     $limit = max(1, min(2000, (int) ($filters['limit'] ?? 500)));
 
     $rows = [];
-    $q = towquery("SELECT * FROM easebuzz_enach_event_log WHERE $where_sql ORDER BY id DESC LIMIT $limit");
+    $q = creditlab_easebuzz_enach_db_query("SELECT * FROM easebuzz_enach_event_log WHERE $where_sql ORDER BY id DESC LIMIT $limit");
     if ($q) {
-        while ($row = towfetch($q)) {
+        while ($row = mysqli_fetch_assoc($q)) {
             $rows[] = $row;
         }
     }
 
     $totals = ['success' => 0, 'failure' => 0, 'pending' => 0, 'all' => 0];
-    $tq = towquery("SELECT outcome, COUNT(*) AS cnt FROM easebuzz_enach_event_log WHERE $where_sql GROUP BY outcome");
+    $tq = creditlab_easebuzz_enach_db_query("SELECT outcome, COUNT(*) AS cnt FROM easebuzz_enach_event_log WHERE $where_sql GROUP BY outcome");
     if ($tq) {
-        while ($tr = towfetch($tq)) {
+        while ($tr = mysqli_fetch_assoc($tq)) {
             $o = (string) ($tr['outcome'] ?? '');
             $cnt = (int) ($tr['cnt'] ?? 0);
             if (isset($totals[$o])) {

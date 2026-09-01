@@ -808,8 +808,9 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td>CLL<?=$usersd_lid?></td>
                                         <td><?=$usersd_processed_date?></td>
                                         <td>
-                                        <?php $azxs = (0.12*$papay)/1.18;
-                                        echo $papay = ($usersd_processed_amount + $usersd_p_fee + ($usersd_p_fee*0.18));
+                                        <?php $papay = ((float)$usersd_processed_amount + (float)$usersd_p_fee + ((float)$usersd_p_fee*0.18));
+                                        $azxs = (0.12*$papay)/1.18;
+                                        echo $papay;
                                         ?></td>
                                         <td><?=$usersd_processed_amount?></td>
                                         <td><?=$usersd_exhausted_period;?> Days</td>

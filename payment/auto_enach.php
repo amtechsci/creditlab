@@ -282,6 +282,18 @@ function calculateAmountBreakdown($loan, $loan_apply) {
 // --- DRY RUN CONFIGURATION ---
 // Set to true to enable dry-run mode (no actual API calls, just calculations and logging)
 $dry_run = isset($_GET['dry_run']) ? (bool)$_GET['dry_run'] : false;
+// Opt-in catch-up: present all DPD>0 loans (same as 3rd/10th/month-end). CLI: php auto_enach.php all_overdue=1
+$all_overdue = !empty($_GET['all_overdue']);
+if (PHP_SAPI === 'cli' && !empty($argv)) {
+    foreach ($argv as $arg) {
+        if ($arg === 'all_overdue=1' || $arg === '--all-overdue') {
+            $all_overdue = true;
+        }
+        if ($arg === 'dry_run=1' || $arg === '--dry-run') {
+            $dry_run = true;
+        }
+    }
+}
 
 // --- CRON JOB LOGIC ---
 $current_date = date('Y-m-d');
@@ -341,6 +353,7 @@ function sendSMS($mobile, $message, $template_id, $sender = "CREDLB") {
 writeLog("=== E-NACH CRON JOB STARTED ===", $log_file);
 writeLog("Date: $current_date | Time: $current_time", $log_file);
 writeLog("Dry Run Mode: " . ($dry_run ? 'YES' : 'NO'), $log_file);
+writeLog("All overdue catch-up: " . ($all_overdue ? 'YES' : 'NO'), $log_file);
 
 // Log dry-run mode
 if ($dry_run) {
@@ -552,6 +565,42 @@ while ($loan = towfetch($loans3)) {
 }
 writeLog("Condition 3 (DPD > 0, salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
 
+if ($all_overdue) {
+    $sql_overdue = "SELECT l.*, la.days, la.apply_date 
+             FROM `loan` l 
+             INNER JOIN `loan_apply` la ON l.lid = la.id 
+             WHERE l.`status_log` = 'account manager' 
+             AND l.`action` != 'cleared' 
+             AND l.`enach_request` = 0 
+             AND la.`status` = 'account manager'";
+    $loans_overdue = towquery($db, $sql_overdue);
+    $overdue_count = 0;
+    $overdue_duplicates = 0;
+    while ($loan = towfetch($loans_overdue)) {
+        $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
+        $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
+        $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
+        $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
+        $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
+        $dpd = $tday - $loan_days;
+        if ($dpd > 0) {
+            $exists = false;
+            foreach ($eligible_loans as $existing_loan) {
+                if ($existing_loan['id'] == $loan['id']) {
+                    $exists = true;
+                    $overdue_duplicates++;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $eligible_loans[] = $loan;
+                $overdue_count++;
+            }
+        }
+    }
+    writeLog("Catch-up (all_overdue=1, DPD > 0): Found $overdue_count new eligible loans, $overdue_duplicates duplicates skipped", $log_file);
+}
+
 // Check for loans that are skipped due to E-NACH skip flag
 $skipped_enach_query3 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
                          INNER JOIN `loan_apply` la ON l.lid = la.id 
@@ -583,6 +632,8 @@ foreach ($eligible_loans as $loan) {
     $lid = $loan['lid'];
     $uid = $loan['uid'];
     $processed_count++;
+
+    try {
 
     writeLog("Processing Loan ID: CLL$lid | User ID: $uid | Progress: $processed_count/$total_eligible", $log_file);
 
@@ -744,6 +795,11 @@ foreach ($eligible_loans as $loan) {
         if ($dry_run) {
             echo "SKIPPED: No authorized E-Nach authorizations found for user uid: $uid, lid: $lid\n";
         }
+    }
+    } catch (Throwable $e) {
+        $failed_count++;
+        $failed_loans[] = "CLL$lid";
+        writeLog("ERROR: Loan CLL$lid aborted (continuing batch): " . $e->getMessage(), $log_file);
     }
 }
 
