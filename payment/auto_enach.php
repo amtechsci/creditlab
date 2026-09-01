@@ -308,6 +308,7 @@ $failed_loans = [];
 $skipped_loans = [];
 $sms_sent_count = 0;
 $sms_failed_count = 0;
+$sms_skip_remaining = false;
 
 // Create log file with date
 $log_file = "logs/enach_cron_" . $current_date . ".log";
@@ -320,8 +321,8 @@ if (!is_dir($log_dir)) {
 function writeLog($message, $log_file) {
     $timestamp = date('Y-m-d H:i:s');
     $log_entry = "[$timestamp] $message\n";
-    file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
-    error_log($message); // Also log to system error log
+    @file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+    error_log($message);
 }
 
 // Function to send SMS
@@ -335,7 +336,8 @@ function sendSMS($mobile, $message, $template_id, $sender = "CREDLB") {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_ENCODING => '',
         CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 8,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_CUSTOMREQUEST => 'GET',
@@ -752,15 +754,24 @@ foreach ($eligible_loans as $loan) {
                     $enach_date = date('d-m-Y'); // Current date when E-NACH is triggered
                     
                     $sms_message = "Hi ! Your Creditlab.in loan of Rs. $outstanding_amount will auto-debit on $enach_date. Ensure sufficient balance to avoid chq bounce & legal action under Section 138 N.I. Act";
-                    
-                    $sms_result = sendSMS($mobile, $sms_message, $template_id, "CREDLB");
-                    
-                    if ($sms_result['success']) {
-                        $sms_sent_count++;
-                        writeLog("SMS SENT: E-NACH reminder sent to $mobile for CLL$lid | Amount: ₹$outstanding_amount | Date: $enach_date", $log_file);
-                    } else {
+
+                    if ($sms_skip_remaining) {
                         $sms_failed_count++;
-                        writeLog("SMS FAILED: E-NACH reminder failed for CLL$lid | Mobile: $mobile | Error: {$sms_result['error']}", $log_file);
+                    } else {
+                        $sms_result = sendSMS($mobile, $sms_message, $template_id, "CREDLB");
+
+                        if ($sms_result['success']) {
+                            $sms_sent_count++;
+                            writeLog("SMS SENT: E-NACH reminder sent to $mobile for CLL$lid | Amount: ₹$outstanding_amount | Date: $enach_date", $log_file);
+                        } else {
+                            $sms_failed_count++;
+                            writeLog("SMS FAILED: E-NACH reminder failed for CLL$lid | Mobile: $mobile | Error: {$sms_result['error']}", $log_file);
+                            $err = strtolower((string) ($sms_result['error'] ?? ''));
+                            if (strpos($err, "couldn't connect") !== false || strpos($err, 'timed out') !== false) {
+                                $sms_skip_remaining = true;
+                                writeLog("SMS skipped for remaining loans this run (gateway unreachable)", $log_file);
+                            }
+                        }
                     }
                     
                 } else {

@@ -1,7 +1,7 @@
 RewriteEngine On
 
 # Block web access to maintenance / debug scripts (use CLI: php script.php)
-<FilesMatch "^(migrate_.*\.php|ztest\.php|zzzzzzz\.php|fix_old_loan_days\.php|fix_pending_disbursal\.php|webhook_data\.txt)$">
+<FilesMatch "^(\.env.*|.*\.bak|migrate_.*\.php|ztest\.php|zzzzzzz\.php|fix_old_loan_days\.php|fix_pending_disbursal\.php|webhook_data\.txt|zzautosms.*\.php)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

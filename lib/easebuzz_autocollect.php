@@ -48,9 +48,26 @@ function creditlab_autocollect_log_dir()
 {
     $log_dir = dirname(__DIR__) . '/logs';
     if (!is_dir($log_dir)) {
-        mkdir($log_dir, 0755, true);
+        @mkdir($log_dir, 0775, true);
     }
     return $log_dir;
+}
+
+function creditlab_autocollect_append_log_file($path, $contents): bool
+{
+    $dir = dirname((string) $path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $exists = is_file($path);
+    if ($exists && !is_writable($path)) {
+        return false;
+    }
+    if (!$exists && (!is_dir($dir) || !is_writable($dir))) {
+        return false;
+    }
+
+    return @file_put_contents($path, $contents, FILE_APPEND | LOCK_EX) !== false;
 }
 
 function creditlab_autocollect_log_path()
@@ -90,10 +107,9 @@ function creditlab_autocollect_web_log($title, array $payload = [])
         'title' => (string) $title,
         'payload' => $payload,
     ];
-    file_put_contents(
+    creditlab_autocollect_append_log_file(
         creditlab_autocollect_web_log_path(),
-        json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n",
-        FILE_APPEND | LOCK_EX
+        json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"
     );
     creditlab_autocollect_log($title, $payload);
 }
@@ -158,7 +174,7 @@ function creditlab_autocollect_log($title, array $payload = [])
         $entry .= json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL;
     }
     $entry .= str_repeat('-', 80) . PHP_EOL;
-    file_put_contents($log_file, $entry, FILE_APPEND | LOCK_EX);
+    creditlab_autocollect_append_log_file($log_file, $entry);
     return basename($log_file);
 }
 

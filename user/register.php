@@ -1,6 +1,7 @@
 <?php
 include '../db.php';
 require_once __DIR__ . '/../lib/sms_otp_deliver.php';
+require_once __DIR__ . '/../lib/sms_otp_rate_limit.php';
 
 /**
  * Pick the staff member with the fewest assigned users (single GROUP BY query).
@@ -37,7 +38,21 @@ function creditlab_pick_least_assigned(string $staffTable, string $assignColumn)
 }
 
 if (isset($_POST['mobile'])) {
-	$mobile = towreal($_POST['mobile']);
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+		http_response_code(405);
+		exit('Method not allowed');
+	}
+	$mobile = creditlab_sms_normalize_mobile((string) ($_POST['mobile'] ?? ''));
+	if ($mobile === null) {
+		http_response_code(400);
+		exit('Enter a valid 10-digit mobile number.');
+	}
+	$rate = creditlab_otp_rate_allow($mobile, creditlab_sms_client_ip());
+	if (!$rate['ok']) {
+		http_response_code(429);
+		header('Retry-After: ' . (int) $rate['retry_after']);
+		exit('Too many OTP requests. Please wait a minute and try again.');
+	}
 	$resend = !empty($_POST['resend']) ? 1 : 0;
 	$otp = rand(1000, 9999);
 	$result = towquery("SELECT id FROM user WHERE mobile ='$mobile' LIMIT 1");
