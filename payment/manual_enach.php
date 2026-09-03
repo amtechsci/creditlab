@@ -105,8 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
         $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
         $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
         
-        // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
-        $days = $tday; // Use tday for service charge calculation
+        // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
+        $days = $tday + 2;
         
         // Calculate base amount with GST on processing fee (18% GST)
         $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -192,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['dpd_option'])) {
         $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
         $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
         
-        // E-Nach triggers on tday = days + 1 (DPD = 1), so use tday for calculations
-        $days = $tday; // Use tday for service charge calculation
+        // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
+        $days = $tday + 2;
         
         // Calculate base amount with GST on processing fee (18% GST)
         $p_fee_gst = $loan['p_fee'] * 0.18;

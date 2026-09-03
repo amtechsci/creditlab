@@ -106,9 +106,8 @@ function calculateTotalAmount($loan, $loan_apply) {
     $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
-    // For amount calculation we need to charge interest for one extra day (old logic had +1 day)
-    // Example: exhausted_period 30 → charge for 31 days
-    $days = $tday + 1;
+    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
+    $days = $tday + 2;
     
     // Calculate base amount with GST on processing fee (18% GST)
     $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
@@ -199,8 +198,8 @@ function calculateAmountBreakdown($loan, $loan_apply) {
     $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
     $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
     
-    // For detailed breakdown also include the extra interest day
-    $days = $tday + 1;
+    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
+    $days = $tday + 2;
     
     // Calculate base amount with GST on processing fee (18% GST)
     $p_fee_gst = $loan['p_fee'] * 0.18;
@@ -700,7 +699,7 @@ foreach ($eligible_loans as $loan) {
             $log_message .= "  Penalty Charge: ₹" . number_format($breakdown['penalty_charge'], 2) . "\n";
             $log_message .= "  Penalty GST (18%): ₹" . number_format($breakdown['penalty_gst'], 2) . "\n";
             $log_message .= "  TOTAL AMOUNT: ₹$totalamount\n";
-            $log_message .= "  Days Since Processed: " . $breakdown['days'] . " (including +1 extra day)\n";
+            $log_message .= "  Interest days: " . $breakdown['days'] . " (calendar + exhausted + next-day debit)\n";
             $log_message .= "  Interest Rate: {$loan_apply['interest_percentage']}%\n";
             $log_message .= "  Status: {$loan['status_log']}\n";
             $log_message .= "  Exhausted Period: {$loan['exhausted_period']}\n";
