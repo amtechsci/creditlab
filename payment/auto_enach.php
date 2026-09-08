@@ -3,10 +3,12 @@
 //  ini_set('display_errors', 1);
 //  error_reporting(-1);
 // Set a longer execution time limit, essential for cron jobs that might process many records.
-set_time_limit(0); 
+set_time_limit(0);
+date_default_timezone_set('Asia/Kolkata'); 
 
 // --- DATABASE CONNECTION ---
 require_once __DIR__ . '/../lib/database.php';
+require_once __DIR__ . '/../lib/enach_presentment_policy.php';
 $db = creditlab_db_connect();
 if (!$db) {
     die('Database connection failed.');
@@ -95,186 +97,26 @@ function initiateEasebuzzDirectDebit(array $postParams, array $easebuzz_row = []
  * @return float Total amount including all charges
  */
 function calculateTotalAmount($loan, $loan_apply) {
-    // Get current date and calculate tday (days since processed_date)
-    $stop_date = date_create($loan['processed_date']);
-    $sa = date_create(date('Y-m-d 23:59:59'));
-    $aa = date_diff($stop_date, $sa);
-    $tday = (int)$aa->format("%a");
-    
-    // Get days from loan_apply and EMI flag strictly from DB (do NOT auto-derive EMI by days)
-    $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
-    $days = $tday + 2;
-    
-    // Calculate base amount with GST on processing fee (18% GST)
-    $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
-    
-    $service_charge = 0;
-    $penality = 0;
-    
-    // Calculate service charge based on interest percentage
-    if ($loan_apply['interest_percentage'] == 1) {
-        // Special case for 1% interest - tiered calculation
-        $remaining_days = $days;
-        if ($remaining_days >= 3) {
-            $fee = $t * 3 / 100 * 0;
-            $remaining_days = $remaining_days - 3;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 7) {
-            $fee = $t * 7 / 100 * 0.1;
-            $remaining_days = $remaining_days - 7;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 20) {
-            $fee = $t * 20 / 100 * 0.115;
-            $remaining_days = $remaining_days - 20;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.115;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 1) {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-    } else {
-        // Standard interest calculation
-        $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
-        $service_charge += $fee;
-    }
-    
-    // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
-    // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
-    $dpd = $tday - $loan_days; // DPD = Days Past Due
-    if ($dpd > 0) {
-        $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
-        $penality = (($t) / 100) * 4; // First day penalty
-        if ($penalitydays > 0) {
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days
-            $penality = $penality + $atnp;
-        }
-    } else {
-        $penality = 0;
-    }
-    
-    // Add 18% GST to penalty
-    $penality = ($penality + ($penality * 0.18));
-    
-    // Calculate total amount (including GST on processing fee)
-    $p_fee_gst = $loan['p_fee'] * 0.18;
-    $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + $p_fee_gst + (float)$service_charge + (float)$penality;
-    
-    return $totalamount;
+    require_once __DIR__ . '/../lib/loan_charge_calc.php';
+    return creditlab_enach_presentment_breakdown($loan, $loan_apply)['total'];
 }
 
-/**
- * Calculate detailed breakdown of loan amount components
- * @param array $loan Loan data from database
- * @param array $loan_apply Loan application data
- * @return array Breakdown of all amount components
- */
 function calculateAmountBreakdown($loan, $loan_apply) {
-    // Get current date and calculate tday (days since processed_date)
-    $stop_date = date_create($loan['processed_date']);
-    $sa = date_create(date('Y-m-d 23:59:59'));
-    $aa = date_diff($stop_date, $sa);
-    $tday = (int)$aa->format("%a");
-    
-    $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
-    $days = $tday + 2;
-    
-    // Calculate base amount with GST on processing fee (18% GST)
-    $p_fee_gst = $loan['p_fee'] * 0.18;
-    $t = $loan['processed_amount'] + $loan['p_fee'] + $p_fee_gst;
-    
-    $service_charge = 0;
-    $penality = 0;
-    
-    // Calculate service charge based on interest percentage
-    if ($loan_apply['interest_percentage'] == 1) {
-        // Special case for 1% interest - tiered calculation
-        $remaining_days = $days;
-        if ($remaining_days >= 3) {
-            $fee = $t * 3 / 100 * 0;
-            $remaining_days = $remaining_days - 3;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if (($remaining_days) >= 7) {
-            $fee = $t * 7 / 100 * 0.1;
-            $remaining_days = $remaining_days - 7;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if (($remaining_days) >= 20) {
-            $fee = $t * 20 / 100 * 0.115;
-            $remaining_days = $remaining_days - 20;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.115;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if (($remaining_days) >= 1) {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $service_charge += $fee;
-            $remaining_days = 0;
-        }
-    } else {
-        // Standard interest calculation
-        $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
-        $service_charge += $fee;
-    }
-    
-    // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
-    // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
-    $dpd = $tday - $loan_days; // DPD = Days Past Due
-    if ($dpd > 0) {
-        $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
-        $penality = (($t) / 100) * 4; // First day penalty
-        if ($penalitydays > 0) {
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days
-            $penality = $penality + $atnp;
-        }
-    } else {
-        $penality = 0;
-    }
-    
-    // Calculate penalty GST
-    $penalty_gst = $penality * 0.18;
-    $penality = ($penality + $penalty_gst);
-    
+    require_once __DIR__ . '/../lib/loan_charge_calc.php';
+    $b = creditlab_enach_presentment_breakdown($loan, $loan_apply);
     return [
-        'days' => $days,
-        'p_fee_gst' => $p_fee_gst,
-        'service_charge' => $service_charge,
-        'penalty_charge' => $penality - $penalty_gst, // Penalty before GST
-        'penalty_gst' => $penalty_gst,
-        'total_amount' => (float)$loan['processed_amount'] + (float)$loan['p_fee'] + (float)$service_charge + (float)$penality
+        'days' => $b['presentment_dpd'],
+        'p_fee_gst' => 0.0,
+        'service_charge' => $b['kfs_interest'] + $b['overdue_interest'],
+        'penalty_charge' => $b['penalty'],
+        'penalty_gst' => $b['penalty_gst'],
+        'total_amount' => $b['total'],
+        'processed_amount' => $b['principal'],
+        'p_fee' => (float) ($loan['p_fee'] ?? 0),
+        'kfs_interest' => $b['kfs_interest'],
+        'overdue_interest' => $b['overdue_interest'],
+        'calendar_dpd' => $b['calendar_dpd'],
+        'presentment_dpd' => $b['presentment_dpd'],
     ];
 }
 
@@ -356,6 +198,11 @@ writeLog("Date: $current_date | Time: $current_time", $log_file);
 writeLog("Dry Run Mode: " . ($dry_run ? 'YES' : 'NO'), $log_file);
 writeLog("All overdue catch-up: " . ($all_overdue ? 'YES' : 'NO'), $log_file);
 
+creditlab_enach_ensure_holiday_table();
+creditlab_enach_ensure_presentment_run_table();
+$last_working = creditlab_enach_last_working_day_of_month($current_date);
+writeLog("Last working day this month: $last_working | Today is last working: " . ($current_date === $last_working ? 'YES' : 'NO'), $log_file);
+
 // Log dry-run mode
 if ($dry_run) {
     writeLog("DRY RUN MODE ENABLED - No actual API calls will be made", $log_file);
@@ -364,15 +211,15 @@ if ($dry_run) {
     echo "No actual API calls will be made\n\n";
 }
 
-// 1. RESET FAILED E-NACH REQUESTS (3+ days old)
+// 1. RESET FAILED E-NACH REQUESTS (4+ days old — matches min gap)
 $reset_query = "UPDATE `loan` SET `enach_request` = 0, `enach_request_date` = NULL 
                 WHERE `enach_request` = 1 
                 AND `enach_request_date` IS NOT NULL 
-                AND DATEDIFF('$current_date', `enach_request_date`) >= 3
+                AND DATEDIFF('$current_date', `enach_request_date`) >= 4
                 AND `status_log` != 'cleared'";
 $reset_result = towquery($db, $reset_query);
 $reset_count = mysqli_affected_rows($db);
-writeLog("Reset $reset_count failed E-Nach requests (3+ days old)", $log_file);
+writeLog("Reset $reset_count E-Nach request flags (4+ days old)", $log_file);
 
 // 1.1. RESET TEMPORARY SKIPPED E-NACH REQUESTS (past skip_until_date)
 $reset_temporary_query = "UPDATE `loan` SET 
@@ -390,230 +237,49 @@ $reset_temporary_result = towquery($db, $reset_temporary_query);
 $reset_temporary_count = mysqli_affected_rows($db);
 writeLog("Reset $reset_temporary_count temporary skipped E-Nach requests (past skip_until_date)", $log_file);
 
-// 2. DETERMINE ELIGIBLE LOANS BASED ON CONDITIONS (NOW DPD-BASED)
+// 2. ELIGIBLE LOANS — DPD 1 daily, salary date, last working day, 7th (priority + once)
 $eligible_loans = [];
+$trigger_counts = ['dpd1' => 0, 'salary_date' => 0, 'last_working_day' => 0, 'seventh' => 0, 'catch_up' => 0];
 
-// Condition 1: Daily run for all active loans where DPD == 1 (exactly 1 day past due)
-// tday = days since processed_date, loan_days from loan_apply / EMI logic, dpd = tday - loan_days
-$sql1 = "SELECT l.*, la.days, la.apply_date 
-         FROM `loan` l 
-         INNER JOIN `loan_apply` la ON l.lid = la.id 
-         WHERE l.`status_log` = 'account manager' 
-         AND l.`action` != 'cleared' 
-         AND l.`enach_request` = 0 
-         AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
+$sql_pool = "SELECT l.*, la.days, la.apply_date, la.interest_percentage, u.salary_date
+         FROM `loan` l
+         INNER JOIN `loan_apply` la ON l.lid = la.id
+         INNER JOIN `user` u ON l.uid = u.id
+         WHERE l.`status_log` = 'account manager'
+         AND l.`action` != 'cleared'
          AND la.`status` = 'account manager'";
-$loans1 = towquery($db, $sql1);
-$condition1_count = 0;
-while ($loan = towfetch($loans1)) {
-    // Calculate tday (days since processed_date, with -1 day alignment like other cron logic)
-    $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
-    $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
-    
-    // Derive loan_days using EMI flag strictly from DB
-    $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // DPD = Days Past Due
-    $dpd = $tday - $loan_days;
-    
-    // Trigger E-NACH when DPD == 1 (exactly 1 day past due)
-    if ($dpd == 1) {
-        $eligible_loans[] = $loan;
-        $condition1_count++;
+$pool = towquery($db, $sql_pool);
+$skipped_flag = 0;
+while ($loan = towfetch($pool)) {
+    if (creditlab_enach_loan_is_skipped($loan, $current_date)) {
+        $skipped_flag++;
+        continue;
     }
-}
-writeLog("Condition 1 (DPD == 1, calculated per loan): Found $condition1_count eligible loans", $log_file);
-
-// Check for loans that are skipped due to E-NACH skip flag (for logging only)
-$skipped_enach_query = "SELECT COUNT(*) as skipped_count FROM `loan` l 
-                        INNER JOIN `loan_apply` la ON l.lid = la.id 
-                        WHERE l.`status_log` = 'account manager' 
-                        AND l.`enach_request` = 2";
-$skipped_result = towquery($db, $skipped_enach_query);
-$skipped_count = towfetch($skipped_result)['skipped_count'];
-
-// Check for permanent vs temporary skips
-$permanent_skip_query = "SELECT COUNT(*) as permanent_count FROM `loan` l 
-                         INNER JOIN `loan_apply` la ON l.lid = la.id 
-                         WHERE l.`status_log` = 'account manager' 
-                         AND l.`enach_request` = 2 
-                         AND (l.`enach_skip_type` = 'permanent' OR l.`enach_skip_type` IS NULL)";
-$permanent_result = towquery($db, $permanent_skip_query);
-$permanent_count = towfetch($permanent_result)['permanent_count'];
-
-$temporary_skip_query = "SELECT COUNT(*) as temporary_count FROM `loan` l 
-                         INNER JOIN `loan_apply` la ON l.lid = la.id 
-                         WHERE l.`status_log` = 'account manager' 
-                         AND l.`enach_request` = 2 
-                         AND l.`enach_skip_type` = 'temporary' 
-                         AND l.`enach_skip_until_date` > '$current_date'";
-$temporary_result = towquery($db, $temporary_skip_query);
-$temporary_count = towfetch($temporary_result)['temporary_count'];
-
-if($skipped_count > 0) {
-    writeLog("Condition 1 (DPD == 1): $skipped_count loans skipped due to E-NACH skip flag (enach_request = 2) - Permanent: $permanent_count, Temporary: $temporary_count", $log_file);
-}
-
-// Get last day of current month for last day processing
-$last_day_of_month = date('t'); // Returns the number of days in the current month
-
-// Condition 2: On 3rd, 10th, and last day of month (30th/31st) for loans where DPD > 0
-if ($current_day == 3 || $current_day == 10 || $current_day == $last_day_of_month) {
-    $sql2 = "SELECT l.*, la.days, la.apply_date 
-             FROM `loan` l 
-             INNER JOIN `loan_apply` la ON l.lid = la.id 
-             WHERE l.`status_log` = 'account manager' 
-             AND l.`action` != 'cleared' 
-             AND l.`enach_request` = 0 
-             AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
-             AND la.`status` = 'account manager'";
-    $loans2 = towquery($db, $sql2);
-    $condition2_count = 0;
-    $duplicates_count = 0;
-    while ($loan = towfetch($loans2)) {
-        // Calculate tday (days since processed_date, with -1 day alignment like other cron logic)
-        $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
-        $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
-        
-        // Derive loan_days using EMI flag strictly from DB
-        $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
-        $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-        $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-        
-        // DPD = Days Past Due
-        $dpd = $tday - $loan_days;
-        
-        // Only add if DPD > 0 (any overdue days)
-        if ($dpd > 0) {
-            // Avoid duplicates
-            $exists = false;
-            foreach ($eligible_loans as $existing_loan) {
-                if ($existing_loan['id'] == $loan['id']) {
-                    $exists = true;
-                    $duplicates_count++;
-                    break;
-                }
-            }
-            if (!$exists) {
-                $eligible_loans[] = $loan;
-                $condition2_count++;
-            }
-        }
+    $loan_apply = [
+        'days' => $loan['days'] ?? 30,
+        'interest_percentage' => $loan['interest_percentage'] ?? 1,
+    ];
+    $trigger = creditlab_enach_trigger_for_loan(
+        $loan,
+        $loan_apply,
+        $loan['salary_date'] ?? '',
+        $current_date,
+        $all_overdue
+    );
+    if ($trigger === null) {
+        continue;
     }
-    $day_type = ($current_day == 3) ? "3rd" : (($current_day == 10) ? "10th" : "last day ($last_day_of_month)");
-    writeLog("Condition 2 (DPD > 0, day $current_day - $day_type): Found $condition2_count new eligible loans, $duplicates_count duplicates skipped", $log_file);
-    
-    // Check for loans that are skipped due to E-NACH skip flag
-    $skipped_enach_query2 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
-                             INNER JOIN `loan_apply` la ON l.lid = la.id 
-                             WHERE l.`status_log` = 'account manager' 
-                             AND l.`enach_request` = 2
-                             AND la.`status` = 'account manager'";
-    $skipped_result2 = towquery($db, $skipped_enach_query2);
-    $skipped_count2 = towfetch($skipped_result2)['skipped_count'];
-    if($skipped_count2 > 0) {
-        writeLog("Condition 2: $skipped_count2 loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
-    }
-} else {
-    writeLog("Condition 2: Skipped (not 3rd, 10th, or last day of month, current day: $current_day, last day: $last_day_of_month)", $log_file);
+    $loan['_enach_trigger'] = $trigger;
+    $eligible_loans[] = $loan;
+    $trigger_counts[$trigger] = ($trigger_counts[$trigger] ?? 0) + 1;
 }
-
-// Condition 3: Salary date processing - loans where DPD > 0 when salary_date day equals today
-$sql3 = "SELECT l.*, la.days, la.apply_date 
-         FROM `loan` l 
-         INNER JOIN `loan_apply` la ON l.lid = la.id 
-         INNER JOIN `user` u ON l.uid = u.id 
-         WHERE l.`status_log` = 'account manager' 
-         AND l.`action` != 'cleared' 
-         AND l.`enach_request` = 0 
-         AND (l.`enach_request` != 2 OR (l.`enach_skip_type` = 'temporary' AND l.`enach_skip_until_date` <= '$current_date'))
-         AND la.`status` = 'account manager'
-         AND DAY(u.salary_date) = $current_day";
-$loans3 = towquery($db, $sql3);
-$condition3_count = 0;
-$condition3_duplicates = 0;
-while ($loan = towfetch($loans3)) {
-    // Calculate tday (days since processed_date, with -1 day alignment like other cron logic)
-    $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
-    $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
-    
-    // Derive loan_days using EMI flag strictly from DB
-    $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // DPD = Days Past Due
-    $dpd = $tday - $loan_days;
-    
-    // Only add if DPD > 0 (any overdue days)
-    if ($dpd > 0) {
-        // Avoid duplicates
-        $exists = false;
-        foreach ($eligible_loans as $existing_loan) {
-            if ($existing_loan['id'] == $loan['id']) {
-                $exists = true;
-                $condition3_duplicates++;
-                break;
-            }
-        }
-        if (!$exists) {
-            $eligible_loans[] = $loan;
-            $condition3_count++;
-        }
-    }
-}
-writeLog("Condition 3 (DPD > 0, salary date = $current_day): Found $condition3_count new eligible loans, $condition3_duplicates duplicates skipped", $log_file);
-
-if ($all_overdue) {
-    $sql_overdue = "SELECT l.*, la.days, la.apply_date 
-             FROM `loan` l 
-             INNER JOIN `loan_apply` la ON l.lid = la.id 
-             WHERE l.`status_log` = 'account manager' 
-             AND l.`action` != 'cleared' 
-             AND l.`enach_request` = 0 
-             AND la.`status` = 'account manager'";
-    $loans_overdue = towquery($db, $sql_overdue);
-    $overdue_count = 0;
-    $overdue_duplicates = 0;
-    while ($loan = towfetch($loans_overdue)) {
-        $processed_date_str = date('Y-m-d', strtotime($loan['processed_date'] . " -1 day"));
-        $tday = ceil((strtotime($current_date) - strtotime($processed_date_str)) / (60 * 60 * 24));
-        $loan_days_raw = isset($loan['days']) ? (int)$loan['days'] : 30;
-        $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : 0;
-        $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-        $dpd = $tday - $loan_days;
-        if ($dpd > 0) {
-            $exists = false;
-            foreach ($eligible_loans as $existing_loan) {
-                if ($existing_loan['id'] == $loan['id']) {
-                    $exists = true;
-                    $overdue_duplicates++;
-                    break;
-                }
-            }
-            if (!$exists) {
-                $eligible_loans[] = $loan;
-                $overdue_count++;
-            }
-        }
-    }
-    writeLog("Catch-up (all_overdue=1, DPD > 0): Found $overdue_count new eligible loans, $overdue_duplicates duplicates skipped", $log_file);
-}
-
-// Check for loans that are skipped due to E-NACH skip flag
-$skipped_enach_query3 = "SELECT COUNT(*) as skipped_count FROM `loan` l 
-                         INNER JOIN `loan_apply` la ON l.lid = la.id 
-                         INNER JOIN `user` u ON l.uid = u.id 
-                         WHERE l.`status_log` = 'account manager' 
-                         AND l.`enach_request` = 2
-                         AND la.`status` = 'account manager'
-                         AND DAY(u.salary_date) = $current_day";
-$skipped_result3 = towquery($db, $skipped_enach_query3);
-$skipped_count3 = towfetch($skipped_result3)['skipped_count'];
-if($skipped_count3 > 0) {
-    writeLog("Condition 3: $skipped_count3 loans skipped due to E-NACH skip flag (enach_request = 2)", $log_file);
+writeLog('Triggers today: DPD1=' . $trigger_counts['dpd1']
+    . ' salary=' . $trigger_counts['salary_date']
+    . ' last_working=' . $trigger_counts['last_working_day']
+    . ' seventh=' . $trigger_counts['seventh']
+    . ($all_overdue ? (' catch_up=' . $trigger_counts['catch_up']) : ''), $log_file);
+if ($skipped_flag > 0) {
+    writeLog("Skipped $skipped_flag loans with eNACH skip flag (enach_request = 2)", $log_file);
 }
 
 // 3. PROCESS ELIGIBLE LOANS
@@ -680,7 +346,16 @@ foreach ($eligible_loans as $loan) {
             $auth_count++;
             require_once __DIR__ . '/../lib/easebuzz_enach.php';
             $presentment_api = creditlab_easebuzz_presentment_api_for_row($easebuzz_adtdff);
-            writeLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | API: $presentment_api", $log_file);
+            $presentment_trigger = $loan['_enach_trigger'] ?? 'dpd1';
+            writeLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | API: $presentment_api | trigger: $presentment_trigger", $log_file);
+
+            $mandate_key = creditlab_enach_mandate_key($easebuzz_adtdff, (int) $lid);
+            $may = creditlab_enach_mandate_may_present($mandate_key, $current_date);
+            if (!$may['ok']) {
+                writeLog("SKIPPED: CLL$lid mandate $mandate_key ({$may['reason']})", $log_file);
+                $skipped_loans[] = "CLL$lid ({$may['reason']})";
+                continue;
+            }
             
             // Calculate total amount with proper logic (matching zzautoloanamountcalculator.php)
             $totalamount = calculateTotalAmount($loan, $loan_apply);
@@ -692,17 +367,15 @@ foreach ($eligible_loans as $loan) {
 
             // Detailed logging for dry-run and regular mode
             $log_message = "LOAN ID: CLL$lid | User: {$userdataff['name']} | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}\n";
-            $log_message .= "  Processed Amount: ₹" . number_format($loan['processed_amount'], 2) . "\n";
-            $log_message .= "  Processing Fee: ₹" . number_format($loan['p_fee'], 2) . "\n";
-            $log_message .= "  Processing Fee GST (18%): ₹" . number_format($breakdown['p_fee_gst'], 2) . "\n";
-            $log_message .= "  Service Charge: ₹" . number_format($breakdown['service_charge'], 2) . "\n";
-            $log_message .= "  Penalty Charge: ₹" . number_format($breakdown['penalty_charge'], 2) . "\n";
+            $log_message .= "  Trigger: $presentment_trigger | Mandate: $mandate_key\n";
+            $log_message .= "  Principal: ₹" . number_format($breakdown['processed_amount'], 2) . "\n";
+            $log_message .= "  KFS interest (to due date): ₹" . number_format($breakdown['kfs_interest'], 2) . "\n";
+            $log_message .= "  Calendar DPD: {$breakdown['calendar_dpd']} | Presentment DPD (DPD+1 next-day debit): {$breakdown['presentment_dpd']}\n";
+            $log_message .= "  Overdue interest: ₹" . number_format($breakdown['overdue_interest'], 2) . "\n";
+            $log_message .= "  Penalty: ₹" . number_format($breakdown['penalty_charge'], 2) . "\n";
             $log_message .= "  Penalty GST (18%): ₹" . number_format($breakdown['penalty_gst'], 2) . "\n";
             $log_message .= "  TOTAL AMOUNT: ₹$totalamount\n";
-            $log_message .= "  Interest days: " . $breakdown['days'] . " (calendar + exhausted + next-day debit)\n";
-            $log_message .= "  Interest Rate: {$loan_apply['interest_percentage']}%\n";
             $log_message .= "  Status: {$loan['status_log']}\n";
-            $log_message .= "  Exhausted Period: {$loan['exhausted_period']}\n";
             $log_message .= "  Processed Date: {$loan['processed_date']}\n";
             $log_message .= "  ---\n";
             
@@ -741,6 +414,7 @@ foreach ($eligible_loans as $loan) {
                 if ($res && isset($res['status']) && $res['status']) {
                     // Update loan with enach_request = 1 and set enach_request_date
                     towquery($db, "UPDATE `loan` SET `enach_request` = 1, `enach_request_date` = '$current_date' WHERE lid = $lid");
+                    creditlab_enach_record_presentment((int) $lid, (int) $uid, $mandate_key, $presentment_trigger, $totalamount, 'success', $current_date);
                     $success_count++;
                     $successful_loans[] = "CLL$lid";
                     writeLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);
@@ -786,7 +460,7 @@ foreach ($eligible_loans as $loan) {
                 // In dry-run mode, just count as would-be success
                 $success_count++;
                 $successful_loans[] = "CLL$lid (DRY RUN)";
-                writeLog("DRY RUN: Would process CLL$lid for amount ₹$totalamount", $log_file);
+                writeLog("DRY RUN: Would process CLL$lid trigger=$presentment_trigger mandate=$mandate_key amount ₹$totalamount", $log_file);
                 
                 // Log would-be E-NACH Reminder SMS for dry run
                 $mobile = $userdataff['mobile'];

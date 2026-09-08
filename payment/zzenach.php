@@ -32,186 +32,26 @@ writeZzenachLog("Date: $current_date | Time: $current_time", $log_file);
  * @return float Total calculated amount
  */
 function calculateTotalAmount($loan, $loan_apply) {
-    // Get current date and calculate tday (days since processed_date)
-    $stop_date = date_create($loan['processed_date']);
-    $sa = date_create(date('Y-m-d 23:59:59'));
-    $aa = date_diff($stop_date, $sa);
-    $tday = (int)$aa->format("%a");
-    
-    // Get days from loan_apply
-    $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
-    $days = $tday + 2;
-    
-    // Calculate base amount with GST on processing fee (18% GST)
-    $t = $loan['processed_amount'] + $loan['p_fee'] + ($loan['p_fee'] * 0.18);
-    
-    $service_charge = 0;
-    $penality = 0;
-    
-    // Calculate service charge based on interest percentage
-    if ($loan_apply['interest_percentage'] == 1) {
-        // Special case for 1% interest - tiered calculation
-        $remaining_days = $days;
-        if ($remaining_days >= 3) {
-            $fee = $t * 3 / 100 * 0;
-            $remaining_days = $remaining_days - 3;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 7) {
-            $fee = $t * 7 / 100 * 0.1;
-            $remaining_days = $remaining_days - 7;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 20) {
-            $fee = $t * 20 / 100 * 0.115;
-            $remaining_days = $remaining_days - 20;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.115;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 1) {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-    } else {
-        // Standard interest calculation
-        $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
-        $service_charge += $fee;
-    }
-    
-    // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
-    // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
-    $dpd = $tday - $loan_days; // DPD = Days Past Due
-    if ($dpd > 0) {
-        $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
-        $penality = (($t) / 100) * 4; // First day penalty (4%)
-        if ($penalitydays > 0) {
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days (0.2%)
-            $penality = $penality + $atnp;
-        }
-    } else {
-        $penality = 0;
-    }
-    
-    // Add 18% GST to penalty
-    $penality = ($penality + ($penality * 0.18));
-    
-    // Calculate total amount (including GST on processing fee)
-    $p_fee_gst = $loan['p_fee'] * 0.18;
-    $totalamount = (float)$loan['processed_amount'] + (float)$loan['p_fee'] + $p_fee_gst + (float)$service_charge + (float)$penality;
-    
-    return $totalamount;
+    require_once __DIR__ . '/../lib/loan_charge_calc.php';
+    return creditlab_enach_presentment_breakdown($loan, $loan_apply)['total'];
 }
 
-/**
- * Calculate detailed breakdown of loan amount components
- * @param array $loan Loan data from database
- * @param array $loan_apply Loan application data
- * @return array Breakdown of all amount components
- */
 function calculateAmountBreakdown($loan, $loan_apply) {
-    // Get current date and calculate tday (days since processed_date)
-    $stop_date = date_create($loan['processed_date']);
-    $sa = date_create(date('Y-m-d 23:59:59'));
-    $aa = date_diff($stop_date, $sa);
-    $tday = (int)$aa->format("%a");
-    
-    // Get days from loan_apply
-    $loan_days_raw = isset($loan_apply['days']) ? (int)$loan_apply['days'] : 30;
-    $loan_is_emi = isset($loan['is_emi']) ? (int)$loan['is_emi'] : (($loan_days_raw <= 30) ? 1 : 0);
-    $loan_days = ($loan_is_emi === 1) ? 30 : $loan_days_raw;
-    
-    // Interest days: calendar gap + 1 (exhausted_period) + 1 (eNACH debit settles next day)
-    $days = $tday + 2;
-    
-    // Calculate base amount with GST on processing fee (18% GST)
-    $p_fee_gst = $loan['p_fee'] * 0.18;
-    $t = $loan['processed_amount'] + $loan['p_fee'] + $p_fee_gst;
-    
-    $service_charge = 0;
-    $penality = 0;
-    
-    // Calculate service charge based on interest percentage
-    if ($loan_apply['interest_percentage'] == 1) {
-        // Special case for 1% interest - tiered calculation
-        $remaining_days = $days;
-        if ($remaining_days >= 3) {
-            $fee = $t * 3 / 100 * 0;
-            $remaining_days = $remaining_days - 3;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 7) {
-            $fee = $t * 7 / 100 * 0.1;
-            $remaining_days = $remaining_days - 7;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 20) {
-            $fee = $t * 20 / 100 * 0.115;
-            $remaining_days = $remaining_days - 20;
-            $service_charge += $fee;
-        } else {
-            $fee = $t * $remaining_days / 100 * 0.115;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-        if ($remaining_days >= 1) {
-            $fee = $t * $remaining_days / 100 * 0.1;
-            $remaining_days = 0;
-            $service_charge += $fee;
-        }
-    } else {
-        // Standard interest calculation
-        $fee = $t * $days / 100 * $loan_apply['interest_percentage'];
-        $service_charge += $fee;
-    }
-    
-    // Calculate penalty based on DPD (Days Past Due) = tday - loan_days
-    // E-Nach triggers when DPD = 1, so penalty starts from DPD = 1
-    $dpd = $tday - $loan_days; // DPD = Days Past Due
-    if ($dpd > 0) {
-        $penalitydays = $dpd - 1; // Penalty starts from DPD = 1, so subtract 1
-        $penality = (($t) / 100) * 4; // First day penalty (4%)
-        if ($penalitydays > 0) {
-            $atnp = ((($t) / 100) * 0.2) * $penalitydays; // Additional penalty for remaining days (0.2%)
-            $penality = $penality + $atnp;
-        }
-    } else {
-        $penality = 0;
-    }
-    
-    // Add 18% GST to penalty
-    $penality = ($penality + ($penality * 0.18));
-    
+    require_once __DIR__ . '/../lib/loan_charge_calc.php';
+    $b = creditlab_enach_presentment_breakdown($loan, $loan_apply);
     return [
-        'processed_amount' => (float)$loan['processed_amount'],
-        'p_fee' => (float)$loan['p_fee'],
-        'p_fee_gst' => $p_fee_gst,
-        'service_charge' => $service_charge,
-        'penalty_charge' => $penality,
-        'days' => $days
+        'days' => $b['presentment_dpd'],
+        'p_fee_gst' => 0.0,
+        'service_charge' => $b['kfs_interest'] + $b['overdue_interest'],
+        'penalty_charge' => $b['penalty'],
+        'penalty_gst' => $b['penalty_gst'],
+        'total_amount' => $b['total'],
+        'processed_amount' => $b['principal'],
+        'p_fee' => (float) ($loan['p_fee'] ?? 0),
+        'kfs_interest' => $b['kfs_interest'],
+        'overdue_interest' => $b['overdue_interest'],
+        'calendar_dpd' => $b['calendar_dpd'],
+        'presentment_dpd' => $b['presentment_dpd'],
     ];
 }
 

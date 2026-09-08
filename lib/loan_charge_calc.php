@@ -101,3 +101,115 @@ function creditlab_calculate_loan_charges(
         'dpd' => $dpd,
     ];
 }
+
+/**
+ * Interest on principal for N days (KFS slabs when rate is 1, else % per day).
+ */
+function creditlab_interest_on_principal_for_days(float $principal, $interestPercentage, int $days): float
+{
+    if ($days <= 0 || $principal <= 0) {
+        return 0.0;
+    }
+
+    $service_charge = 0.0;
+    if ((float) $interestPercentage == 1.0) {
+        $remaining = $days;
+        if ($remaining >= 3) {
+            $remaining -= 3;
+        } else {
+            $remaining = 0;
+        }
+        if ($remaining >= 7) {
+            $service_charge += $principal * 7 / 100 * 0.1;
+            $remaining -= 7;
+        } else {
+            $service_charge += $principal * $remaining / 100 * 0.1;
+            $remaining = 0;
+        }
+        if ($remaining >= 20) {
+            $service_charge += $principal * 20 / 100 * 0.115;
+            $remaining -= 20;
+        } else {
+            $service_charge += $principal * $remaining / 100 * 0.115;
+            $remaining = 0;
+        }
+        if ($remaining >= 1) {
+            $service_charge += $principal * $remaining / 100 * 0.1;
+        }
+        return $service_charge;
+    }
+
+    return $principal * $days / 100 * (float) $interestPercentage;
+}
+
+/**
+ * Daily overdue interest rate on principal (KFS: 0.1%/day for the 1% product).
+ */
+function creditlab_overdue_daily_interest_rate($interestPercentage): float
+{
+    if ((float) $interestPercentage == 1.0) {
+        return 0.001;
+    }
+    return ((float) $interestPercentage) / 100.0;
+}
+
+/**
+ * eNACH presentment: principal + KFS interest to due date + penalty/overdue interest
+ * for calendar DPD + 1 (bank debit next day). Penalty and overdue interest use principal only.
+ *
+ * @return array{
+ *   principal:float,kfs_interest:float,calendar_dpd:int,presentment_dpd:int,
+ *   overdue_interest:float,penalty:float,penalty_gst:float,penalty_with_gst:float,total:float,
+ *   loan_tenure:int
+ * }
+ */
+function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply): array
+{
+    $principal = (float) ($loan['processed_amount'] ?? 0);
+    $interestPercentage = $loan_apply['interest_percentage'] ?? 1;
+    $loanApplyDays = isset($loan_apply['days']) ? (int) $loan_apply['days'] : 30;
+    $loan_tenure = creditlab_loan_tenure_days($loan, $loanApplyDays);
+
+    $processedDate = (string) ($loan['processed_date'] ?? date('Y-m-d'));
+    $stop_date = date_create($processedDate);
+    $sa = date_create(date('Y-m-d 23:59:59'));
+    $tday = 0;
+    if ($stop_date instanceof DateTimeInterface && $sa instanceof DateTimeInterface) {
+        $tday = (int) date_diff($stop_date, $sa)->format('%a');
+    }
+
+    $calendar_dpd = $tday - $loan_tenure;
+    if ($calendar_dpd < 0) {
+        $calendar_dpd = 0;
+    }
+    $presentment_dpd = $calendar_dpd > 0 ? $calendar_dpd + 1 : 0;
+
+    $kfs_interest = creditlab_interest_on_principal_for_days($principal, $interestPercentage, $loan_tenure);
+
+    $daily_overdue = creditlab_overdue_daily_interest_rate($interestPercentage);
+    $overdue_interest = $principal * $daily_overdue * $presentment_dpd;
+
+    $penalty = 0.0;
+    if ($presentment_dpd >= 1) {
+        $penalty = $principal * 0.04;
+        if ($presentment_dpd >= 2) {
+            $penalty += $principal * 0.002 * ($presentment_dpd - 1);
+        }
+    }
+    $penalty_gst = $penalty * 0.18;
+
+    $total = $principal + $kfs_interest + $penalty + $penalty_gst + $overdue_interest;
+
+    return [
+        'principal' => $principal,
+        'kfs_interest' => $kfs_interest,
+        'calendar_dpd' => $calendar_dpd,
+        'presentment_dpd' => $presentment_dpd,
+        'overdue_interest' => $overdue_interest,
+        'penalty' => $penalty,
+        'penalty_gst' => $penalty_gst,
+        'penalty_with_gst' => $penalty + $penalty_gst,
+        'total' => $total,
+        'loan_tenure' => $loan_tenure,
+    ];
+}
