@@ -42,6 +42,123 @@ function creditlab_enach_webhook_log_raw($headers, $get, $post, $rawBody)
     $entry .= "POST:\n" . serialize($post) . "\n";
     $entry .= "Raw:\n" . $rawBody . "\n";
     file_put_contents($dir . '/autocollect_webhook_raw.txt', $entry, FILE_APPEND | LOCK_EX);
+    creditlab_enach_webhook_store_inbox($headers, $post, $rawBody);
+}
+
+/**
+ * Persist every eNACH webhook to DB (survives log rotation).
+ */
+function creditlab_enach_webhook_store_inbox($headers, $post, $rawBody, $handled = '')
+{
+    global $db;
+    if (!isset($db) || !@mysqli_ping($db)) {
+        return;
+    }
+    mysqli_query($db, "CREATE TABLE IF NOT EXISTS `enach_webhook_inbox` (
+        `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        `merchant_ref` varchar(128) NOT NULL DEFAULT '',
+        `loan_lid` varchar(32) NOT NULL DEFAULT '',
+        `outcome` varchar(16) NOT NULL DEFAULT '',
+        `amount` decimal(12,2) DEFAULT NULL,
+        `handled_action` varchar(48) NOT NULL DEFAULT '',
+        `payload_json` mediumtext,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_lid` (`loan_lid`),
+        KEY `idx_ref` (`merchant_ref`),
+        KEY `idx_created` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $payload = [
+        'headers' => $headers,
+        'post' => $post,
+        'raw' => is_string($rawBody) ? substr($rawBody, 0, 20000) : '',
+    ];
+    $event = is_array($post) ? creditlab_enach_webhook_parse_presentment(is_array($post) ? $post : [], (string) $rawBody) : null;
+    $ref = (string) ($event['merchant_ref'] ?? '');
+    $parsed = creditlab_enach_parse_merchant_ref($ref);
+    $lid = ($parsed && !empty($parsed['loan_lid'])) ? (string) $parsed['loan_lid'] : '';
+    if ($lid === '' && preg_match('/CLL_AUTO_(\d+)/', (string) $rawBody, $m)) {
+        $lid = $m[1];
+        if ($ref === '') {
+            $ref = $m[0];
+        }
+    }
+    $refEsc = mysqli_real_escape_string($db, substr($ref, 0, 128));
+    $lidEsc = mysqli_real_escape_string($db, $lid);
+    $out = mysqli_real_escape_string($db, (string) ($event['outcome'] ?? $handled));
+    $act = mysqli_real_escape_string($db, substr((string) $handled, 0, 48));
+    $amt = isset($event['amount']) && is_numeric($event['amount']) ? number_format((float) $event['amount'], 2, '.', '') : 'NULL';
+    $json = mysqli_real_escape_string($db, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    $amtSql = $amt === 'NULL' ? 'NULL' : "'$amt'";
+    mysqli_query($db, "INSERT INTO enach_webhook_inbox
+        (`merchant_ref`, `loan_lid`, `outcome`, `amount`, `handled_action`, `payload_json`)
+        VALUES ('$refEsc', '$lidEsc', '$out', $amtSql, '$act', '$json')");
+}
+
+/**
+ * Durable clearance vs failed debug log (file + DB).
+ *
+ * @param array{cleared:bool,loan_lid?:string,merchant_ref?:string,amount?:mixed,reason:string,message?:string,meta?:array} $row
+ */
+function creditlab_enach_record_settlement_result(array $row): void
+{
+    $cleared = !empty($row['cleared']);
+    $lid = (string) ($row['loan_lid'] ?? '');
+    $ref = (string) ($row['merchant_ref'] ?? '');
+    $reason = (string) ($row['reason'] ?? '');
+    $message = (string) ($row['message'] ?? '');
+    $amount = $row['amount'] ?? '';
+    $meta = $row['meta'] ?? [];
+
+    $dir = dirname(__DIR__) . '/logs';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    $file = $dir . '/' . ($cleared ? 'enach_cleared_' : 'enach_failed_') . date('Y-m-d') . '.log';
+    $line = '[' . date('Y-m-d H:i:s') . '] '
+        . ($cleared ? 'CLEARED' : 'NOT_CLEARED')
+        . ' CLL' . $lid
+        . ' reason=' . $reason
+        . ' amount=' . $amount
+        . ' ref=' . $ref
+        . ' ' . $message;
+    if ($meta) {
+        $line .= ' ' . json_encode($meta, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+    $line .= PHP_EOL;
+    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+
+    global $db;
+    if (!isset($db) || !@mysqli_ping($db)) {
+        return;
+    }
+    mysqli_query($db, "CREATE TABLE IF NOT EXISTS `enach_settlement_result` (
+        `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        `loan_lid` varchar(32) NOT NULL DEFAULT '',
+        `merchant_ref` varchar(128) NOT NULL DEFAULT '',
+        `result` varchar(16) NOT NULL DEFAULT 'failed',
+        `reason` varchar(64) NOT NULL DEFAULT '',
+        `amount` varchar(32) NOT NULL DEFAULT '',
+        `message` varchar(512) NOT NULL DEFAULT '',
+        `meta_json` text,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_lid` (`loan_lid`),
+        KEY `idx_result` (`result`),
+        KEY `idx_created` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $lidEsc = mysqli_real_escape_string($db, $lid);
+    $refEsc = mysqli_real_escape_string($db, substr($ref, 0, 128));
+    $resEsc = mysqli_real_escape_string($db, $cleared ? 'cleared' : 'failed');
+    $reasonEsc = mysqli_real_escape_string($db, substr($reason, 0, 64));
+    $amtEsc = mysqli_real_escape_string($db, substr((string) $amount, 0, 32));
+    $msgEsc = mysqli_real_escape_string($db, substr($message, 0, 512));
+    $metaEsc = mysqli_real_escape_string($db, json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    mysqli_query($db, "INSERT INTO enach_settlement_result
+        (`loan_lid`, `merchant_ref`, `result`, `reason`, `amount`, `message`, `meta_json`)
+        VALUES ('$lidEsc', '$refEsc', '$resEsc', '$reasonEsc', '$amtEsc', '$msgEsc', '$metaEsc')");
 }
 
 /**
@@ -134,7 +251,17 @@ function creditlab_enach_webhook_parse_presentment(array $post, $rawBody = '')
     $merchant_ref = trim((string) creditlab_enach_webhook_pick($layers, [
         'merchant_request_number',
         'merchant_debit_id',
+        'merchant_ref',
+        'unique_request_number',
+        'udf1',
+        'productinfo',
     ]));
+    if (strpos($merchant_ref, 'CLL_AUTO_') === false && strpos($merchant_ref, 'CLTEST_') !== 0) {
+        $blob = json_encode($layers);
+        if (is_string($blob) && preg_match('/CLL_AUTO_\d+(?:_\d+)?/', $blob, $m)) {
+            $merchant_ref = $m[0];
+        }
+    }
 
     if ($merchant_ref === '') {
         return null;
@@ -145,13 +272,32 @@ function creditlab_enach_webhook_parse_presentment(array $post, $rawBody = '')
         'status_at_bank',
         'auto_debit_request_state',
         'presentment_status',
+        'debit_status',
+        'payment_status',
     ])));
 
     $auto_state = strtolower(trim((string) creditlab_enach_webhook_pick($layers, ['auto_debit_request_state'])));
 
-    if ($auto_state === 'success' || in_array($status_raw, ['success', 'successful', 'completed', 'captured', 'paid'], true)) {
+    $successHints = ['success', 'successful', 'completed', 'captured', 'paid', 'debited', 'settled', 'credited'];
+    $failHints = ['failure', 'failed', 'bounced', 'rejected', 'cancelled', 'bounce'];
+    $isSuccess = $auto_state === 'success';
+    foreach ($successHints as $hint) {
+        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+            $isSuccess = true;
+            break;
+        }
+    }
+    $isFail = $auto_state === 'failure';
+    foreach ($failHints as $hint) {
+        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+            $isFail = true;
+            break;
+        }
+    }
+
+    if ($isSuccess && !$isFail) {
         $outcome = 'success';
-    } elseif ($auto_state === 'failure' || in_array($status_raw, ['failure', 'failed', 'bounced', 'rejected', 'cancelled'], true)) {
+    } elseif (!empty($isFail) && !$isSuccess) {
         $outcome = 'failure';
     } elseif (in_array($status_raw, ['in_process', 'pending', 'initiated', 'accepted', 'processing'], true)) {
         $outcome = 'pending';
@@ -267,6 +413,27 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
     $mandate_txn = $event['mandate_transaction_id'] ?? '';
     $txnid = $event['txnid'] ?? '';
 
+    $finish = function (array $result) use ($event, $merchant_ref, $amount, $txnid, $bank_ref) {
+        $action = (string) ($result['action'] ?? '');
+        $cleared = in_array($action, ['cleared', 'already_cleared'], true);
+        creditlab_enach_record_settlement_result([
+            'cleared' => $cleared,
+            'loan_lid' => (string) ($result['loan_lid'] ?? ''),
+            'merchant_ref' => $merchant_ref,
+            'amount' => $amount,
+            'reason' => $action !== '' ? $action : 'unknown',
+            'message' => (string) ($result['message'] ?? ''),
+            'meta' => [
+                'ok' => !empty($result['ok']),
+                'txnid' => $txnid,
+                'bank_ref' => $bank_ref,
+                'raw_status' => $event['raw_status'] ?? '',
+                'error' => $event['error_message'] ?? '',
+            ],
+        ]);
+        return $result;
+    };
+
     creditlab_easebuzz_log_user_event([
         'uid' => 0,
         'transaction_id' => $mandate_txn !== '' ? $mandate_txn : $merchant_ref,
@@ -289,51 +456,63 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
 
     if ($parsed_ref && $parsed_ref['prefix'] === 'CLTEST_') {
         $log('Test presentment webhook logged (no loan action)', ['merchant_ref' => $merchant_ref, 'outcome' => $outcome]);
-        return ['ok' => true, 'action' => 'test_logged', 'message' => 'Test ref — event logged only.'];
+        return $finish(['ok' => true, 'action' => 'test_logged', 'message' => 'Test ref — event logged only.']);
     }
 
     if (!$parsed_ref || $parsed_ref['prefix'] !== 'CLL_AUTO_' || $parsed_ref['loan_lid'] === '') {
         $log('Unknown merchant_ref — no loan action', ['merchant_ref' => $merchant_ref, 'outcome' => $outcome]);
-        return ['ok' => true, 'action' => 'ignored', 'message' => 'Unknown merchant reference.'];
+        return $finish(['ok' => true, 'action' => 'ignored', 'message' => 'Unknown merchant reference.']);
     }
 
     $loan_lid = $parsed_ref['loan_lid'];
 
     if ($outcome === 'pending') {
         $log("Presentment pending for CLL$loan_lid", ['merchant_ref' => $merchant_ref, 'status' => $event['raw_status'] ?? '']);
-        return ['ok' => true, 'action' => 'pending', 'message' => 'Presentment still in progress.', 'loan_lid' => $loan_lid];
+        return $finish(['ok' => true, 'action' => 'pending', 'message' => 'Presentment still in progress.', 'loan_lid' => $loan_lid]);
     }
 
     if ($outcome === 'failure') {
         $log("Presentment FAILED for CLL$loan_lid", ['merchant_ref' => $merchant_ref, 'error' => $event['error_message'] ?? '']);
-        return ['ok' => true, 'action' => 'failure_logged', 'message' => 'Failure logged.', 'loan_lid' => $loan_lid];
+        return $finish(['ok' => true, 'action' => 'failure_logged', 'message' => 'Failure logged.', 'loan_lid' => $loan_lid]);
     }
 
     $loan_lid_esc = mysqli_real_escape_string($db, $loan_lid);
     $loan_data = creditlab_enach_settlement_query($db, "SELECT * FROM loan WHERE lid='$loan_lid_esc' LIMIT 1");
     if (!$loan_data || creditlab_enach_settlement_num($loan_data) === 0) {
         $log("Loan CLL$loan_lid not found for presentment webhook", ['merchant_ref' => $merchant_ref]);
-        return ['ok' => false, 'action' => 'error', 'message' => "Loan CLL$loan_lid not found.", 'loan_lid' => $loan_lid];
+        return $finish(['ok' => false, 'action' => 'error', 'message' => "Loan CLL$loan_lid not found.", 'loan_lid' => $loan_lid]);
     }
 
     $loan_details = creditlab_enach_settlement_fetch($loan_data);
     $uid = (int) $loan_details['uid'];
 
+    require_once __DIR__ . '/loan_charge_calc.php';
+    $apply_q = creditlab_enach_settlement_query($db, "SELECT * FROM loan_apply WHERE id='$loan_lid_esc' LIMIT 1");
+    $loan_apply = ($apply_q && creditlab_enach_settlement_num($apply_q) > 0)
+        ? creditlab_enach_settlement_fetch($apply_q)
+        : ['days' => 30, 'interest_percentage' => 1];
+    $outstanding = (float) creditlab_enach_presentment_breakdown($loan_details, $loan_apply)['total'];
+    $paid = (float) $amount;
+    $log("Clearing CLL$loan_lid (paid ₹$paid vs outstanding ₹$outstanding; eNACH success always settles)", [
+        'merchant_ref' => $merchant_ref,
+        'amount_delta' => round($paid - $outstanding, 2),
+    ]);
+
     if (($loan_details['status_log'] ?? '') === 'cleared' || ($loan_details['action'] ?? '') === 'cleared') {
         $log("SKIPPED: CLL$loan_lid already cleared (duplicate webhook)", ['merchant_ref' => $merchant_ref]);
-        return ['ok' => true, 'action' => 'already_cleared', 'message' => 'Loan already cleared.', 'loan_lid' => $loan_lid];
+        return $finish(['ok' => true, 'action' => 'already_cleared', 'message' => 'Loan already cleared.', 'loan_lid' => $loan_lid]);
     }
 
     $user_data = creditlab_enach_settlement_query($db, "SELECT * FROM user WHERE id='$uid' LIMIT 1");
     if (!$user_data || creditlab_enach_settlement_num($user_data) === 0) {
         $log("User not found for CLL$loan_lid", ['uid' => $uid]);
-        return ['ok' => false, 'action' => 'error', 'message' => 'User not found.', 'loan_lid' => $loan_lid];
+        return $finish(['ok' => false, 'action' => 'error', 'message' => 'User not found.', 'loan_lid' => $loan_lid]);
     }
     $user_details = creditlab_enach_settlement_fetch($user_data);
 
     if (!creditlab_enach_process_loan_clearance($db, $loan_lid, $uid, $amount, $bank_ref, 'full')) {
         $log("Loan clearance failed for CLL$loan_lid", ['merchant_ref' => $merchant_ref]);
-        return ['ok' => false, 'action' => 'clearance_failed', 'message' => 'Loan clearance failed.', 'loan_lid' => $loan_lid];
+        return $finish(['ok' => false, 'action' => 'clearance_failed', 'message' => 'Loan clearance failed.', 'loan_lid' => $loan_lid]);
     }
 
     require_once __DIR__ . '/zxc_mail.php';
@@ -355,15 +534,15 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
         $base_url
     );
 
-    $log("SUCCESS: CLL$loan_lid cleared via presentment webhook | amount=₹$amount | bank_ref=$bank_ref | sms=" . ($sms_ok ? 'ok' : 'fail'), [
+    $log("SUCCESS: CLL$loan_lid cleared via presentment webhook | amount=₹$amount | outstanding=₹$outstanding | bank_ref=$bank_ref | sms=" . ($sms_ok ? 'ok' : 'fail'), [
         'merchant_ref' => $merchant_ref,
         'pg_txn' => $txnid,
     ]);
 
-    return [
+    return $finish([
         'ok' => true,
         'action' => 'cleared',
         'message' => "Loan CLL$loan_lid cleared.",
         'loan_lid' => $loan_lid,
-    ];
+    ]);
 }

@@ -37,15 +37,24 @@ $headers = function_exists('getallheaders') ? getallheaders() : [];
 creditlab_enach_webhook_log_raw($headers, $_GET, $_POST, $rawBody);
 
 $post = $_POST;
-if ($rawBody !== '' && empty($post)) {
+if ($rawBody !== '') {
     $json = json_decode($rawBody, true);
     if (is_array($json)) {
-        $post = $json;
+        $post = array_merge($json, is_array($post) ? $post : []);
     }
 }
 
 if (!creditlab_enach_webhook_verify($post, $rawBody)) {
     creditlab_enach_webhook_log('REJECTED: invalid webhook signature/secret');
+    creditlab_enach_record_settlement_result([
+        'cleared' => false,
+        'loan_lid' => '',
+        'merchant_ref' => '',
+        'amount' => '',
+        'reason' => 'auth_rejected',
+        'message' => 'Invalid webhook signature/secret',
+        'meta' => ['raw' => substr((string) $rawBody, 0, 2000)],
+    ]);
     http_response_code(403);
     header('Content-Type: application/json');
     echo json_encode(['ok' => false, 'error' => 'Invalid webhook authentication']);
@@ -55,6 +64,15 @@ if (!creditlab_enach_webhook_verify($post, $rawBody)) {
 $event = creditlab_enach_webhook_parse_presentment($post, $rawBody);
 if (!$event) {
     creditlab_enach_webhook_log('IGNORED: not a presentment webhook payload');
+    creditlab_enach_record_settlement_result([
+        'cleared' => false,
+        'loan_lid' => '',
+        'merchant_ref' => '',
+        'amount' => '',
+        'reason' => 'not_presentment',
+        'message' => 'Not a presentment payload',
+        'meta' => ['raw' => substr((string) $rawBody, 0, 2000)],
+    ]);
     http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode(['ok' => true, 'action' => 'ignored', 'message' => 'Not a presentment payload']);

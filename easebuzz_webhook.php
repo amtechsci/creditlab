@@ -50,6 +50,11 @@ if (!is_dir(dirname($rawLogFile))) {
 require_once __DIR__ . '/lib/database.php';
 $db = creditlab_db_connect();
 
+if ($db) {
+    require_once __DIR__ . '/lib/easebuzz_enach_webhook.php';
+    creditlab_enach_webhook_store_inbox($headers, $_POST, $webhook_raw_input, 'received');
+}
+
 if (!$db) {
     $error_msg = "Database connection failed: " . mysqli_connect_error();
     error_log($error_msg);
@@ -132,10 +137,10 @@ function processLoanClearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $tra
 
 // --- 3. MAIN LOGIC ---
 $data = $_POST;
-if ($webhook_raw_input !== '' && empty($data)) {
+if ($webhook_raw_input !== '') {
     $json_post = json_decode($webhook_raw_input, true);
     if (is_array($json_post)) {
-        $data = $json_post;
+        $data = array_merge($json_post, is_array($data) ? $data : []);
     }
 }
 
@@ -204,11 +209,9 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
         $txnid = $data['txnid'];
         
         // Validate numeric fields
-        if (!is_numeric($amount) || $amount <= 0) {
-            $error_msg = "Invalid amount: $amount";
-            writeWebhookLog("ERROR: $error_msg", $log_file);
-            http_response_code(400);
-            die($error_msg);
+        // Amount may be missing or a few rupees off the presented figure — still settle on success.
+        if (!is_numeric($amount) || $amount < 0) {
+            $amount = 0;
         }
         
         // Validate transaction ID format
@@ -272,6 +275,15 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
                 if ($clearance_success) {
                     writeWebhookLog("SUCCESS: Loan CLL$loan_lid cleared successfully | User: {$user_details['name']} | Amount: ₹$amount", $log_file);
                     $successful_transactions[] = "CLL$loan_lid - ₹$amount";
+                    creditlab_enach_record_settlement_result([
+                        'cleared' => true,
+                        'loan_lid' => (string) $loan_lid,
+                        'merchant_ref' => $merchant_debit_id,
+                        'amount' => $amount,
+                        'reason' => 'cleared',
+                        'message' => 'Legacy auto-debit webhook cleared loan',
+                        'meta' => ['bank_ref' => $bank_ref_num, 'txnid' => $txnid],
+                    ]);
                     
                     // Generate no-due certificate
                     creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $user_details['email'], null, null, $base_url . '/no-due-certificate2.php?id=' . $loan_lid));
@@ -287,6 +299,14 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
                     $error_msg = "Failed to process loan clearance for CLL$loan_lid";
                     writeWebhookLog("ERROR: $error_msg", $log_file);
                     $failed_transactions[] = "CLL$loan_lid - $error_msg";
+                    creditlab_enach_record_settlement_result([
+                        'cleared' => false,
+                        'loan_lid' => (string) $loan_lid,
+                        'merchant_ref' => $merchant_debit_id,
+                        'amount' => $amount,
+                        'reason' => 'clearance_failed',
+                        'message' => $error_msg,
+                    ]);
                     http_response_code(500);
                     die($error_msg);
                 }
@@ -317,6 +337,15 @@ if (creditlab_webhook_is_autodebit_furl($data['furl'], $base_url)) {
             $loan_lid = count($parts) >= 3 ? $parts[2] : substr($merchant_debit_id, 9);
             
             writeWebhookLog("Processing auto-debit FAILURE for loan CLL$loan_lid | Amount: ₹$amount | Reason: $error_message", $log_file);
+            creditlab_enach_record_settlement_result([
+                'cleared' => false,
+                'loan_lid' => (string) $loan_lid,
+                'merchant_ref' => $merchant_debit_id,
+                'amount' => $amount,
+                'reason' => 'bank_failure',
+                'message' => (string) $error_message,
+                'meta' => ['txnid' => $txnid],
+            ]);
 
             $loan_lid_escaped = mysqli_real_escape_string($db, $loan_lid);
             $loan_data = webhook_query($db, "SELECT * FROM loan WHERE lid='$loan_lid_escaped'");

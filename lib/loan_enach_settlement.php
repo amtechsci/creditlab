@@ -23,7 +23,17 @@ function creditlab_enach_settlement_fetch($query_result)
     return mysqli_fetch_array($query_result);
 }
 
-function creditlab_enach_calculate_credit_score_points($dpd)
+function creditlab_enach_debit_clears_loan(float $paid, float $outstanding): bool
+{
+    if ($paid <= 0) {
+        return false;
+    }
+    if ($outstanding <= 0) {
+        return true;
+    }
+    $tolerance = max(100.0, $outstanding * 0.03);
+    return ($paid + $tolerance) >= $outstanding;
+}
 {
     if ($dpd > 0) {
         if ($dpd > 30) {
