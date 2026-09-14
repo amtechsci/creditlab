@@ -66,10 +66,10 @@ if (($user_verify == 0) or ($user_verify == 1)) {
                 if (townum($disbursal_query) > 0) {
                     $loanfetch = towfetchassoc($disbursal_query);
                 
-                    if (empty($user_signature)) {
+                    if (creditlab_user_upload_missing($user_signature ?? '')) {
                         $page_state = 12; // Needs signature
                         $per = 92;
-                    } elseif (empty($user_selfie)) {
+                    } elseif (creditlab_user_upload_missing($user_selfie ?? '')) {
                         $page_state = 13; // Needs video KYC
                         $per = 94;
                     } else {

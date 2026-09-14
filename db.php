@@ -146,6 +146,15 @@ function creditlab_user_has_active_loan_apply(int $user_id): bool
 }
 
 /**
+ * True when a user upload field is empty or the staff sentinel "no".
+ */
+function creditlab_user_upload_missing($value): bool
+{
+	$value = strtolower(trim((string) $value));
+	return $value === '' || $value === 'no';
+}
+
+/**
  * Whether the user has a running loan (disbursed loan under account manager or recovery officer).
  * loan_apply rows (pending / disbursal / etc.) are not running loans.
  */

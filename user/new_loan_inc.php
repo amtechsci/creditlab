@@ -48,108 +48,16 @@ if($ch > 0 and $tc ==  0 and $tl < 2 and $fech == 0){
             <?php $a = towquery("SELECT * FROM loan_apply WHERE uid=$user_id AND status='disbursal' ORDER BY id DESC");
         if(townum($a) != 0){
 $loanfetch = towfetchassoc($a);
-        if(empty($user_selfie)){ ?>
-            <div class="container">
-            <div class="row">
-            <div class="col-md-1"></div>
-            <div class="col-md-6">
-        <h1>Video KYC</h1>
-        <h5>Kindly upload a short video by pronouncing the below sentence & submit.</h5>
-        “I AM APPLYING LOAN AT CREDITLAB WITH MY KNOWLEDGE“
-        <video style="width: 100%;height: 100%;" autoplay playsinline></video>
-        <div id="countdown"></div>
-        <button id="start-btn" class="btn btn-success">Take Video / Retake Video</button>
-        <p style="color:red;">Note*<br>
-        LOOK at the camera in such a way that your complete face is covered in the video<br>
-
-          Don’t wear cap 🧢 <br>
-          Don’t wear spects</p>
-          <button id="upload-btn" class="btn btn-primary" disabled>Submit</button>
-        </div>
-        </div>
-        </div>
-        <script>
-    // Get the video element and buttons
-    const video = document.querySelector('video');
-    const startBtn = document.querySelector('#start-btn');
-    const uploadBtn = document.querySelector('#upload-btn');
-
-    // Constraints for capturing video
-    const constraints = {
-      audio: true,
-      video: {
-        width: 640,
-        height: 480
-      }
-    };
-
-    let mediaRecorder;
-    let chunks = [];
-    let blob;
-    function startRecording() {
-        var timeleft = 10;
-var downloadTimer = setInterval(function(){
-  if(timeleft <= 0){
-    clearInterval(downloadTimer);
-    document.getElementById("countdown").innerHTML = "Finished";
-  } else {
-    document.getElementById("countdown").innerHTML = timeleft + " seconds remaining";
-  }
-  timeleft -= 1;
-}, 1000);
-      navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-          video.srcObject = stream;
-          video.play();
-          mediaRecorder = new MediaRecorder(stream);
-          mediaRecorder.start();
-          setTimeout(stopRecording, 10000);
-          mediaRecorder.addEventListener('dataavailable', event => {
-            chunks.push(event.data);
-          });
-        })
-        .catch(error => console.log('getUserMedia Error: ', error));
-    }
-
-    function stopRecording() {
-      uploadBtn.disabled = false;
-      startBtn.disabled = false;
-      mediaRecorder.stop();
-      video.pause();
-    }
-
-    function uploadRecording() {
-      blob = new Blob(chunks, { type: 'video/mp4' });
-      const formData = new FormData();
-      formData.append('video', blob, 'video.mp4');
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/zzz.php');
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          if(xhr.responseText == 1){
-              window.location.replace('index.php');
-          }
-        } else {
-          console.log('Error uploading video.');
+        $ps = (int)($page_state ?? 0);
+        if (!in_array($ps, [12, 13, 14, 15, 16, 17], true) && creditlab_user_upload_missing($user_selfie ?? '')) {
+            $page_state = 13;
+            $ps = 13;
         }
-      };
-      xhr.send(formData);
-    }
-
-    // Attach event listeners to the buttons
-    startBtn.addEventListener('click', () => {
-      startBtn.disabled = true;
-      startRecording();
-    });
-    uploadBtn.addEventListener('click', () => {
-      uploadBtn.disabled = true;
-      startBtn.disabled = false;
-      uploadRecording();
-    });
-</script>
-        <?php 
-        include_once 'foot.php';
-        exit; }else{
+        if (in_array($ps, [12, 13, 14], true)) {
+            include 'disbursal_pre_agreement.php';
+            include_once 'foot.php';
+            exit;
+        } else {
         if($loanfetch['ubank_id'] == 0 or $loanfetch['ubank_id'] == 2){
         $ub = towquery("SELECT * FROM `user_bank` WHERE uid='{$loanfetch['uid']}'");
         if(townum($ub) > 0){ ?>

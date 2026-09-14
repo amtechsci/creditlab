@@ -60,7 +60,8 @@
         <?php 
         $userloan = towquery("SELECT * FROM `loan` WHERE uid=$user_id AND (status_log ='account manager' OR status_log ='recovery officer') ORDER BY id DESC");
                     $lc = townum($userloan);
-        if($lc == 0){
+        $needs_disbursal_steps = isset($page_state) && in_array((int)$page_state, [12, 13, 14, 15, 16, 17], true);
+        if($lc == 0 || $needs_disbursal_steps){
         include 'new_loan_inc.php';
         }?>
             <div class="container">
