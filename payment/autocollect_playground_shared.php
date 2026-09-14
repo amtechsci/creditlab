@@ -95,6 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($action === 'seamless_mandate' || 
             'success_url' => $_POST['success_url'] ?? '',
             'failure_url' => $_POST['failure_url'] ?? '',
             'request_type' => 'SEAMLESS',
+            'ifsc' => $seamless_bank_fields['ifsc'] ?? '',
+            'bank_code' => $seamless_bank_fields['bank_code'] ?? '',
         ]);
         if (empty($result['access_key'])) {
             $result_block = ['title' => 'Generate Access Key + Seamless Mandate', 'result' => $result];
@@ -160,6 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $result_block === null) {
                         'success_url' => $_POST['success_url'] ?? '',
                         'failure_url' => $_POST['failure_url'] ?? '',
                         'request_type' => 'SEAMLESS',
+                        'ifsc' => $seamless_bank_fields['ifsc'] ?? '',
+                        'bank_code' => $seamless_bank_fields['bank_code'] ?? '',
                     ]);
                     if (!empty($result['access_key'])) {
                         $_SESSION[$playground_session_key] = [
@@ -185,6 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $result_block === null) {
                 'success_url' => $_POST['success_url'] ?? '',
                 'failure_url' => $_POST['failure_url'] ?? '',
                 'request_type' => $request_type === 'SEAMLESS' ? 'SEAMLESS' : 'DEFAULT',
+                'ifsc' => $seamless_bank_fields['ifsc'] ?? '',
+                'bank_code' => $seamless_bank_fields['bank_code'] ?? '',
             ]);
             if (!empty($result['access_key'])) {
                 $_SESSION[$playground_session_key] = [
@@ -539,7 +545,8 @@ function playground_option_selected($field, $option, array $post_data, array $sa
         <h2>Smoke test (production)</h2>
         <ol class="smoke">
             <li><strong>A.</strong> <code>SEAMLESS</code> (or <code>DEFAULT</code> checkout) with a <strong>real customer bank account</strong>.</li>
-            <li><strong>IFSC → bank_code:</strong> first 4 letters of IFSC (e.g. <code>HDFC0004171</code> → <code>HDFC</code>).</li>
+            <li><strong>IFSC → bank_code:</strong> first 4 letters of IFSC (e.g. <code>HDFC0004171</code> → <code>HDFC</code>; SBI is <code>SBIN</code>, never <code>SBOI</code>).</li>
+            <li><strong>Frequency:</strong> <code>as_presented</code> except HDFC, which requires <code>monthly</code> (auto-selected from bank_code).</li>
             <li><strong>D.</strong> Retrieve until <code>authorized</code> (may take a few minutes).</li>
             <li><strong>C.</strong> Presentment with a unique <code>merchant_request_number</code> and a small test amount.</li>
         </ol>

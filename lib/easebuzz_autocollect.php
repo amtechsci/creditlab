@@ -449,6 +449,12 @@ function creditlab_autocollect_generate_access_key(array $params)
     $start_date = trim((string) ($params['start_date'] ?? date('Y-m-d')));
     $end_date = trim((string) ($params['end_date'] ?? date('Y-m-d', strtotime('+3 years'))));
 
+    $bank_code = creditlab_autocollect_resolve_bank_code(
+        $params['ifsc'] ?? '',
+        $params['bank_code'] ?? ''
+    );
+    $frequency = creditlab_autocollect_resolve_frequency($params['frequency'] ?? '', $bank_code);
+
     $body = [
         'key' => $key,
         'transaction_id' => $transaction_id,
@@ -460,7 +466,7 @@ function creditlab_autocollect_generate_access_key(array $params)
         'phone' => $phone,
         'start_date' => $start_date,
         'end_date' => $end_date,
-        'frequency' => $params['frequency'] ?? 'as_presented',
+        'frequency' => $frequency,
         'amount_rule' => $params['amount_rule'] ?? 'MAX',
         'payment_modes' => $params['payment_modes'] ?? ['EN'],
         'udf1' => (string) ($params['udf1'] ?? 'AUTOCOLLECT_PLAYGROUND'),
@@ -513,36 +519,107 @@ function creditlab_autocollect_mandate_redirect_url($access_key)
 }
 
 /**
+ * Legacy Easebuzz PG / bank_name.bank_code values → Autocollect NPCI codes (IFSC prefix).
+ *
+ * @see https://docs.easebuzz.in/docs/8-autocollect-recurring-payment/pitd89wrucuwb-bankcode-list-e-nach
+ * @return array<string, string>
+ */
+function creditlab_autocollect_bank_code_aliases()
+{
+    return [
+        'SBOI' => 'SBIN', // State Bank of India — PG used SBOI; NPCI/docs use SBIN
+        'HDFCB' => 'HDFC',
+        'ICICB' => 'ICIC',
+        'ICICI' => 'ICIC',
+    ];
+}
+
+function creditlab_autocollect_apply_bank_code_alias($bank_code)
+{
+    $bank_code = strtoupper(trim((string) $bank_code));
+    $aliases = creditlab_autocollect_bank_code_aliases();
+
+    return $aliases[$bank_code] ?? $bank_code;
+}
+
+/**
+ * Destination banks that reject eNACH frequency as_presented.
+ * HDFC: Easebuzz returns "Enach disabled or invalid gateway ID".
+ *
+ * @return array<int, string>
+ */
+function creditlab_autocollect_banks_without_as_presented()
+{
+    return ['HDFC'];
+}
+
+/**
+ * Autocollect mandate frequency. Default as_presented (ad-hoc presentment);
+ * HDFC Bank does not support as_presented — send monthly instead.
+ */
+function creditlab_autocollect_resolve_frequency($frequency, $bank_code = '')
+{
+    $normalized = strtolower(trim((string) $frequency));
+    $normalized = str_replace([' ', '-'], '_', $normalized);
+    $allowed = [
+        'daily',
+        'weekly',
+        'monthly',
+        'bi_monthly',
+        'bimonthly',
+        'quarterly',
+        'half_yearly',
+        'halfyearly',
+        'yearly',
+        'as_presented',
+    ];
+    if (!in_array($normalized, $allowed, true)) {
+        $normalized = 'as_presented';
+    }
+    if ($normalized === 'bimonthly') {
+        $normalized = 'bi_monthly';
+    }
+    if ($normalized === 'halfyearly') {
+        $normalized = 'half_yearly';
+    }
+
+    $bank_code = creditlab_autocollect_apply_bank_code_alias($bank_code);
+    if ($normalized === 'as_presented' && in_array($bank_code, creditlab_autocollect_banks_without_as_presented(), true)) {
+        return 'monthly';
+    }
+
+    return $normalized;
+}
+
+/**
  * Autocollect ENACH bank_code — exactly 4 uppercase letters (IFSC prefix).
  * Legacy PG eNACH uses 5-char codes (e.g. HDFCB, SBOI); Autocollect/NPCI expects IFSC prefix (e.g. SBIN).
  */
 function creditlab_autocollect_resolve_bank_code($ifsc, $bank_code = '')
 {
     $ifsc = strtoupper(trim((string) $ifsc));
-    $prefix = strlen($ifsc) >= 4 ? substr($ifsc, 0, 4) : '';
+    $prefix = (strlen($ifsc) >= 4 && preg_match('/^[A-Z]{4}/', $ifsc)) ? substr($ifsc, 0, 4) : '';
+    $bank_code = creditlab_autocollect_apply_bank_code_alias(strtoupper(trim((string) $bank_code)));
 
     // Easebuzz sandbox test IFSC (EBZS…) — NPCI bank_code is HDFC (matches DEFAULT checkout mapping).
     if (creditlab_autocollect_is_sandbox() && $prefix === 'EBZS') {
         return 'HDFC';
     }
 
+    $resolved = '';
+
     // Valid IFSC → always use first 4 chars (SBIN0020488 → SBIN, not legacy PG code SBOI).
     if (preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', $ifsc)) {
-        return $prefix;
+        $resolved = $prefix;
+    } elseif ($bank_code !== '' && preg_match('/^[A-Z]{4}$/', $bank_code)) {
+        $resolved = $bank_code;
+    } elseif ($bank_code !== '' && preg_match('/^[A-Z]{5}$/', $bank_code) && preg_match('/^[A-Z]{4}$/', $prefix)) {
+        $resolved = $prefix;
+    } elseif (preg_match('/^[A-Z]{4}$/', $prefix)) {
+        $resolved = $prefix;
     }
 
-    $bank_code = strtoupper(trim((string) $bank_code));
-    if ($bank_code !== '' && preg_match('/^[A-Z]{4}$/', $bank_code)) {
-        return $bank_code;
-    }
-    if ($bank_code !== '' && preg_match('/^[A-Z]{5}$/', $bank_code) && preg_match('/^[A-Z]{4}$/', $prefix)) {
-        return $prefix;
-    }
-    if (preg_match('/^[A-Z]{4}$/', $prefix)) {
-        return $prefix;
-    }
-
-    return '';
+    return creditlab_autocollect_apply_bank_code_alias($resolved);
 }
 
 /**
@@ -1018,6 +1095,8 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
         'success_url' => $success_url,
         'failure_url' => $failure_url,
         'request_type' => 'SEAMLESS',
+        'ifsc' => $ifsc,
+        'bank_code' => $bank_code,
         'udf1' => 'CREDITLAB_USER',
         'udf5' => (string) $max_amount,
     ]);
@@ -1026,6 +1105,10 @@ function creditlab_autocollect_start_user_enach($user_id, array $post, array $co
         'http_code' => $result['http_code'] ?? null,
         'ok' => $result['ok'] ?? false,
         'error' => $result['error'] ?? null,
+        'bank_code' => $bank_code,
+        'frequency' => is_array($result['request_body'] ?? null)
+            ? ($result['request_body']['frequency'] ?? null)
+            : null,
     ]));
 
     if (empty($result['access_key'])) {

@@ -408,20 +408,13 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     $auto_debit_access_key = $data['auto_debit_access_key'];
 
     $update_status = $authorization_status;
-    $user_easebuzz_status = 1;
-    if ($authorization_status === 'rejected') {
-        $update_status = 'rejected';
-        $user_easebuzz_status = 2;
-    } elseif ($status === 'failure') {
-        $user_easebuzz_status = 0;
-    }
 
     mysqli_stmt_bind_param($stmt1, "sssssssss", $update_status, $net_amount_debit, $bank_ref_num, $easepayid, $addedon, $cash_back_percentage, $status, $auto_debit_access_key, $txnid);
 
     if (mysqli_stmt_execute($stmt1)) {
 
         // Get the `uid` for the txnid to update the corresponding user table
-        $stmt2 = mysqli_prepare($db, "SELECT uid FROM easebuzz_adtd WHERE txnid = ?");
+        $stmt2 = mysqli_prepare($db, "SELECT * FROM easebuzz_adtd WHERE txnid = ?");
         mysqli_stmt_bind_param($stmt2, "s", $txnid);
         mysqli_stmt_execute($stmt2);
         $result = mysqli_stmt_get_result($stmt2);
@@ -429,6 +422,8 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
         if ($result && mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
             $uid = $row['uid'];
+            require_once __DIR__ . '/lib/easebuzz_enach.php';
+            $user_easebuzz_status = creditlab_easebuzz_user_flag_from_row($row);
 
             $stmt3 = mysqli_prepare($db, "UPDATE user SET easebuzz = ? WHERE id = ?");
             mysqli_stmt_bind_param($stmt3, "is", $user_easebuzz_status, $uid);

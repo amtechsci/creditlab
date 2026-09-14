@@ -72,26 +72,34 @@ if (($user_verify == 0) or ($user_verify == 1)) {
                     } elseif (empty($user_selfie)) {
                         $page_state = 13; // Needs video KYC
                         $per = 94;
-                    } elseif ($user_easebuzz == 0 || $user_easebuzz == 2) {
-                        require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
-                        $enach_refresh = creditlab_autocollect_refresh_user_enach_status((int) $user_id);
-                        if (!empty($enach_refresh['synced'])) {
-                            $user_easebuzz = 1;
-                        }
-                    }
-                    if ($user_easebuzz == 0 || $user_easebuzz == 2) {
-                        $page_state = 14; // Needs e-mandate (Easebuzz)
-                        $per = 97;
                     } else {
-                        $per = 100; // From here on, progress is 100%
-                        if ($loanfetch['agreement'] == 0) {
-                            if ($loanfetch['keyid'] == 0) {
-                                $page_state = 15; // Needs to agree to Key Fact Statement
-                            } else {
-                                $page_state = 16; // Needs to agree to Loan Agreement
-                            }
+                        require_once __DIR__ . '/../lib/easebuzz_enach.php';
+                        $enach_row = creditlab_user_enach_latest_row((int) $user_id);
+                        if (creditlab_user_enach_needs_live_recheck($loanfetch, $enach_row)) {
+                            creditlab_user_enach_recheck_for_new_loan((int) $user_id);
+                            $enach_row = creditlab_user_enach_latest_row((int) $user_id);
+                        } elseif ($enach_row
+                            && !creditlab_easebuzz_mandate_is_complete($enach_row)
+                            && creditlab_easebuzz_is_autocollect_mandate_row($enach_row)) {
+                            require_once __DIR__ . '/../lib/easebuzz_autocollect.php';
+                            creditlab_autocollect_refresh_user_enach_status((int) $user_id);
+                        }
+                        $enach_state = creditlab_user_enach_sync_flag((int) $user_id, $user_easebuzz ?? 0);
+                        $user_easebuzz = $enach_state['easebuzz'];
+                        if (empty($enach_state['complete'])) {
+                            $page_state = 14; // Needs e-mandate (Easebuzz)
+                            $per = 97;
                         } else {
-                            $page_state = 17; // Loan approved and finalized
+                            $per = 100; // From here on, progress is 100%
+                            if ($loanfetch['agreement'] == 0) {
+                                if ($loanfetch['keyid'] == 0) {
+                                    $page_state = 15; // Needs to agree to Key Fact Statement
+                                } else {
+                                    $page_state = 16; // Needs to agree to Loan Agreement
+                                }
+                            } else {
+                                $page_state = 17; // Loan approved and finalized
+                            }
                         }
                     }
                 }

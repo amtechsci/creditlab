@@ -164,6 +164,8 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
         Thanks - Team creditlab.in";				//An HTML or plain text message body
 $mail2->Send();
         }
+        require_once __DIR__ . '/../lib/easebuzz_enach.php';
+        creditlab_user_enach_recheck_for_new_loan((int)$user_id);
         if(isset($_GET['f'])){
         header('location:newloan.php');
         }else{

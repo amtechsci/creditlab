@@ -137,6 +137,288 @@ function creditlab_easebuzz_mandate_authorization_ok(array $row)
 }
 
 /**
+ * True when the user has registered eNACH (accepted/authorized).
+ * Do not wait for mandate "active" — that can take ~2 days. Recheck live status on the next loan.
+ */
+function creditlab_easebuzz_mandate_is_complete(array $row): bool
+{
+    return creditlab_easebuzz_mandate_authorization_ok($row);
+}
+
+function creditlab_easebuzz_auth_is_cancelled($auth): bool
+{
+    $auth = strtolower(trim((string) $auth));
+
+    return in_array($auth, ['rejected', 'cancelled', 'canceled', 'revoked', 'expired', 'inactive'], true);
+}
+
+/**
+ * Live Easebuzz/NPCI statuses that mean the customer cancelled or the mandate cannot be used.
+ * Do not include initiated/accepted/in_process — those are the 2-day wait to become active.
+ */
+function creditlab_enach_live_status_is_cancelled($status, $sub_status = '', $mandate_status = ''): bool
+{
+    $cancelled = [
+        'cancelled', 'canceled', 'cancelled_by_customer', 'cancelled_by_user',
+        'revoked', 'expired', 'failed', 'rejected',
+        'dropped', 'deregistered', 'terminated', 'closed',
+    ];
+    foreach ([$status, $sub_status, $mandate_status] as $value) {
+        $value = strtolower(trim((string) $value));
+        $value = str_replace([' ', '-'], '_', $value);
+        if ($value !== '' && in_array($value, $cancelled, true)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function creditlab_user_enach_latest_row(int $uid): ?array
+{
+    global $db;
+    if ($uid <= 0 || !isset($db) || !($db instanceof mysqli)) {
+        return null;
+    }
+
+    $res = mysqli_query($db, 'SELECT * FROM easebuzz_adtd WHERE uid=' . $uid . ' ORDER BY id DESC LIMIT 1');
+    if (!$res || mysqli_num_rows($res) === 0) {
+        return null;
+    }
+    $row = mysqli_fetch_assoc($res);
+
+    return is_array($row) ? $row : null;
+}
+
+function creditlab_user_enach_is_complete(int $uid): bool
+{
+    $row = creditlab_user_enach_latest_row($uid);
+
+    return $row ? creditlab_easebuzz_mandate_is_complete($row) : false;
+}
+
+function creditlab_easebuzz_user_flag_from_row(array $row): int
+{
+    if (creditlab_easebuzz_mandate_is_complete($row)) {
+        return 1;
+    }
+    $auth = strtolower(trim((string) ($row['authorization_status'] ?? '')));
+    $status = strtolower(trim((string) ($row['status'] ?? '')));
+    if (creditlab_easebuzz_auth_is_cancelled($auth)) {
+        return 2;
+    }
+    if ($status === 'failure') {
+        return 0;
+    }
+
+    return 0;
+}
+
+/**
+ * Profile / dashboard e-NACH state from the latest mandate, not user.easebuzz alone.
+ *
+ * @return array{complete:bool,label:string,row:?array,easebuzz:int}
+ */
+function creditlab_user_enach_profile_state(int $uid, $user_easebuzz = 0): array
+{
+    $user_easebuzz = (int) $user_easebuzz;
+    $row = creditlab_user_enach_latest_row($uid);
+    $complete = $row ? creditlab_easebuzz_mandate_is_complete($row) : false;
+    $auth = strtolower(trim((string) ($row['authorization_status'] ?? '')));
+
+    if ($complete) {
+        return ['complete' => true, 'label' => 'Yes', 'row' => $row, 'easebuzz' => 1];
+    }
+    if ($row && creditlab_easebuzz_auth_is_cancelled($auth)) {
+        return ['complete' => false, 'label' => 'Cancel', 'row' => $row, 'easebuzz' => 2];
+    }
+    if ($row) {
+        return ['complete' => false, 'label' => 'Pending', 'row' => $row, 'easebuzz' => 0];
+    }
+    if ($user_easebuzz === 2) {
+        return ['complete' => false, 'label' => 'Cancel', 'row' => null, 'easebuzz' => 2];
+    }
+
+    return ['complete' => false, 'label' => 'No', 'row' => null, 'easebuzz' => 0];
+}
+
+/**
+ * Correct user.easebuzz when it disagrees with the stored mandate.
+ *
+ * @return array{complete:bool,label:string,row:?array,easebuzz:int,synced:bool}
+ */
+function creditlab_user_enach_sync_flag(int $uid, $current_easebuzz = null): array
+{
+    global $db;
+    if ($current_easebuzz === null && isset($db) && $db instanceof mysqli) {
+        $q = mysqli_query($db, 'SELECT easebuzz FROM user WHERE id=' . $uid . ' LIMIT 1');
+        $r = ($q && mysqli_num_rows($q) > 0) ? mysqli_fetch_assoc($q) : null;
+        $current_easebuzz = (int) ($r['easebuzz'] ?? 0);
+    }
+    $state = creditlab_user_enach_profile_state($uid, (int) $current_easebuzz);
+    $synced = false;
+    if (isset($db) && $db instanceof mysqli && (int) $current_easebuzz !== (int) $state['easebuzz']) {
+        mysqli_query($db, 'UPDATE `user` SET easebuzz=' . (int) $state['easebuzz'] . ' WHERE id=' . $uid);
+        $synced = true;
+    }
+    $state['synced'] = $synced;
+
+    return $state;
+}
+
+function creditlab_user_enach_loan_is_after_mandate(array $loan, ?array $row): bool
+{
+    if (!$row) {
+        return false;
+    }
+    $apply_ts = strtotime((string) ($loan['apply_date'] ?? ''));
+    $mandate_at = trim((string) ($row['created_at'] ?? ''));
+    if ($mandate_at === '') {
+        $mandate_at = trim((string) ($row['addedon'] ?? ''));
+    }
+    $mandate_ts = strtotime($mandate_at);
+
+    return $apply_ts > 0 && $mandate_ts > 0 && $apply_ts > ($mandate_ts + 60);
+}
+
+function creditlab_user_enach_needs_live_recheck(array $loan, ?array $row): bool
+{
+    if (!creditlab_user_enach_loan_is_after_mandate($loan, $row)) {
+        return false;
+    }
+    if (!$row || !creditlab_easebuzz_mandate_is_complete($row)) {
+        return false;
+    }
+    $mandate_status = trim((string) ($row['mandate_status'] ?? ''));
+    $updated_ts = strtotime((string) ($row['updated_at'] ?? ''));
+    $apply_ts = strtotime((string) ($loan['apply_date'] ?? ''));
+    if ($mandate_status !== '' && $updated_ts > 0 && $apply_ts > 0 && $updated_ts >= $apply_ts) {
+        return false;
+    }
+
+    return true;
+}
+
+function creditlab_user_enach_mark_inactive(int $uid, array $row, string $reason, string $live_status = ''): void
+{
+    global $db;
+    if (!isset($db) || !($db instanceof mysqli) || $uid <= 0) {
+        return;
+    }
+
+    $id = (int) ($row['id'] ?? 0);
+    $reason_sql = mysqli_real_escape_string($db, substr($reason, 0, 255));
+    $live_sql = mysqli_real_escape_string($db, substr($live_status, 0, 64));
+    if ($id > 0) {
+        mysqli_query(
+            $db,
+            "UPDATE easebuzz_adtd SET authorization_status='cancelled', mandate_status='$live_sql', cancellation_reason='$reason_sql' WHERE id=$id"
+        );
+    }
+    mysqli_query($db, "UPDATE `user` SET easebuzz=0 WHERE id=$uid");
+
+    if (function_exists('creditlab_easebuzz_log_user_event')) {
+        creditlab_easebuzz_log_user_event([
+            'uid' => $uid,
+            'transaction_id' => (string) ($row['customer_authentication_id'] ?? $row['txnid'] ?? ''),
+            'stage' => 'mandate_recheck',
+            'outcome' => 'cancelled',
+            'api' => 'autocollect',
+            'message' => $reason,
+            'meta' => ['live_status' => $live_status],
+        ]);
+    }
+}
+
+/**
+ * On a new loan, GET Autocollect /v1/mandate/{transaction_id} and re-ask eNACH
+ * only if the live mandate was cancelled. New flow has no auto_debit_access_key —
+ * identity is customer_authentication_id. initiated/accepted/in_process is still valid
+ * (active can take ~2 days).
+ *
+ * @return array{still_active:bool,checked:bool,reason:string,live_status:string}
+ */
+function creditlab_user_enach_recheck_for_new_loan(int $uid): array
+{
+    $empty = ['still_active' => false, 'checked' => false, 'reason' => 'no_mandate', 'live_status' => ''];
+    $uid = (int) $uid;
+    if ($uid <= 0) {
+        return $empty;
+    }
+
+    $row = creditlab_user_enach_latest_row($uid);
+    if (!$row) {
+        return $empty;
+    }
+    if (!creditlab_easebuzz_mandate_is_complete($row)) {
+        return [
+            'still_active' => false,
+            'checked' => false,
+            'reason' => 'not_registered',
+            'live_status' => (string) ($row['authorization_status'] ?? ''),
+        ];
+    }
+
+    require_once __DIR__ . '/easebuzz_autocollect.php';
+    $transaction_id = creditlab_easebuzz_autocollect_transaction_id($row);
+    $live_status = '';
+    $sub_status = '';
+    $mandate_status = '';
+    $umrn = '';
+
+    if ($transaction_id === '') {
+        return [
+            'still_active' => true,
+            'checked' => true,
+            'reason' => 'no_transaction_id_keep',
+            'live_status' => '',
+        ];
+    }
+
+    $retrieve = creditlab_autocollect_retrieve_mandate($transaction_id);
+    $data = creditlab_autocollect_parse_mandate_retrieve_data($retrieve);
+    $live_status = strtolower(trim((string) ($data['status'] ?? '')));
+    $sub_status = strtolower(trim((string) ($data['sub_status'] ?? '')));
+    $mandate_status = strtolower(trim((string) ($data['mandate_status'] ?? $data['npci_status'] ?? '')));
+    $umrn = trim((string) ($data['umrn'] ?? ''));
+
+    if (empty($retrieve['ok']) || ($live_status === '' && $sub_status === '' && $mandate_status === '')) {
+        return [
+            'still_active' => true,
+            'checked' => true,
+            'reason' => 'retrieve_failed_keep',
+            'live_status' => $live_status,
+        ];
+    }
+
+    $combined = trim($live_status . '/' . $sub_status . '/' . $mandate_status, '/');
+    if (creditlab_enach_live_status_is_cancelled($live_status, $sub_status, $mandate_status)) {
+        creditlab_user_enach_mark_inactive($uid, $row, 'Mandate cancelled on new loan Autocollect retrieve', $combined);
+
+        return [
+            'still_active' => false,
+            'checked' => true,
+            'reason' => 'cancelled',
+            'live_status' => $combined,
+        ];
+    }
+
+    global $db;
+    if (isset($db) && $db instanceof mysqli && !empty($row['id'])) {
+        $live_sql = mysqli_real_escape_string($db, substr($combined, 0, 64));
+        $umrn_sql = $umrn !== '' ? ", easepayid='" . mysqli_real_escape_string($db, substr($umrn, 0, 64)) . "'" : '';
+        mysqli_query($db, 'UPDATE easebuzz_adtd SET mandate_status=\'' . $live_sql . '\'' . $umrn_sql . ' WHERE id=' . (int) $row['id']);
+    }
+
+    return [
+        'still_active' => true,
+        'checked' => true,
+        'reason' => 'active',
+        'live_status' => $combined,
+    ];
+}
+
+/**
  * Autocollect presentment transaction_id — always customer_authentication_id when set (new cai… or migrated legacy).
  */
 function creditlab_easebuzz_autocollect_transaction_id(array $row)

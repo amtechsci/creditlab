@@ -63,6 +63,8 @@ if($amount < $user_loan_limit){
 
 $date = date('Y-m-d H:i:s');
         towquery("INSERT INTO loan_apply (`uid`, `amount`,`processing_fees`, `service_charge`, `days`, `apply_date`, `status`, `status_date`, `created_by`) VALUES ($user_id,$newloan,'500','$fee',$day,'$date','disbursal','$date','user')");
+        require_once __DIR__ . '/../lib/easebuzz_enach.php';
+        creditlab_user_enach_recheck_for_new_loan((int)$user_id);
         $headers = "MIME-Version: 1.0" . "\r\n";
 $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
 $headers .= 'From: <docs@creditlab.in>' . "\r\n";

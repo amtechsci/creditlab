@@ -157,6 +157,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $status = towreal($db, $response['status']);
     $addedon = towreal($db, $response['addedon']);
     $cash_back_percentage = towreal($db, $response['cash_back_percentage']);
+    $auto_debit_key_sql = '';
+    if (isset($response['auto_debit_access_key'])) {
+        $auto_debit_access_key = towreal($db, $response['auto_debit_access_key']);
+        $auto_debit_key_sql = ", `auto_debit_access_key` = '$auto_debit_access_key'";
+    }
+
+    require_once __DIR__ . '/lib/easebuzz_enach.php';
 
     // Check if customer exists
     $ge = towquery($db, "SELECT uid FROM easebuzz_adtd WHERE `customer_authentication_id` = '$customer_authentication_id'");
@@ -172,24 +179,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             `status` = '$status',
             `addedon` = '$addedon',
             `cash_back_percentage` = '$cash_back_percentage'
+            $auto_debit_key_sql
         WHERE `customer_authentication_id` = '$customer_authentication_id'";
         
         if (towquery($db, $update_query)) {
-            $gef = towfetch($ge);
-            $uid = $gef['uid'];
-            
-            if ($status === 'success') {
+            $row_q = towquery($db, "SELECT * FROM easebuzz_adtd WHERE `customer_authentication_id` = '$customer_authentication_id' LIMIT 1");
+            $row = $row_q ? towfetchassoc($row_q) : null;
+            $uid = is_array($row) ? (int) ($row['uid'] ?? 0) : 0;
+            $user_flag = is_array($row) ? creditlab_easebuzz_user_flag_from_row($row) : 0;
+
+            if ($uid && !towquery($db, "UPDATE `user` SET easebuzz=$user_flag WHERE id=".(int)$uid)) {
+                error_log("Failed to update user easebuzz status for uid: $uid");
+            }
+            if ($user_flag === 1) {
                 $message = "Transaction Successful!";
-                // Update user easebuzz status
-                if (!towquery($db, "UPDATE `user` SET easebuzz=1 WHERE id=".$uid)) {
-                    error_log("Failed to update user easebuzz status for uid: $uid");
-                }
-            } else {
+            } elseif ($user_flag === 2) {
                 $message = "Transaction Failed: " . $error_message;
-                // Update user easebuzz status to failed
-                if (!towquery($db, "UPDATE `user` SET easebuzz=0 WHERE id=".$uid)) {
-                    error_log("Failed to update user easebuzz status for uid: $uid");
-                }
+            } else {
+                $message = "e-NACH registration is not complete yet. Please finish bank authentication.";
             }
         } else {
             error_log("Failed to update easebuzz_adtd for customer_authentication_id: $customer_authentication_id");

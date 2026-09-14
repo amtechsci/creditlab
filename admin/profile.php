@@ -42,33 +42,12 @@
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
 
-    $profile_enach_query = towquery("SELECT auto_debit_access_key, account_no, authorization_status, status FROM easebuzz_adtd WHERE uid='".(int)$id."' ORDER BY id DESC LIMIT 1");
-    $uid_enach_data = ($profile_enach_query && townum($profile_enach_query) > 0) ? towfetch($profile_enach_query) : null;
-    $profile_enach_authorized = false;
-    if ($uid_enach_data) {
-        $profile_enach_auth = strtolower(trim((string)($uid_enach_data['authorization_status'] ?? '')));
-        if (in_array($profile_enach_auth, ['authorized', 'accepted'], true)) {
-            $profile_enach_authorized = true;
-        } else {
-            $profile_enach_key = trim((string)($uid_enach_data['auto_debit_access_key'] ?? ''));
-            if ($profile_enach_key !== '' && $profile_enach_key !== 'NA' && strtolower(trim((string)($uid_enach_data['status'] ?? ''))) === 'success') {
-                $profile_enach_authorized = true;
-            }
-        }
-    }
-    if ($profile_enach_authorized && (int)$userpro_easebuzz !== 1) {
-        towquery("UPDATE `user` SET easebuzz=1 WHERE id='".(int)$id."'");
-        $userpro_easebuzz = 1;
-    }
-    if ((int)$userpro_easebuzz === 1 || $profile_enach_authorized) {
-        $userpro_enach_label = 'Yes';
-    } elseif ((int)$userpro_easebuzz === 2) {
-        $userpro_enach_label = 'Cancel';
-    } elseif ($uid_enach_data) {
-        $userpro_enach_label = 'Pending';
-    } else {
-        $userpro_enach_label = 'No';
-    }
+    require_once __DIR__ . '/../lib/easebuzz_enach.php';
+    $profile_enach_state = creditlab_user_enach_sync_flag((int)$id, $userpro_easebuzz ?? 0);
+    $uid_enach_data = $profile_enach_state['row'];
+    $profile_enach_authorized = !empty($profile_enach_state['complete']);
+    $userpro_enach_label = $profile_enach_state['label'];
+    $userpro_easebuzz = $profile_enach_state['easebuzz'];
         
         $limit_percentage = null;
         $limit_percentage_display = 'N/A';

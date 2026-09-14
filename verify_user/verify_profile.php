@@ -16,6 +16,10 @@ if(isset($_GET['id'])){
     }
   
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
+    require_once __DIR__ . '/../lib/easebuzz_enach.php';
+    $profile_enach_state = creditlab_user_enach_sync_flag((int)$id, $userpro_easebuzz ?? 0);
+    $userpro_enach_label = $profile_enach_state['label'];
+    $userpro_easebuzz = $profile_enach_state['easebuzz'];
     if (!isset($userpro_account_name)) {
         $userpro_account_name = $userpro_ac_name ?? '';
     }
@@ -576,7 +580,7 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
                 </div>
                                     <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
                    <p>Pan : Y</p>
-                   <p>Enach : <?= ($userpro_easebuzz == 1) ? 'Yes' : (($userpro_easebuzz == 2) ? 'Cancel' : 'No') ?></p>
+                   <p>Enach : <?= htmlspecialchars($userpro_enach_label) ?></p>
                    <p>adhar : Y</p>
                    <p>Bank check : Y</p>
                    <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
