@@ -85,6 +85,26 @@ function cron_fetch($query_result)
 
 $date = date('Y-m-d');
 
+$force_all = !empty($_GET['force']);
+if (PHP_SAPI === 'cli' && !empty($argv)) {
+    foreach ($argv as $arg) {
+        if ($arg === 'force=1' || $arg === '--force' || $arg === 'force') {
+            $force_all = true;
+        }
+    }
+}
+
+// Force: clear last_cal_date so every AM/RO loan is picked up by the existing date filter.
+if ($force_all) {
+    autocalc_log('Force recalculation requested: clearing last_cal_date for all AM/RO loans');
+    $cleared = cron_query("UPDATE `loan` SET `last_cal_date` = NULL WHERE `status_log` IN ('account manager', 'recovery officer')");
+    if (!$cleared) {
+        autocalc_log('FATAL: Failed to clear last_cal_date for force run');
+        exit(1);
+    }
+    autocalc_log('Cleared last_cal_date, affected=' . mysqli_affected_rows($db));
+}
+
 // OPTIMIZATION: Combined two queries into one using an INNER JOIN.
 // This fetches all required loan and user data in a single, efficient database call,
 // eliminating the "N+1 query problem" from the original script.
@@ -108,7 +128,7 @@ $loan_data_query_template = "
         loan.id ASC
     LIMIT 500";
 
-autocalc_log('Starting loan calculation');
+autocalc_log($force_all ? 'Starting FORCE loan calculation for all AM/RO loans' : 'Starting loan calculation');
 
 $processed_count = 0;
 
@@ -166,7 +186,7 @@ do {
 
 // --- Cleanup ---
 
-autocalc_log("Completed: $processed_count rows updated for date=$date");
+autocalc_log("Completed: $processed_count rows updated for date=$date" . ($force_all ? ' (force all)' : ''));
 
 echo "$processed_count rows updated\n";
 
