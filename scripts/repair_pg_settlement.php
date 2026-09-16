@@ -62,15 +62,20 @@ if ($txnids !== []) {
     $escaped = array_map(static function ($t) {
         return "'" . towreal($t) . "'";
     }, $txnids);
-    $sql = 'SELECT p.txnid, p.amount, p.bank_reference_number, p.payment_method, p.status, loan.lid, loan.status_log
+    $sql = 'SELECT p.txnid, p.amount, p.bank_reference_number, p.payment_method, p.status,
+        pl.status AS link_status, loan.lid, loan.status_log
         FROM pg_transaction p
         INNER JOIN loan ON loan.id = p.loan_id
+        LEFT JOIN pg_payment_link pl ON pl.txnid = p.txnid
         WHERE p.txnid IN (' . implode(',', $escaped) . ')';
 } else {
-    $sql = "SELECT p.txnid, p.amount, p.bank_reference_number, p.payment_method, p.status, loan.lid, loan.status_log
+    $sql = "SELECT p.txnid, p.amount, p.bank_reference_number, p.payment_method, p.status,
+        pl.status AS link_status, loan.lid, loan.status_log
         FROM pg_transaction p
         INNER JOIN loan ON loan.id = p.loan_id
-        WHERE p.status = 'success' AND loan.status_log != 'cleared'
+        LEFT JOIN pg_payment_link pl ON pl.txnid = p.txnid
+        WHERE p.status = 'success'
+          AND (loan.status_log != 'cleared' OR pl.status = 'failed')
         ORDER BY p.txnid DESC
         LIMIT 200";
 }
@@ -87,13 +92,14 @@ while ($r = towfetch($q)) {
 }
 
 if ($rows === []) {
-    echo "No stuck pg_transaction rows found.\n";
+    echo "No stuck PG rows found.\n";
     exit(0);
 }
 
-echo "Found " . count($rows) . " row(s) with pg success but loan not cleared:\n";
+echo "Found " . count($rows) . " stuck PG row(s):\n";
 foreach ($rows as $r) {
-    echo "  txnid={$r['txnid']} CLL{$r['lid']} amount={$r['amount']} loan_status={$r['status_log']}\n";
+    $linkStatus = $r['link_status'] ?? '—';
+    echo "  txnid={$r['txnid']} CLL{$r['lid']} amount={$r['amount']} tx_status={$r['status']} link_status={$linkStatus} loan_status={$r['status_log']}\n";
 }
 
 if (!$apply) {

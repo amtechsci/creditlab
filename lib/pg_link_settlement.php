@@ -244,7 +244,8 @@ function creditlab_pg_mark_tx_success($mysqliConn, string $txnid, float $amount,
             towquery("UPDATE pg_transaction SET agency_name='$an'$agencyIdSql WHERE txnid='$txnidEsc' AND (agency_name IS NULL OR agency_name = '')");
         }
         $id = (int) $pgLink['id'];
-        towquery("UPDATE pg_payment_link SET status='paid', paid_at=NOW(), bank_ref_num='$bankEsc' WHERE id=$id AND status='created'");
+        // Allow repair when a late success webhook arrives after an earlier failure callback.
+        towquery("UPDATE pg_payment_link SET status='paid', paid_at=NOW(), bank_ref_num='$bankEsc' WHERE id=$id AND status IN ('created', 'failed')");
     }
 }
 
@@ -252,7 +253,8 @@ function creditlab_pg_mark_tx_failure($mysqliConn, string $txnid): void
 {
     creditlab_pg_bind_mysqli($mysqliConn);
     $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
-    towquery("UPDATE pg_transaction SET status='failure' WHERE txnid='$txnidEsc'");
+    // Never downgrade a settled success (duplicate / out-of-order failure callbacks).
+    towquery("UPDATE pg_transaction SET status='failure' WHERE txnid='$txnidEsc' AND status != 'success'");
     towquery("UPDATE pg_payment_link SET status='failed' WHERE txnid='$txnidEsc' AND status='created'");
 }
 
