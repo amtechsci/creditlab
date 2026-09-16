@@ -91,7 +91,7 @@ function creditlab_calculate_loan_charges(
             $penality = $penality + $atnp;
         }
     }
-    $penality = $penality + ($penality * 0.18);
+    // Penalty is a late fee; GST is not added on penalty (only on processing fee).
 
     return [
         'exhausted_period' => $exhausted_period,
@@ -156,6 +156,7 @@ function creditlab_overdue_daily_interest_rate($interestPercentage): float
 /**
  * eNACH presentment: principal + KFS interest to due date + penalty/overdue interest
  * for calendar DPD + 1 (bank debit next day). Penalty and overdue interest use principal only.
+ * GST is not charged on penalty.
  *
  * @return array{
  *   principal:float,kfs_interest:float,calendar_dpd:int,presentment_dpd:int,
@@ -196,9 +197,9 @@ function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply): 
             $penalty += $principal * 0.002 * ($presentment_dpd - 1);
         }
     }
-    $penalty_gst = $penalty * 0.18;
+    $penalty_gst = 0.0;
 
-    $total = $principal + $kfs_interest + $penalty + $penalty_gst + $overdue_interest;
+    $total = $principal + $kfs_interest + $penalty + $overdue_interest;
 
     return [
         'principal' => $principal,

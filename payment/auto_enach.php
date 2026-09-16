@@ -373,7 +373,6 @@ foreach ($eligible_loans as $loan) {
             $log_message .= "  Calendar DPD: {$breakdown['calendar_dpd']} | Presentment DPD (DPD+1 next-day debit): {$breakdown['presentment_dpd']}\n";
             $log_message .= "  Overdue interest: ₹" . number_format($breakdown['overdue_interest'], 2) . "\n";
             $log_message .= "  Penalty: ₹" . number_format($breakdown['penalty_charge'], 2) . "\n";
-            $log_message .= "  Penalty GST (18%): ₹" . number_format($breakdown['penalty_gst'], 2) . "\n";
             $log_message .= "  TOTAL AMOUNT: ₹$totalamount\n";
             $log_message .= "  Status: {$loan['status_log']}\n";
             $log_message .= "  Processed Date: {$loan['processed_date']}\n";
