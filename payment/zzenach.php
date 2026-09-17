@@ -1,6 +1,11 @@
 <?php
 include '../db.php';
+require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/enach_presentment_policy.php';
 require_once __DIR__ . '/../lib/easebuzz_enach.php';
+
+creditlab_require_staff('/account/login.php');
+creditlab_enach_ensure_presentment_run_table();
 
 // --- ENHANCED LOGGING ---
 $current_date = date('Y-m-d');
@@ -55,15 +60,33 @@ function initiateEasebuzzDirectDebit(array $postParams, array $easebuzz_row = []
 
 // --- Main Logic ---
 
-$lid = towreal($_GET['lid']);
-writeZzenachLog("Processing loan CLL$lid", $log_file);
+$lid = isset($_GET['lid']) ? (int) $_GET['lid'] : 0;
+if ($lid <= 0) {
+    writeZzenachLog('ERROR: Missing or invalid lid', $log_file);
+    http_response_code(400);
+    echo "<script>alert('Invalid loan id.');window.location.replace('/admin/index.php');</script>";
+    exit;
+}
+writeZzenachLog("Processing loan CLL$lid (staff session)", $log_file);
 
 $userdata = towquery("SELECT * FROM `loan` INNER JOIN user ON user.id=loan.uid WHERE lid=$lid");
 $userdataff = towfetch($userdata);
 
 if (!$userdataff) {
     writeZzenachLog("ERROR: Loan CLL$lid not found", $log_file);
-    echo "<script>alert('Loan not found!');window.location.replace('/admin/profile.php?id=".$userdataff['uid']."&tab=oldloan');</script>";
+    echo "<script>alert('Loan not found!');window.location.replace('/admin/index.php');</script>";
+    exit;
+}
+
+if (creditlab_enach_loan_is_skipped($userdataff, $current_date)) {
+    writeZzenachLog("SKIPPED: Loan CLL$lid has eNACH skip flag (enach_request=2)", $log_file);
+    echo "<script>alert('E-NACH is skipped for this loan.');window.location.replace('/admin/profile.php?id=".$userdataff['uid']."&tab=oldloan');</script>";
+    exit;
+}
+
+if ((int) ($userdataff['enach_request'] ?? 0) === 1) {
+    writeZzenachLog("SKIPPED: Loan CLL$lid already has pending eNACH request (enach_request=1)", $log_file);
+    echo "<script>alert('E-NACH was already requested for this loan. Reset enach_request in DB only if the prior attempt failed.');window.location.replace('/admin/profile.php?id=".$userdataff['uid']."&tab=oldloan');</script>";
     exit;
 }
 
@@ -109,6 +132,15 @@ if($enach_count > 0){
     $auth_count = 0;
     while ($easebuzz_adtdff = towfetch($easebuzz_adtd)) {
         $auth_count++;
+        $mandate_key = creditlab_enach_mandate_key($easebuzz_adtdff, $lid);
+        $may = creditlab_enach_mandate_may_present($mandate_key, $current_date);
+        if (!$may['ok']) {
+            writeZzenachLog("SKIPPED: CLL$lid mandate $mandate_key ({$may['reason']})", $log_file);
+            $failed_count++;
+            $error_messages[] = "E-Nach #$auth_count (Auth ID: {$easebuzz_adtdff['customer_authentication_id']}) - SKIPPED: {$may['reason']}";
+            continue;
+        }
+
         writeZzenachLog("Loan CLL$lid: Processing E-Nach authorization #$auth_count of $enach_count | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | API: " . creditlab_easebuzz_presentment_api_for_row($easebuzz_adtdff), $log_file);
         
         $paymentDetails = [
@@ -134,6 +166,7 @@ if($enach_count > 0){
         // Check if the response was successfully decoded and if the status key exists and is true
         if($res && isset($res['status']) && $res['status']){
             towquery("UPDATE `loan` SET `enach_request`=1, `enach_request_date`='".date('Y-m-d')."' WHERE lid=$lid");
+            creditlab_enach_record_presentment($lid, (int) $userdataff['uid'], $mandate_key, 'manual_zzenach', $totalamount, 'success', $current_date);
             $success_count++;
             $success_messages[] = "E-Nach #$auth_count (Auth ID: {$easebuzz_adtdff['customer_authentication_id']}) - SUCCESS";
             writeZzenachLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);
