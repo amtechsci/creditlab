@@ -4,6 +4,15 @@
  */
 
 /**
+ * Repayment base: disbursed amount + processing fee + 18% GST on fee.
+ * Same pack the dashboard / autopay / cron use (not net disbursal alone).
+ */
+function creditlab_loan_repayment_base(float $processedAmount, float $pFee): float
+{
+    return $processedAmount + $pFee + ($pFee * 0.18);
+}
+
+/**
  * Tenure in days: matches due date on profile (loan.total_time) when set.
  */
 function creditlab_loan_tenure_days(array $loanRow, int $loanApplyDays = 30): int
@@ -36,7 +45,7 @@ function creditlab_calculate_loan_charges(
     $tday = (int) $aa->format('%a');
     $exhausted_period = $tday + 1;
 
-    $t = $processedAmount + $pFee + ($pFee * 0.18);
+    $t = creditlab_loan_repayment_base($processedAmount, $pFee);
     $service_charge = 0.0;
     $days = $exhausted_period;
 
@@ -154,26 +163,30 @@ function creditlab_overdue_daily_interest_rate($interestPercentage): float
 }
 
 /**
- * eNACH presentment: principal + KFS interest to due date + penalty/overdue interest
- * for calendar DPD + 1 (bank debit next day). Penalty and overdue interest use principal only.
- * GST is not charged on penalty.
+ * eNACH presentment: repayment base (incl. PF GST) + interest to due date + overdue
+ * interest + penalty (no GST on penalty). Presentment DPD = calendar DPD + 1.
  *
  * @return array{
- *   principal:float,kfs_interest:float,calendar_dpd:int,presentment_dpd:int,
+ *   principal:float,processed_amount:float,p_fee:float,p_fee_gst:float,
+ *   kfs_interest:float,calendar_dpd:int,presentment_dpd:int,
  *   overdue_interest:float,penalty:float,penalty_gst:float,penalty_with_gst:float,total:float,
  *   loan_tenure:int
  * }
  */
-function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply): array
+function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply, ?string $asOfDate = null): array
 {
-    $principal = (float) ($loan['processed_amount'] ?? 0);
+    $processedAmount = (float) ($loan['processed_amount'] ?? 0);
+    $pFee = (float) ($loan['p_fee'] ?? $loan_apply['processing_fees'] ?? 0);
+    $pFeeGst = $pFee * 0.18;
+    $principal = creditlab_loan_repayment_base($processedAmount, $pFee);
     $interestPercentage = $loan_apply['interest_percentage'] ?? 1;
     $loanApplyDays = isset($loan_apply['days']) ? (int) $loan_apply['days'] : 30;
     $loan_tenure = creditlab_loan_tenure_days($loan, $loanApplyDays);
 
     $processedDate = (string) ($loan['processed_date'] ?? date('Y-m-d'));
+    $asOf = $asOfDate ? date('Y-m-d', strtotime($asOfDate)) : date('Y-m-d');
     $stop_date = date_create($processedDate);
-    $sa = date_create(date('Y-m-d 23:59:59'));
+    $sa = date_create($asOf . ' 23:59:59');
     $tday = 0;
     if ($stop_date instanceof DateTimeInterface && $sa instanceof DateTimeInterface) {
         $tday = (int) date_diff($stop_date, $sa)->format('%a');
@@ -203,6 +216,9 @@ function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply): 
 
     return [
         'principal' => $principal,
+        'processed_amount' => $processedAmount,
+        'p_fee' => $pFee,
+        'p_fee_gst' => $pFeeGst,
         'kfs_interest' => $kfs_interest,
         'calendar_dpd' => $calendar_dpd,
         'presentment_dpd' => $presentment_dpd,
@@ -212,5 +228,34 @@ function creditlab_enach_presentment_breakdown(array $loan, array $loan_apply): 
         'penalty_with_gst' => $penalty + $penalty_gst,
         'total' => $total,
         'loan_tenure' => $loan_tenure,
+    ];
+}
+
+/**
+ * Flattened presentment fields for auto/manual/zz eNACH logs.
+ *
+ * @return array{
+ *   days:int,p_fee_gst:float,service_charge:float,penalty_charge:float,penalty_gst:float,
+ *   total_amount:float,processed_amount:float,repayment_base:float,p_fee:float,
+ *   kfs_interest:float,overdue_interest:float,calendar_dpd:int,presentment_dpd:int
+ * }
+ */
+function creditlab_enach_amount_log_fields(array $loan, array $loan_apply): array
+{
+    $b = creditlab_enach_presentment_breakdown($loan, $loan_apply);
+    return [
+        'days' => $b['presentment_dpd'],
+        'p_fee_gst' => $b['p_fee_gst'],
+        'service_charge' => $b['kfs_interest'] + $b['overdue_interest'],
+        'penalty_charge' => $b['penalty'],
+        'penalty_gst' => $b['penalty_gst'],
+        'total_amount' => $b['total'],
+        'processed_amount' => $b['processed_amount'],
+        'repayment_base' => $b['principal'],
+        'p_fee' => $b['p_fee'],
+        'kfs_interest' => $b['kfs_interest'],
+        'overdue_interest' => $b['overdue_interest'],
+        'calendar_dpd' => $b['calendar_dpd'],
+        'presentment_dpd' => $b['presentment_dpd'],
     ];
 }

@@ -34,6 +34,8 @@ function creditlab_enach_debit_clears_loan(float $paid, float $outstanding): boo
     $tolerance = max(100.0, $outstanding * 0.03);
     return ($paid + $tolerance) >= $outstanding;
 }
+
+function creditlab_enach_calculate_credit_score_points(int $dpd): int
 {
     if ($dpd > 0) {
         if ($dpd > 30) {

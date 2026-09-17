@@ -103,21 +103,7 @@ function calculateTotalAmount($loan, $loan_apply) {
 
 function calculateAmountBreakdown($loan, $loan_apply) {
     require_once __DIR__ . '/../lib/loan_charge_calc.php';
-    $b = creditlab_enach_presentment_breakdown($loan, $loan_apply);
-    return [
-        'days' => $b['presentment_dpd'],
-        'p_fee_gst' => 0.0,
-        'service_charge' => $b['kfs_interest'] + $b['overdue_interest'],
-        'penalty_charge' => $b['penalty'],
-        'penalty_gst' => $b['penalty_gst'],
-        'total_amount' => $b['total'],
-        'processed_amount' => $b['principal'],
-        'p_fee' => (float) ($loan['p_fee'] ?? 0),
-        'kfs_interest' => $b['kfs_interest'],
-        'overdue_interest' => $b['overdue_interest'],
-        'calendar_dpd' => $b['calendar_dpd'],
-        'presentment_dpd' => $b['presentment_dpd'],
-    ];
+    return creditlab_enach_amount_log_fields($loan, $loan_apply);
 }
 
 // --- DRY RUN CONFIGURATION ---
@@ -368,7 +354,8 @@ foreach ($eligible_loans as $loan) {
             // Detailed logging for dry-run and regular mode
             $log_message = "LOAN ID: CLL$lid | User: {$userdataff['name']} | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']}\n";
             $log_message .= "  Trigger: $presentment_trigger | Mandate: $mandate_key\n";
-            $log_message .= "  Principal: ₹" . number_format($breakdown['processed_amount'], 2) . "\n";
+            $log_message .= "  Disbursed: ₹" . number_format($breakdown['processed_amount'], 2) . "\n";
+            $log_message .= "  Repayment base (disbursed+PF+GST): ₹" . number_format($breakdown['repayment_base'], 2) . "\n";
             $log_message .= "  KFS interest (to due date): ₹" . number_format($breakdown['kfs_interest'], 2) . "\n";
             $log_message .= "  Calendar DPD: {$breakdown['calendar_dpd']} | Presentment DPD (DPD+1 next-day debit): {$breakdown['presentment_dpd']}\n";
             $log_message .= "  Overdue interest: ₹" . number_format($breakdown['overdue_interest'], 2) . "\n";
