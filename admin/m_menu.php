@@ -82,6 +82,9 @@
                             <a class="" href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
                         </li>
                         <li>
+                            <a class="" href="sql.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/sql.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-database"></i> <span class="mini-click-non">SQL</span></a>
+                        </li>
+                        <li>
                             <a class="" href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
                         </li>
                         

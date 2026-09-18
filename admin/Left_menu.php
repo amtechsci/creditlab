@@ -101,6 +101,9 @@ $counts_data = towfetch($counts);
                         <a href="logs.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/logs.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-file-lines"></i> <span class="mini-click-non">Logs</span></a>
                     </li>
                     <li>
+                        <a href="sql.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/sql.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-database"></i> <span class="mini-click-non">SQL</span></a>
+                    </li>
+                    <li>
                         <a href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
                     </li>
                 </ul>
