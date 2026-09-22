@@ -385,12 +385,22 @@ function creditlab_enach_settle_pending_presentments($db, array $opts = []): arr
             if (!empty($retrieve['error'])) {
                 $err .= ' ' . $retrieve['error'];
             }
+            $apiMsg = '';
+            if (is_array($retrieve['data'] ?? null)) {
+                $apiMsg = trim((string) ($retrieve['data']['message'] ?? $retrieve['data']['error'] ?? ''));
+                if ($apiMsg !== '') {
+                    $err .= ' api=' . $apiMsg;
+                }
+            }
+            // Keep pending — do not treat API/retrieve errors as bank debit failure.
             creditlab_enach_mark_presentment_settled($merchant_ref, 'pending', '', $err);
             $summary['details'][] = [
                 'lid' => $lid,
                 'merchant_ref' => $merchant_ref,
                 'action' => 'retrieve_error',
                 'http_code' => $retrieve['http_code'] ?? 0,
+                'path' => $retrieve['path'] ?? '',
+                'message' => $apiMsg !== '' ? $apiMsg : ($retrieve['error'] ?? ''),
             ];
             continue;
         }
@@ -413,6 +423,7 @@ function creditlab_enach_settle_pending_presentments($db, array $opts = []): arr
                 'merchant_ref' => $merchant_ref,
                 'action' => 'pending',
                 'status' => $event['raw_status'] ?? '',
+                'message' => $event['error_message'] ?? '',
             ];
             continue;
         }
@@ -455,8 +466,9 @@ function creditlab_enach_settle_pending_presentments($db, array $opts = []): arr
             'lid' => $lid,
             'merchant_ref' => $merchant_ref,
             'action' => $action !== '' ? $action : $outcome,
-            'message' => $result['message'] ?? '',
+            'message' => $result['message'] ?? ($event['error_message'] ?? ''),
             'status' => $event['raw_status'] ?? '',
+            'amount' => $event['amount'] ?? null,
         ];
     }
 

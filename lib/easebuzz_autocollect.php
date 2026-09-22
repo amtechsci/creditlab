@@ -960,6 +960,9 @@ function creditlab_autocollect_retrieve_presentment($merchant_request_number)
 /**
  * Normalize presentment retrieve payload into the same shape as webhook parse.
  *
+ * Important: Easebuzz often returns a wrapper `{ "status": true|false|"failure", "data": {...} }`.
+ * Outer API failure must NOT be treated as a bank debit failure (that would wrongly reset loans).
+ *
  * @return array{merchant_ref:string,outcome:string,amount:mixed,txnid:string,presentment_id:string,bank_ref_num:string,mandate_transaction_id:string,error_message:string,raw_status:string,source:string}|null
  */
 function creditlab_autocollect_parse_presentment_status(array $retrieve)
@@ -970,10 +973,12 @@ function creditlab_autocollect_parse_presentment_status(array $retrieve)
     }
 
     $layers = [$root];
+    $inner = null;
     if (isset($root['data']) && is_array($root['data'])) {
-        $layers[] = $root['data'];
-        if (isset($root['data']['data']) && is_array($root['data']['data'])) {
-            $layers[] = $root['data']['data'];
+        $inner = $root['data'];
+        $layers[] = $inner;
+        if (isset($inner['data']) && is_array($inner['data'])) {
+            $layers[] = $inner['data'];
         }
     }
 
@@ -983,62 +988,99 @@ function creditlab_autocollect_parse_presentment_status(array $retrieve)
                 continue;
             }
             foreach ($keys as $key) {
-                if (array_key_exists($key, $layer) && $layer[$key] !== null && $layer[$key] !== '') {
-                    return $layer[$key];
+                if (!array_key_exists($key, $layer) || $layer[$key] === null || $layer[$key] === '') {
+                    continue;
                 }
+                // Skip boolean/numeric API wrappers when looking for debit status strings.
+                if (is_bool($layer[$key]) || (is_int($layer[$key]) && in_array($key, ['status', 'success'], true))) {
+                    continue;
+                }
+                return $layer[$key];
             }
         }
         return $default;
     };
 
-    $merchant_ref = trim((string) $pick($layers, [
+    $merchant_ref_from_body = trim((string) $pick($layers, [
         'merchant_request_number',
         'merchant_debit_id',
         'merchant_ref',
         'unique_request_number',
-    ], (string) ($retrieve['merchant_request_number'] ?? '')));
+    ], ''));
+    $merchant_ref = $merchant_ref_from_body !== ''
+        ? $merchant_ref_from_body
+        : trim((string) ($retrieve['merchant_request_number'] ?? ''));
 
+    // Prefer debit-specific fields over generic wrapper "status".
     $status_raw = strtolower(trim((string) $pick($layers, [
-        'status',
-        'status_at_bank',
-        'auto_debit_request_state',
         'presentment_status',
         'debit_status',
         'payment_status',
+        'auto_debit_request_state',
+        'status_at_bank',
         'sub_status',
+        'status',
     ])));
+
+    $has_presentment_body = (
+        $merchant_ref_from_body !== ''
+        || $pick($layers, ['presentment_id', 'pg_transaction_id', 'bank_reference_number', 'bank_ref_num'], '') !== ''
+        || (is_array($inner) && (
+            $pick([$inner], ['status', 'presentment_status', 'debit_status', 'amount'], '') !== ''
+            || isset($inner['merchant_request_number'])
+        ))
+    );
+
+    // Wrapper-only API error, e.g. {status:"failure", message:"not found"} with no presentment payload.
+    $wrapper_status = $root['status'] ?? null;
+    $wrapper_is_api_fail = (
+        $wrapper_status === false
+        || $wrapper_status === 0
+        || (is_string($wrapper_status) && in_array(strtolower($wrapper_status), ['failure', 'failed', 'error', 'false'], true))
+    );
+    if ($wrapper_is_api_fail && !$has_presentment_body) {
+        return null;
+    }
+    // Same when the only "status" we found is the wrapper string and body is empty-ish.
+    if ($wrapper_is_api_fail && is_string($wrapper_status)
+        && $status_raw === strtolower((string) $wrapper_status)
+        && !is_array($inner)
+        && $pick($layers, ['presentment_status', 'debit_status', 'auto_debit_request_state'], '') === ''
+    ) {
+        return null;
+    }
 
     $successHints = ['success', 'successful', 'completed', 'captured', 'paid', 'debited', 'settled', 'credited'];
     $failHints = ['failure', 'failed', 'bounced', 'rejected', 'cancelled', 'bounce'];
     $isSuccess = false;
     foreach ($successHints as $hint) {
-        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+        if ($status_raw === $hint || ($status_raw !== '' && strpos($status_raw, $hint) !== false)) {
             $isSuccess = true;
             break;
         }
     }
     $isFail = false;
     foreach ($failHints as $hint) {
-        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+        if ($status_raw === $hint || ($status_raw !== '' && strpos($status_raw, $hint) !== false)) {
             $isFail = true;
             break;
         }
     }
 
-    // Boolean / numeric Easebuzz wrappers: data.status=true with nested debit status.
-    if (!$isSuccess && !$isFail && isset($root['status']) && is_bool($root['status']) && count($layers) > 1) {
-        $nested = strtolower(trim((string) $pick(array_slice($layers, 1), [
-            'status', 'presentment_status', 'debit_status', 'auto_debit_request_state',
+    // Boolean wrapper + nested string debit status.
+    if (!$isSuccess && !$isFail && isset($root['status']) && is_bool($root['status']) && is_array($inner)) {
+        $nested = strtolower(trim((string) $pick([$inner], [
+            'presentment_status', 'debit_status', 'auto_debit_request_state', 'status', 'sub_status',
         ])));
         foreach ($successHints as $hint) {
-            if ($nested === $hint || strpos($nested, $hint) !== false) {
+            if ($nested === $hint || ($nested !== '' && strpos($nested, $hint) !== false)) {
                 $isSuccess = true;
                 $status_raw = $nested;
                 break;
             }
         }
         foreach ($failHints as $hint) {
-            if ($nested === $hint || strpos($nested, $hint) !== false) {
+            if ($nested === $hint || ($nested !== '' && strpos($nested, $hint) !== false)) {
                 $isFail = true;
                 $status_raw = $nested;
                 break;
@@ -1057,8 +1099,12 @@ function creditlab_autocollect_parse_presentment_status(array $retrieve)
     }
 
     $amount = $pick($layers, ['amount', 'net_amount', 'net_amount_debit'], '0');
-    $txnid = trim((string) $pick($layers, ['pg_transaction_id', 'txnid', 'easepayid', 'transaction_id'], ''));
-    $presentment_id = trim((string) $pick($layers, ['id', 'presentment_id'], ''));
+    $txnid = trim((string) $pick($layers, ['pg_transaction_id', 'txnid', 'easepayid'], ''));
+    // Avoid stealing mandate transaction_id as pg txn when presentment fields are absent.
+    if ($txnid === '') {
+        $txnid = trim((string) $pick(is_array($inner) ? [$inner] : $layers, ['transaction_id'], ''));
+    }
+    $presentment_id = trim((string) $pick($layers, ['presentment_id', 'id'], ''));
     $bank_ref = trim((string) $pick($layers, [
         'bank_reference_number',
         'bank_ref_num',
@@ -1080,7 +1126,7 @@ function creditlab_autocollect_parse_presentment_status(array $retrieve)
     ], ''));
 
     return [
-        'merchant_ref' => $merchant_ref,
+        'merchant_ref' => $merchant_ref !== '' ? $merchant_ref : (string) ($retrieve['merchant_request_number'] ?? ''),
         'outcome' => $outcome,
         'amount' => $amount,
         'txnid' => $txnid,
