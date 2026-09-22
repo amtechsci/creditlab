@@ -11,7 +11,39 @@ require_once __DIR__ . '/easebuzz_enach_user_log.php';
 require_once __DIR__ . '/app_url.php';
 
 /**
+ * Persist recovered merchant_ref onto the presentment_run row.
+ */
+function creditlab_enach_save_run_merchant_ref(int $run_id, string $ref): string
+{
+    global $db;
+    $ref = trim($ref);
+    if ($ref === '' || !isset($db)) {
+        return $ref;
+    }
+    if ($run_id > 0) {
+        $esc = mysqli_real_escape_string($db, $ref);
+        mysqli_query($db, "UPDATE enach_presentment_run SET merchant_ref='$esc' WHERE id=$run_id LIMIT 1");
+    }
+    return $ref;
+}
+
+/**
+ * Extract CLL_AUTO_{lid}_{ts} from free text / JSON.
+ */
+function creditlab_enach_extract_merchant_ref_from_text(string $text, int $lid): string
+{
+    if ($text === '' || $lid <= 0) {
+        return '';
+    }
+    if (preg_match('/CLL_AUTO_' . $lid . '_\d+/', $text, $m)) {
+        return $m[0];
+    }
+    return '';
+}
+
+/**
  * Recover merchant_request_number for older presentment_run rows (pre merchant_ref column).
+ * Sources: event log meta_json, webhook inbox, cron/autocollect log files.
  */
 function creditlab_enach_backfill_merchant_ref_for_run(array $run): string
 {
@@ -25,44 +57,156 @@ function creditlab_enach_backfill_merchant_ref_for_run(array $run): string
     }
 
     $lid = (int) ($run['lid'] ?? 0);
+    $uid = (int) ($run['uid'] ?? 0);
+    $run_id = (int) ($run['id'] ?? 0);
+    $presented_on = trim((string) ($run['presented_on'] ?? ''));
     if ($lid <= 0) {
         return '';
     }
 
     $like = mysqli_real_escape_string($db, '%CLL_AUTO_' . $lid . '_%');
-    $q = mysqli_query(
-        $db,
-        "SELECT meta FROM easebuzz_enach_event_log
-         WHERE stage='presentment' AND outcome='success'
-           AND meta LIKE '$like'
-         ORDER BY id DESC LIMIT 10"
-    );
+
+    // 1) easebuzz_enach_event_log.meta_json (column is meta_json, not meta)
+    $eventSql = "SELECT meta_json FROM easebuzz_enach_event_log
+         WHERE stage IN ('presentment','presentment_webhook')
+           AND meta_json LIKE '$like'
+         ORDER BY id DESC LIMIT 20";
+    $q = mysqli_query($db, $eventSql);
     if ($q) {
         while ($row = mysqli_fetch_assoc($q)) {
-            $meta = json_decode((string) ($row['meta'] ?? ''), true);
-            if (!is_array($meta)) {
-                continue;
-            }
-            foreach (['merchant_request_number', 'merchant_debit_id', 'merchant_ref'] as $key) {
-                $ref = trim((string) ($meta[$key] ?? ''));
-                if ($ref !== '' && strpos($ref, 'CLL_AUTO_' . $lid) === 0) {
-                    $esc = mysqli_real_escape_string($db, $ref);
-                    $id = (int) ($run['id'] ?? 0);
-                    if ($id > 0) {
-                        mysqli_query($db, "UPDATE enach_presentment_run SET merchant_ref='$esc' WHERE id=$id LIMIT 1");
+            $rawMeta = (string) ($row['meta_json'] ?? '');
+            $meta = json_decode($rawMeta, true);
+            if (is_array($meta)) {
+                foreach (['merchant_request_number', 'merchant_debit_id', 'merchant_ref'] as $key) {
+                    $ref = trim((string) ($meta[$key] ?? ''));
+                    if ($ref !== '' && strpos($ref, 'CLL_AUTO_' . $lid) === 0) {
+                        return creditlab_enach_save_run_merchant_ref($run_id, $ref);
                     }
-                    return $ref;
+                }
+                $ref = creditlab_enach_extract_merchant_ref_from_text(json_encode($meta) ?: '', $lid);
+            } else {
+                $ref = creditlab_enach_extract_merchant_ref_from_text($rawMeta, $lid);
+            }
+            if ($ref !== '') {
+                return creditlab_enach_save_run_merchant_ref($run_id, $ref);
+            }
+        }
+    }
+
+    // 1b) Same table by uid + date window (meta may omit CLL_AUTO when stage=presentment used only mandate txn id)
+    if ($uid > 0) {
+        $dateFilter = '';
+        if ($presented_on !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $presented_on)) {
+            $from = mysqli_real_escape_string($db, $presented_on . ' 00:00:00');
+            $to = mysqli_real_escape_string($db, $presented_on . ' 23:59:59');
+            $dateFilter = " AND created_at BETWEEN '$from' AND '$to'";
+        }
+        $q2 = mysqli_query(
+            $db,
+            "SELECT meta_json, message FROM easebuzz_enach_event_log
+             WHERE uid=$uid AND stage='presentment' AND outcome='success'
+             $dateFilter
+             ORDER BY id DESC LIMIT 10"
+        );
+        if ($q2) {
+            while ($row = mysqli_fetch_assoc($q2)) {
+                $blob = (string) ($row['meta_json'] ?? '') . ' ' . (string) ($row['message'] ?? '');
+                $ref = creditlab_enach_extract_merchant_ref_from_text($blob, $lid);
+                if ($ref === '') {
+                    $meta = json_decode((string) ($row['meta_json'] ?? ''), true);
+                    if (is_array($meta)) {
+                        foreach (['merchant_request_number', 'merchant_debit_id', 'merchant_ref'] as $key) {
+                            $cand = trim((string) ($meta[$key] ?? ''));
+                            if ($cand !== '' && (strpos($cand, 'CLL_AUTO_' . $lid) === 0 || strpos($cand, 'CLL_AUTO_') === 0)) {
+                                // Accept CLL_AUTO_{lid}_… only
+                                if (strpos($cand, 'CLL_AUTO_' . $lid) === 0) {
+                                    $ref = $cand;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                if ($ref !== '') {
+                    return creditlab_enach_save_run_merchant_ref($run_id, $ref);
                 }
             }
-            $blob = json_encode($meta);
-            if (is_string($blob) && preg_match('/CLL_AUTO_' . $lid . '_\d+/', $blob, $m)) {
-                $ref = $m[0];
-                $esc = mysqli_real_escape_string($db, $ref);
-                $id = (int) ($run['id'] ?? 0);
-                if ($id > 0) {
-                    mysqli_query($db, "UPDATE enach_presentment_run SET merchant_ref='$esc' WHERE id=$id LIMIT 1");
+        }
+    }
+
+    // 2) enach_webhook_inbox
+    $tbl = mysqli_query($db, "SHOW TABLES LIKE 'enach_webhook_inbox'");
+    if ($tbl && mysqli_num_rows($tbl) > 0) {
+        $lidEsc = mysqli_real_escape_string($db, (string) $lid);
+        $qi = mysqli_query(
+            $db,
+            "SELECT merchant_ref, payload_json FROM enach_webhook_inbox
+             WHERE loan_lid='$lidEsc' OR merchant_ref LIKE 'CLL_AUTO_{$lid}_%'
+             ORDER BY id DESC LIMIT 20"
+        );
+        if ($qi) {
+            while ($row = mysqli_fetch_assoc($qi)) {
+                $ref = trim((string) ($row['merchant_ref'] ?? ''));
+                if ($ref === '' || strpos($ref, 'CLL_AUTO_' . $lid) !== 0) {
+                    $ref = creditlab_enach_extract_merchant_ref_from_text((string) ($row['payload_json'] ?? ''), $lid);
                 }
-                return $ref;
+                if ($ref !== '' && strpos($ref, 'CLL_AUTO_' . $lid) === 0) {
+                    return creditlab_enach_save_run_merchant_ref($run_id, $ref);
+                }
+            }
+        }
+    }
+
+    // 3) Cron / Autocollect log files around presented_on
+    $dates = [];
+    if ($presented_on !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $presented_on)) {
+        $dates[] = $presented_on;
+        $dates[] = date('Y-m-d', strtotime($presented_on . ' +1 day'));
+        $dates[] = date('Y-m-d', strtotime($presented_on . ' -1 day'));
+    }
+    $dates[] = date('Y-m-d');
+    $dates = array_values(array_unique($dates));
+
+    $logRoots = [
+        dirname(__DIR__) . '/logs',
+        dirname(__DIR__),
+    ];
+    foreach ($dates as $ymd) {
+        $candidates = [
+            "enach_cron_{$ymd}.log",
+            "easebuzz_autocollect_{$ymd}.log",
+            "autocollect_api_web.log",
+            "autocollect_webhook_{$ymd}.log",
+        ];
+        foreach ($logRoots as $root) {
+            foreach ($candidates as $name) {
+                $path = $root . '/' . $name;
+                if (!is_readable($path)) {
+                    continue;
+                }
+                // Prefer grep via shell for large logs; fallback to PHP scan of last 2MB.
+                $ref = '';
+                $pattern = 'CLL_AUTO_' . $lid . '_';
+                if (function_exists('shell_exec')) {
+                    $cmd = 'grep -o ' . escapeshellarg($pattern . '[0-9]*') . ' ' . escapeshellarg($path) . ' 2>/dev/null | tail -n 1';
+                    $out = @shell_exec($cmd);
+                    $ref = trim((string) $out);
+                }
+                if ($ref === '') {
+                    $fh = @fopen($path, 'rb');
+                    if ($fh) {
+                        $size = @filesize($path);
+                        if ($size !== false && $size > 2 * 1024 * 1024) {
+                            fseek($fh, -2 * 1024 * 1024, SEEK_END);
+                        }
+                        $chunk = stream_get_contents($fh);
+                        fclose($fh);
+                        $ref = creditlab_enach_extract_merchant_ref_from_text((string) $chunk, $lid);
+                    }
+                }
+                if ($ref !== '' && strpos($ref, 'CLL_AUTO_' . $lid) === 0) {
+                    return creditlab_enach_save_run_merchant_ref($run_id, $ref);
+                }
             }
         }
     }
@@ -207,12 +351,19 @@ function creditlab_enach_settle_pending_presentments($db, array $opts = []): arr
                 'run_id' => $run_id,
                 'action' => 'missing_merchant_ref',
             ];
-            $now = date('Y-m-d H:i:s');
-            mysqli_query(
-                $db,
-                "UPDATE enach_presentment_run SET last_poll_at='$now',
-                 poll_error='missing merchant_ref' WHERE id=$run_id LIMIT 1"
-            );
+            // Real runs: stop re-polling unrecoverable legacy rows (no merchant_ref anywhere).
+            // New presentments store merchant_ref at initiate time.
+            if (!$dry_run && $run_id > 0) {
+                $now = date('Y-m-d H:i:s');
+                mysqli_query(
+                    $db,
+                    "UPDATE enach_presentment_run SET
+                        settlement_status='untracked',
+                        last_poll_at='$now',
+                        poll_error='missing merchant_ref (legacy row; cannot poll status)'
+                     WHERE id=$run_id LIMIT 1"
+                );
+            }
             continue;
         }
 
