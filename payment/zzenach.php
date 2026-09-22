@@ -166,7 +166,20 @@ if($enach_count > 0){
         // Check if the response was successfully decoded and if the status key exists and is true
         if($res && isset($res['status']) && $res['status']){
             towquery("UPDATE `loan` SET `enach_request`=1, `enach_request_date`='".date('Y-m-d')."' WHERE lid=$lid");
-            creditlab_enach_record_presentment($lid, (int) $userdataff['uid'], $mandate_key, 'manual_zzenach', $totalamount, 'success', $current_date);
+            $merchant_ref = trim((string) ($res['merchant_request_number'] ?? $paymentDetails['merchant_debit_id'] ?? ''));
+            creditlab_enach_record_presentment(
+                $lid,
+                (int) $userdataff['uid'],
+                $mandate_key,
+                'manual_zzenach',
+                $totalamount,
+                'success',
+                $current_date,
+                [
+                    'merchant_ref' => $merchant_ref,
+                    'api' => (string) ($res['api'] ?? 'autocollect'),
+                ]
+            );
             $success_count++;
             $success_messages[] = "E-Nach #$auth_count (Auth ID: {$easebuzz_adtdff['customer_authentication_id']}) - SUCCESS";
             writeZzenachLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);

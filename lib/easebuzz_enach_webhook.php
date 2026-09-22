@@ -468,11 +468,15 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
 
     if ($outcome === 'pending') {
         $log("Presentment pending for CLL$loan_lid", ['merchant_ref' => $merchant_ref, 'status' => $event['raw_status'] ?? '']);
+        require_once __DIR__ . '/enach_presentment_policy.php';
+        creditlab_enach_mark_presentment_settled($merchant_ref, 'pending', $bank_ref, (string) ($event['raw_status'] ?? 'pending'));
         return $finish(['ok' => true, 'action' => 'pending', 'message' => 'Presentment still in progress.', 'loan_lid' => $loan_lid]);
     }
 
     if ($outcome === 'failure') {
         $log("Presentment FAILED for CLL$loan_lid", ['merchant_ref' => $merchant_ref, 'error' => $event['error_message'] ?? '']);
+        require_once __DIR__ . '/enach_presentment_policy.php';
+        creditlab_enach_mark_presentment_settled($merchant_ref, 'failure', $bank_ref, (string) ($event['error_message'] ?? ''));
         return $finish(['ok' => true, 'action' => 'failure_logged', 'message' => 'Failure logged.', 'loan_lid' => $loan_lid]);
     }
 
@@ -500,6 +504,8 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
 
     if (($loan_details['status_log'] ?? '') === 'cleared' || ($loan_details['action'] ?? '') === 'cleared') {
         $log("SKIPPED: CLL$loan_lid already cleared (duplicate webhook)", ['merchant_ref' => $merchant_ref]);
+        require_once __DIR__ . '/enach_presentment_policy.php';
+        creditlab_enach_mark_presentment_settled($merchant_ref, 'success', $bank_ref);
         return $finish(['ok' => true, 'action' => 'already_cleared', 'message' => 'Loan already cleared.', 'loan_lid' => $loan_lid]);
     }
 
@@ -538,6 +544,9 @@ function creditlab_enach_webhook_handle_presentment($db, array $event, $base_url
         'merchant_ref' => $merchant_ref,
         'pg_txn' => $txnid,
     ]);
+
+    require_once __DIR__ . '/enach_presentment_policy.php';
+    creditlab_enach_mark_presentment_settled($merchant_ref, 'success', $bank_ref);
 
     return $finish([
         'ok' => true,

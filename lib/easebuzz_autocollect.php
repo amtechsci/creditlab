@@ -895,6 +895,205 @@ function creditlab_autocollect_initiate_enach_debit(array $params)
 }
 
 /**
+ * GET /v1/mandate/presentment/{merchant_request_number}/ — presentment / debit status.
+ * Authorization = SHA-512(key|merchant_request_number|salt)
+ *
+ * Falls back to POST /v1/mandate/presentment/status/ if GET is not available.
+ *
+ * @return array{ok:bool,http_code:int,data:?array,raw:mixed,error:?string,authorization_hash?:string,path?:string}
+ */
+function creditlab_autocollect_retrieve_presentment($merchant_request_number)
+{
+    if (!creditlab_autocollect_credentials_ok()) {
+        return ['ok' => false, 'error' => 'Easebuzz credentials are not configured.', 'data' => null, 'http_code' => 0, 'raw' => null];
+    }
+
+    $merchant_request_number = trim((string) $merchant_request_number);
+    if ($merchant_request_number === '') {
+        return ['ok' => false, 'error' => 'Missing merchant_request_number.', 'data' => null, 'http_code' => 0, 'raw' => null];
+    }
+
+    $key = creditlab_autocollect_merchant_key();
+    $auth = creditlab_autocollect_hash([$key, $merchant_request_number, creditlab_autocollect_salt()]);
+    $get_path = '/v1/mandate/presentment/' . rawurlencode($merchant_request_number) . '/?key=' . rawurlencode($key);
+
+    $response = creditlab_autocollect_request('GET', $get_path, ['Authorization' => $auth]);
+    $http = (int) ($response['http_code'] ?? 0);
+
+    // Some Easebuzz environments expose a status POST instead of GET-by-id.
+    if (!$response['ok'] && in_array($http, [0, 404, 405, 501], true)) {
+        $post_body = [
+            'key' => $key,
+            'merchant_request_number' => $merchant_request_number,
+        ];
+        $post_response = creditlab_autocollect_request(
+            'POST',
+            '/v1/mandate/presentment/status/',
+            ['Authorization' => $auth],
+            $post_body
+        );
+        if ($post_response['ok'] || (int) ($post_response['http_code'] ?? 0) === 200) {
+            $response = $post_response;
+            $get_path = '/v1/mandate/presentment/status/';
+        }
+    }
+
+    creditlab_autocollect_log('RETRIEVE PRESENTMENT', [
+        'merchant_request_number' => $merchant_request_number,
+        'path' => $get_path,
+        'http_code' => $response['http_code'] ?? null,
+        'ok' => $response['ok'] ?? false,
+    ]);
+
+    return [
+        'ok' => !empty($response['ok']),
+        'http_code' => (int) ($response['http_code'] ?? 0),
+        'data' => $response['data'] ?? null,
+        'raw' => $response['raw'] ?? null,
+        'error' => $response['error'] ?? null,
+        'authorization_hash' => $auth,
+        'path' => $get_path,
+        'merchant_request_number' => $merchant_request_number,
+    ];
+}
+
+/**
+ * Normalize presentment retrieve payload into the same shape as webhook parse.
+ *
+ * @return array{merchant_ref:string,outcome:string,amount:mixed,txnid:string,presentment_id:string,bank_ref_num:string,mandate_transaction_id:string,error_message:string,raw_status:string,source:string}|null
+ */
+function creditlab_autocollect_parse_presentment_status(array $retrieve)
+{
+    $root = is_array($retrieve['data'] ?? null) ? $retrieve['data'] : null;
+    if (!$root) {
+        return null;
+    }
+
+    $layers = [$root];
+    if (isset($root['data']) && is_array($root['data'])) {
+        $layers[] = $root['data'];
+        if (isset($root['data']['data']) && is_array($root['data']['data'])) {
+            $layers[] = $root['data']['data'];
+        }
+    }
+
+    $pick = static function (array $layers, array $keys, $default = '') {
+        foreach ($layers as $layer) {
+            if (!is_array($layer)) {
+                continue;
+            }
+            foreach ($keys as $key) {
+                if (array_key_exists($key, $layer) && $layer[$key] !== null && $layer[$key] !== '') {
+                    return $layer[$key];
+                }
+            }
+        }
+        return $default;
+    };
+
+    $merchant_ref = trim((string) $pick($layers, [
+        'merchant_request_number',
+        'merchant_debit_id',
+        'merchant_ref',
+        'unique_request_number',
+    ], (string) ($retrieve['merchant_request_number'] ?? '')));
+
+    $status_raw = strtolower(trim((string) $pick($layers, [
+        'status',
+        'status_at_bank',
+        'auto_debit_request_state',
+        'presentment_status',
+        'debit_status',
+        'payment_status',
+        'sub_status',
+    ])));
+
+    $successHints = ['success', 'successful', 'completed', 'captured', 'paid', 'debited', 'settled', 'credited'];
+    $failHints = ['failure', 'failed', 'bounced', 'rejected', 'cancelled', 'bounce'];
+    $isSuccess = false;
+    foreach ($successHints as $hint) {
+        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+            $isSuccess = true;
+            break;
+        }
+    }
+    $isFail = false;
+    foreach ($failHints as $hint) {
+        if ($status_raw === $hint || strpos($status_raw, $hint) !== false) {
+            $isFail = true;
+            break;
+        }
+    }
+
+    // Boolean / numeric Easebuzz wrappers: data.status=true with nested debit status.
+    if (!$isSuccess && !$isFail && isset($root['status']) && is_bool($root['status']) && count($layers) > 1) {
+        $nested = strtolower(trim((string) $pick(array_slice($layers, 1), [
+            'status', 'presentment_status', 'debit_status', 'auto_debit_request_state',
+        ])));
+        foreach ($successHints as $hint) {
+            if ($nested === $hint || strpos($nested, $hint) !== false) {
+                $isSuccess = true;
+                $status_raw = $nested;
+                break;
+            }
+        }
+        foreach ($failHints as $hint) {
+            if ($nested === $hint || strpos($nested, $hint) !== false) {
+                $isFail = true;
+                $status_raw = $nested;
+                break;
+            }
+        }
+    }
+
+    if ($isSuccess && !$isFail) {
+        $outcome = 'success';
+    } elseif ($isFail && !$isSuccess) {
+        $outcome = 'failure';
+    } elseif (in_array($status_raw, ['in_process', 'pending', 'initiated', 'accepted', 'processing', 'scheduled', 'queued'], true)) {
+        $outcome = 'pending';
+    } else {
+        $outcome = 'pending';
+    }
+
+    $amount = $pick($layers, ['amount', 'net_amount', 'net_amount_debit'], '0');
+    $txnid = trim((string) $pick($layers, ['pg_transaction_id', 'txnid', 'easepayid', 'transaction_id'], ''));
+    $presentment_id = trim((string) $pick($layers, ['id', 'presentment_id'], ''));
+    $bank_ref = trim((string) $pick($layers, [
+        'bank_reference_number',
+        'bank_ref_num',
+        'transaction_reference_number',
+        'auth_ref_num',
+    ], ''));
+    if ($bank_ref === '' || strtoupper($bank_ref) === 'NA') {
+        $bank_ref = $txnid !== '' ? $txnid : ('ACPOLL_' . time());
+    }
+
+    $mandate_txn = trim((string) $pick($layers, ['transaction_id'], ''));
+    $mandate = $pick($layers, ['mandate'], null);
+    if ($mandate_txn === '' && is_array($mandate) && !empty($mandate['transaction_id'])) {
+        $mandate_txn = trim((string) $mandate['transaction_id']);
+    }
+
+    $error_message = trim((string) $pick($layers, [
+        'error_message', 'error_Message', 'message', 'description',
+    ], ''));
+
+    return [
+        'merchant_ref' => $merchant_ref,
+        'outcome' => $outcome,
+        'amount' => $amount,
+        'txnid' => $txnid,
+        'presentment_id' => $presentment_id,
+        'bank_ref_num' => $bank_ref,
+        'mandate_transaction_id' => $mandate_txn,
+        'error_message' => $error_message,
+        'raw_status' => $status_raw,
+        'source' => 'status_poll',
+    ];
+}
+
+/**
  * Initiate eNACH presentment (Autocollect) for loan auto-debit.
  * transaction_id = easebuzz_adtd.customer_authentication_id (new + migrated mandates).
  *

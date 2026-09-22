@@ -400,7 +400,20 @@ foreach ($eligible_loans as $loan) {
                 if ($res && isset($res['status']) && $res['status']) {
                     // Update loan with enach_request = 1 and set enach_request_date
                     towquery($db, "UPDATE `loan` SET `enach_request` = 1, `enach_request_date` = '$current_date' WHERE lid = $lid");
-                    creditlab_enach_record_presentment((int) $lid, (int) $uid, $mandate_key, $presentment_trigger, $totalamount, 'success', $current_date);
+                    $merchant_ref = trim((string) ($res['merchant_request_number'] ?? $paymentDetails['merchant_debit_id'] ?? ''));
+                    creditlab_enach_record_presentment(
+                        (int) $lid,
+                        (int) $uid,
+                        $mandate_key,
+                        $presentment_trigger,
+                        $totalamount,
+                        'success',
+                        $current_date,
+                        [
+                            'merchant_ref' => $merchant_ref,
+                            'api' => (string) ($res['api'] ?? 'autocollect'),
+                        ]
+                    );
                     $success_count++;
                     $successful_loans[] = "CLL$lid";
                     writeLog("SUCCESS: E-Nach request initiated for CLL$lid | Customer Auth ID: {$easebuzz_adtdff['customer_authentication_id']} | Amount: ₹$totalamount", $log_file);
