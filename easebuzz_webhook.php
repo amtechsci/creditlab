@@ -453,9 +453,11 @@ elseif ($data['furl'] == $base_url . '/easebuzz_callback.php') {
     $result = $_POST;
     $txnid = $result['txnid'];
     $status = $result['status'];
-    $amount = isset($result['net_amount_debit']) && $result['net_amount_debit'] !== ''
-        ? $result['net_amount_debit']
-        : $result['amount'];
+    // net_amount_debit includes the gateway's service charge + tax, which the customer
+    // pays to Easebuzz and never reaches us. Settle against the transaction amount only.
+    $amount = isset($result['amount']) && $result['amount'] !== ''
+        ? $result['amount']
+        : ($result['settlement_amount'] ?? 0);
     $bank_ref_num = $result['bank_ref_num'] ?? ($result['easepayid'] ?? '');
     if ($bank_ref_num === '' || $bank_ref_num === 'NA') {
         $bank_ref_num = $result['easepayid'] ?? ('WEBHOOK_' . $txnid);

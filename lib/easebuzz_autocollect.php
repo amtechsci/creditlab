@@ -1098,7 +1098,9 @@ function creditlab_autocollect_parse_presentment_status(array $retrieve)
         $outcome = 'pending';
     }
 
-    $amount = $pick($layers, ['amount', 'net_amount', 'net_amount_debit'], '0');
+    // Never fall back to net_amount/net_amount_debit: those include the gateway's
+    // service charge + tax, which is not part of the loan repayment.
+    $amount = $pick($layers, ['amount', 'settlement_amount', 'remaining_amount'], '0');
     $txnid = trim((string) $pick($layers, ['pg_transaction_id', 'txnid', 'easepayid'], ''));
     // Avoid stealing mandate transaction_id as pg txn when presentment fields are absent.
     if ($txnid === '') {

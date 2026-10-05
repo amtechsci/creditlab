@@ -305,7 +305,9 @@ function creditlab_enach_webhook_parse_presentment(array $post, $rawBody = '')
         $outcome = 'pending';
     }
 
-    $amount = creditlab_enach_webhook_pick($layers, ['amount', 'net_amount', 'net_amount_debit'], '0');
+    // Never fall back to net_amount/net_amount_debit: those include the gateway's
+    // service charge + tax, which is not part of the loan repayment.
+    $amount = creditlab_enach_webhook_pick($layers, ['amount', 'settlement_amount', 'remaining_amount'], '0');
     $txnid = trim((string) creditlab_enach_webhook_pick($layers, [
         'pg_transaction_id',
         'txnid',
