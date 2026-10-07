@@ -2,7 +2,8 @@
 include '../db.php';
 header("refresh:420");
 if(isset($user)){
-    $userquery = towquery("SELECT * FROM user WHERE mobile='$user'");
+    $user_identifier = towreal($user);
+    $userquery = towquery("SELECT * FROM user WHERE mobile='$user_identifier' OR email='$user_identifier' LIMIT 1");
     $userfetch = towfetch($userquery);
     
     // Check if user data was fetched successfully

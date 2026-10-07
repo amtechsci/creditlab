@@ -50,17 +50,20 @@ if(strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== FALSE)
    $aa = towfetch($result);
         if (creditlab_verify_password($password, $aa['password'])) {
         $id = $aa['id'];
-        if($aa['active'] == 1){
+        if($aa['active'] == 2){
         towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
-        $_SESSION['user'] = $email;
-        creditlab_set_auth_cookie('user', $email);
-        header("location:../../user/");
-        exit;
-    }elseif($aa['active'] == 2){
-        towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
+        creditlab_clear_customer_auth();
         $_SESSION['admin'] = $email;
         creditlab_set_auth_cookie('admin', $email);
-        header('Location: ' . ($login_next !== '' ? $login_next : '../../admin/'));
+        header('Location: ' . ($login_next !== '' ? $login_next : '/admin/'));
+        exit;
+    }elseif($aa['active'] == 1){
+        towquery("INSERT INTO `user_login_details`(`uid`, `browser`, `ip_address`, `login_time`) VALUES ($id,'$userbrowser','$userip','$login_time')");
+        creditlab_clear_staff_auth();
+        $customer_key = !empty($aa['mobile']) ? $aa['mobile'] : $email;
+        $_SESSION['user'] = $customer_key;
+        creditlab_set_auth_cookie('user', $customer_key);
+        header('Location: /user/');
         exit;
     }
         }

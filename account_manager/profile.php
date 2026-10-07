@@ -1894,12 +1894,13 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                             </div>
                                             </div>
                                             <br><br>
-                                            <?php $fa = towquery("SELECT follow_up_mess FROM loan WHERE uid='$id'");
+                                            <?php if (empty($is_agency_profile)) {
+                                            $fa = towquery("SELECT follow_up_mess FROM loan WHERE uid='$id'");
                                             while($f = towfetch($fa)){
                                             if(!empty($f['follow_up_mess'])){
                                             ?>
                                             <p style="border:solid 1px; padding:2px;"><?=$f['follow_up_mess'];?></p>
-                                            <?php }} ?>
+                                            <?php }}} ?>
                                             <textarea style="color: red" class="form-control" id="follow_up_mess" name="follow_up_mess" id="text" rows="3"></textarea>
                                             <br>
                                             <center><button class="btn btn-primary" type="submit">Submit</button></center>
@@ -1910,11 +1911,21 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                     <div class="row">
                                         <form action="" method="post"><div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
                                             <br><br>
-                                            <?php $fa = towquery("SELECT comment FROM user WHERE id='$id'");
+                                            <?php
+                                            $noteAgencyId = 0;
+                                            if (!empty($is_agency_profile)) {
+                                                $noteActor = creditlab_staff_actor();
+                                                $noteAgencyId = (int) ($noteActor['agency_id'] ?? 0);
+                                            }
+                                            $fa = towquery("SELECT comment FROM user WHERE id='$id'");
                                             while($f = towfetch($fa)){
-                                            if(!empty($f['comment'])){
+                                            $noteHtml = $f['comment'] ?? '';
+                                            if (!empty($is_agency_profile)) {
+                                                $noteHtml = creditlab_hide_other_agency_log($noteHtml, $noteAgencyId);
+                                            }
+                                            if(!empty($noteHtml)){
                                             ?>
-                                            <p style="border:solid 1px; padding:2px;"><?=$f['comment'];?></p>
+                                            <p style="border:solid 1px; padding:2px;"><?=$noteHtml;?></p>
                                             <?php }} ?>
                                             <textarea style="color: red" class="form-control" name="comment" id="comment" id="text" rows="3"></textarea>
                                             <br>
@@ -2108,7 +2119,8 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                    <?php
                                    $agencyUpdatesFilter = '';
                                    if ($is_agency_profile) {
-                                       $agencyUpdatesFilter = creditlab_loan_acc_man_sql_agency_filter((int) ($agency_admin_agency_id ?? 0));
+                                       $followActor = creditlab_staff_actor();
+                                       $agencyUpdatesFilter = creditlab_loan_acc_man_sql_agency_filter((int) ($followActor['agency_id'] ?? 0));
                                    }
                                    $ref_data = towquery("SELECT * FROM loan_acc_man WHERE uid='$userpro_id' $agencyUpdatesFilter ORDER BY id DESC"); 
                                    while($bank_fetch = towfetch($ref_data)){

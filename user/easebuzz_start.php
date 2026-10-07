@@ -13,7 +13,8 @@ if (!isset($user) || $user === '') {
     exit;
 }
 
-$userquery = towquery("SELECT * FROM user WHERE mobile='" . mysqli_real_escape_string($db, $user) . "' LIMIT 1");
+$user_esc = mysqli_real_escape_string($db, $user);
+$userquery = towquery("SELECT * FROM user WHERE mobile='$user_esc' OR email='$user_esc' LIMIT 1");
 $userfetch = towfetch($userquery);
 if (!$userfetch || !is_array($userfetch)) {
     header('Location: ../account/?session_expired=1');

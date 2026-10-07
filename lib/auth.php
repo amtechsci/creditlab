@@ -75,6 +75,35 @@ function creditlab_set_auth_cookie(string $name, string $value, int $lifetimeSec
     ]);
 }
 
+function creditlab_clear_auth_cookie(string $name): void
+{
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    setcookie($name, '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    unset($_COOKIE[$name]);
+}
+
+/** Drop customer session/cookies so staff login is not overridden by a stale user cookie. */
+function creditlab_clear_customer_auth(): void
+{
+    unset($_SESSION['user']);
+    creditlab_clear_auth_cookie('user');
+}
+
+/** Drop staff session/cookies when a customer logs in. */
+function creditlab_clear_staff_auth(): void
+{
+    foreach (['admin', 'account_manager', 'recovery_officer', 'verify_user', 'agency_admin'] as $key) {
+        unset($_SESSION[$key]);
+        creditlab_clear_auth_cookie($key);
+    }
+}
+
 /**
  * Allow fetching only same-site document URLs (blocks SSRF in zxc/index.php).
  */
@@ -164,8 +193,8 @@ function creditlab_get_logged_in_customer_id(): ?int
     if (empty($user)) {
         return null;
     }
-    $mobile = towreal($user);
-    $result = towquery("SELECT id FROM user WHERE mobile='$mobile' LIMIT 1");
+    $identifier = towreal($user);
+    $result = towquery("SELECT id FROM user WHERE mobile='$identifier' OR email='$identifier' LIMIT 1");
     if ($result && townum($result) > 0) {
         $row = towfetch($result);
         return (int) $row['id'];

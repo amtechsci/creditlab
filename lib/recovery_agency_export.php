@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/loan_dpd.php';
+require_once __DIR__ . '/loan_acc_man.php';
 
 function creditlab_format_recovery_response(?string $response, ?string $date): string
 {
@@ -39,7 +40,7 @@ function creditlab_recovery_agency_csv_headers(): array
  * @param int[] $loanIds
  * @return array<int, array{responses: list<string|null>, dates: list<string|null>}>
  */
-function creditlab_recovery_agency_responses_by_lid(array $loanIds): array
+function creditlab_recovery_agency_responses_by_lid(array $loanIds, ?int $agencyId = null): array
 {
     $byLid = [];
     $loanIds = array_values(array_unique(array_filter(array_map('intval', $loanIds))));
@@ -47,10 +48,14 @@ function creditlab_recovery_agency_responses_by_lid(array $loanIds): array
         return $byLid;
     }
 
+    $agencyFilter = ($agencyId !== null && $agencyId > 0)
+        ? creditlab_loan_acc_man_sql_agency_filter($agencyId)
+        : '';
+
     // Chunk IN() lists to keep queries manageable on large exports.
     foreach (array_chunk($loanIds, 1000) as $chunk) {
         $ids = implode(',', $chunk);
-        $q = towquery("SELECT lid, customer_response, commitment_date FROM `loan_acc_man` WHERE lid IN ($ids) ORDER BY id DESC");
+        $q = towquery("SELECT lid, customer_response, commitment_date FROM `loan_acc_man` WHERE lid IN ($ids){$agencyFilter} ORDER BY id DESC");
         if (!$q) {
             continue;
         }
@@ -108,7 +113,7 @@ function creditlab_recovery_agency_referrals_by_uid(array $userIds): array
 /**
  * @param resource $output
  */
-function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null): void
+function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null, ?int $agencyId = null): void
 {
     fputcsv($output, creditlab_recovery_agency_csv_headers());
 
@@ -182,7 +187,7 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
         $userIds[] = (int) $row['user_id'];
     }
 
-    $responsesByLid = creditlab_recovery_agency_responses_by_lid($loanIds);
+    $responsesByLid = creditlab_recovery_agency_responses_by_lid($loanIds, $agencyId);
     $referralsByUid = creditlab_recovery_agency_referrals_by_uid($userIds);
 
     $rowCount = 0;
@@ -239,7 +244,7 @@ function creditlab_write_recovery_agency_csv($output, ?int $minDpd = null, ?stri
     }
 }
 
-function creditlab_send_recovery_agency_csv(string $filename, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null): void
+function creditlab_send_recovery_agency_csv(string $filename, ?int $minDpd = null, ?string $fromDate = null, ?string $toDate = null, ?int $agencyId = null): void
 {
     set_time_limit(3000);
     ignore_user_abort(true);
@@ -253,7 +258,7 @@ function creditlab_send_recovery_agency_csv(string $filename, ?int $minDpd = nul
     header('Cache-Control: no-store, no-cache, must-revalidate');
     header('Pragma: no-cache');
     $output = fopen('php://output', 'w');
-    creditlab_write_recovery_agency_csv($output, $minDpd, $fromDate, $toDate);
+    creditlab_write_recovery_agency_csv($output, $minDpd, $fromDate, $toDate, $agencyId);
     fclose($output);
     exit;
 }

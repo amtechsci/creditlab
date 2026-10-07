@@ -46,6 +46,83 @@ function creditlab_pg_link_agency_name_expr(string $plAlias = 'pl', string $ptAl
 }
 
 /**
+ * Hide PG links that belong to a different agency.
+ *
+ * Uses the same agency label as the profile table. Staff links with no agency
+ * stay visible. Call only after creditlab_pg_link_agency_join_sql().
+ */
+function creditlab_pg_link_sql_hide_other_agencies(int $agencyId, string $plAlias = 'pl', string $ptAlias = 'pt'): string
+{
+    if ($agencyId <= 0) {
+        return ' AND 1=0';
+    }
+    $agencyId = (int) $agencyId;
+    $nameExpr = creditlab_pg_link_agency_name_expr($plAlias, $ptAlias);
+    $prefixExpr = "CONCAT('PG_agency_admin_', aa_txn.id, '_')";
+
+    return " AND (
+        {$nameExpr} IS NULL
+        OR TRIM({$nameExpr}) = ''
+        OR LOWER(TRIM({$nameExpr})) = LOWER((SELECT name FROM agency WHERE id = {$agencyId} LIMIT 1))
+    )
+    AND (aa_creator.id IS NULL OR aa_creator.agency_id = {$agencyId})
+    AND ({$plAlias}.agency_id IS NULL OR {$plAlias}.agency_id = 0 OR {$plAlias}.agency_id = {$agencyId})
+    AND NOT EXISTS (
+        SELECT 1 FROM agency_admin aa_txn
+        WHERE aa_txn.agency_id <> {$agencyId}
+          AND SUBSTRING({$plAlias}.txnid, 1, CHAR_LENGTH({$prefixExpr})) = {$prefixExpr}
+    )";
+}
+
+/**
+ * Whether an agency portal user may see this payment-link row.
+ * Rows with no agency (admin / account manager) stay visible.
+ */
+function creditlab_pg_link_visible_to_agency(array $row, int $agencyId, string $agencyName = ''): bool
+{
+    $agencyName = trim($agencyName);
+    if ($agencyId <= 0 && $agencyName === '') {
+        return false;
+    }
+
+    $label = trim((string) ($row['resolved_agency_name'] ?? ''));
+    $labeled = $label !== '' && $label !== '—' && strcasecmp($label, 'Agency') !== 0;
+    if ($labeled) {
+        return $agencyName !== '' && strcasecmp($label, $agencyName) === 0;
+    }
+
+    $rowAgencyId = (int) ($row['agency_id'] ?? 0);
+    if ($agencyId > 0 && $rowAgencyId > 0) {
+        return $rowAgencyId === $agencyId;
+    }
+
+    if ($label === '') {
+        $label = trim(creditlab_resolve_pg_link_agency_name($row));
+        $labeled = $label !== '' && $label !== '—' && strcasecmp($label, 'Agency') !== 0;
+        if ($labeled) {
+            return $agencyName !== '' && strcasecmp($label, $agencyName) === 0;
+        }
+    }
+
+    $role = (string) ($row['created_by_role'] ?? '');
+    $txnid = (string) ($row['txnid'] ?? '');
+    if ($role !== 'agency_admin' && strpos($txnid, 'PG_agency_admin_') !== 0) {
+        return true;
+    }
+
+    $resolved = creditlab_pg_link_resolve_agency($row);
+    if ($resolved === null) {
+        return false;
+    }
+    $resolvedId = (int) ($resolved['agency_id'] ?? 0);
+    if ($agencyId > 0 && $resolvedId > 0) {
+        return $resolvedId === $agencyId;
+    }
+    $resolvedName = trim((string) ($resolved['agency_name'] ?? ''));
+    return $agencyName !== '' && $resolvedName !== '' && strcasecmp($resolvedName, $agencyName) === 0;
+}
+
+/**
  * LEFT JOINs required before using creditlab_pg_link_agency_name_expr().
  */
 function creditlab_pg_link_agency_join_sql(string $plAlias = 'pl', string $ptAlias = 'pt'): string

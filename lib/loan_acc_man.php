@@ -33,6 +33,56 @@ function creditlab_loan_acc_man_sql_agency_filter(int $agencyId): string
 }
 
 /**
+ * Remove note/follow-up lines written by another agency.
+ * Staff lines (no agency admin name) and this agency's own lines stay.
+ */
+function creditlab_hide_other_agency_log(?string $html, int $agencyId): string
+{
+    $html = (string) $html;
+    if ($html === '' || $agencyId <= 0) {
+        return '';
+    }
+
+    $own = [];
+    $other = [];
+    $q = towquery('SELECT agency_id, name FROM agency_admin');
+    if ($q) {
+        while ($row = towfetch($q)) {
+            $name = strtolower(trim((string) ($row['name'] ?? '')));
+            if ($name === '') {
+                continue;
+            }
+            if ((int) $row['agency_id'] === $agencyId) {
+                $own[$name] = true;
+            } else {
+                $other[$name] = true;
+            }
+        }
+    }
+
+    $parts = preg_split('/<br\s*\/?>/i', $html);
+    if ($parts === false) {
+        return '';
+    }
+
+    $kept = [];
+    foreach ($parts as $part) {
+        if (trim(strip_tags($part)) === '') {
+            continue;
+        }
+        if (preg_match('/Updated by\s*<b[^>]*>\s*([^<]+?)\s*<\/b>/i', $part, $matches)) {
+            $name = strtolower(trim(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8')));
+            if ($name !== '' && isset($other[$name]) && !isset($own[$name])) {
+                continue;
+            }
+        }
+        $kept[] = $part;
+    }
+
+    return $kept === [] ? '' : implode('<br>', $kept);
+}
+
+/**
  * Latest follow-up rows for a loan, optionally scoped to one agency.
  *
  * @return array{responses: list<string|null>, commit_dates: list<string|null>, updated_ats: list<string|null>}

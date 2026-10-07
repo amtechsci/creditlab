@@ -13,12 +13,30 @@ if (!creditlab_can_create_pg_link()) {
 $activeLoans = creditlab_active_loans_for_user((int) $userpro_id);
 $agencyNameExpr = creditlab_pg_link_agency_name_expr('pl', 'pt');
 $agencyJoins = creditlab_pg_link_agency_join_sql('pl', 'pt');
+$agencyLinkScope = '';
+$agencyViewerId = 0;
+$agencyViewerName = '';
+if (($GLOBALS['creditlab_staff_role'] ?? '') === 'agency_admin') {
+    $agencyViewerId = (int) ($agency_admin_agency_id ?? 0);
+    $agencyViewerName = trim((string) ($agency_admin_agency_name ?? ''));
+    if ($agencyViewerId <= 0 || $agencyViewerName === '') {
+        $pgActor = creditlab_staff_actor();
+        if ($agencyViewerId <= 0) {
+            $agencyViewerId = (int) ($pgActor['agency_id'] ?? 0);
+        }
+        if ($agencyViewerName === '') {
+            $agencyViewerName = trim((string) ($pgActor['agency_name'] ?? ''));
+        }
+    }
+    $agencyLinkScope = creditlab_pg_link_sql_hide_other_agencies($agencyViewerId);
+}
 $pgLinksQ = towquery(
     "SELECT pl.*, pt.agency_name AS pt_agency_name, {$agencyNameExpr} AS resolved_agency_name
     FROM pg_payment_link pl
     LEFT JOIN pg_transaction pt ON pt.txnid = pl.txnid
     {$agencyJoins}
     WHERE pl.uid=" . (int) $userpro_id . "
+    {$agencyLinkScope}
     ORDER BY pl.id DESC
     LIMIT 100"
 );
@@ -81,6 +99,11 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                 $sn = 1;
                 if ($pgLinksQ) {
                     while ($pl = towfetch($pgLinksQ)) {
+                        if ($agencyViewerId > 0 || $agencyViewerName !== '') {
+                            if (!creditlab_pg_link_visible_to_agency($pl, $agencyViewerId, $agencyViewerName)) {
+                                continue;
+                            }
+                        }
                         $typeLabel = $pl['link_type'] === 'total_outstanding' ? 'total outstanding' : 'manual';
                         $url = $pl['payment_url'] ?? '';
                         $agencyLabel = creditlab_resolve_pg_link_agency_name($pl);

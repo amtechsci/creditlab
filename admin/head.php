@@ -1,11 +1,17 @@
 <?php
 // $admin = "AMPROAPK@GMAIL.COM";
 include '../db.php';
+require_once __DIR__ . '/../lib/auth.php';
 require_once __DIR__ . '/../lib/stale_loan_sweep.php';
 
 if(isset($admin)){
     $userquery = towquery("SELECT * FROM user WHERE email='".$admin."' LIMIT 1");
     $userfetch = towfetch($userquery);
+    if (!$userfetch || !is_array($userfetch)) {
+        creditlab_clear_staff_auth();
+        header('location:/account/login.php');
+        exit;
+    }
     extract($userfetch,EXTR_PREFIX_ALL,"user");
 }else{
     header('location:/account/login.php');
