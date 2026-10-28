@@ -45,7 +45,10 @@ fputcsv($output, [
     'Accrued Interest Amt',
     'Loan Status ( Active / Closed / Settled)',
     'DPD (days)',
-    'Repayment date',
+    'Due date',
+    'Actual repayment date',
+    'Repayment amount',
+    'Total outstanding',
     'Principal Collected Amount',
     'Interest Collected',
     'Penalty',
@@ -96,15 +99,16 @@ $tx_query = towquery("SELECT cllid, transaction_flow, transaction_amount, transa
                       AND DATE(transaction_date) <= '$as_of_date'");
 if ($tx_query) {
     while ($tx = towfetchassoc($tx_query)) {
-        $tx_map[$tx['cllid']][] = $tx;
+        $cid = trim((string)$tx['cllid']);
+        $tx_map[$cid][] = $tx;
     }
 }
 
 // Fetch all active loans as of To Date:
 // Disbursed on or before To Date, and not cleared prior to From Date
 $sql = "SELECT l.id AS loan_id, l.lid, l.uid, l.processed_date, l.processed_amount, l.cleard_date, l.status_log, l.action,
-               l.total_amount, l.p_fee, l.service_charge, l.penality_charge, l.is_emi, l.total_time,
-               la.amount, la.processing_fees, la.pro_fee_per, la.days, la.apply_date, la.status_date, la.interest_percentage,
+               l.total_amount, l.p_fee, l.origination_fee, l.service_charge, l.penality_charge, l.is_emi, l.total_time,
+               la.amount, la.processing_fees, la.pro_fee_per, la.origination_fee AS la_origination_fee, la.days, la.apply_date, la.status_date, la.interest_percentage,
                u.rcid, u.pan_name, u.name, u.pan, u.aadhar, u.mobile, u.state, u.state_code, u.present_address, u.permanent_address, u.pincode, u.salary, u.average_salary, u.annual_income
         FROM loan l
         INNER JOIN loan_apply la ON la.id = l.lid
@@ -118,7 +122,7 @@ $result = towquery($sql);
 
 if ($result) {
     while ($row = towfetchassoc($result)) {
-        $lid = $row['lid'];
+        $lid = trim((string)$row['lid']);
         $loan_txs = $tx_map[$lid] ?? [];
 
         // Determine if loan was cleared on or before the snapshot As of Date
@@ -129,10 +133,17 @@ if ($result) {
         // Total payments collected on or before snapshot date
         $total_collected = 0.0;
         $has_settlement_tx = false;
+        $latest_tx_date = null;
         foreach ($loan_txs as $tx) {
             $total_collected += (float)$tx['transaction_amount'];
             if (strtolower(trim($tx['transaction_flow'])) === 'settlement') {
                 $has_settlement_tx = true;
+            }
+            if (!empty($tx['transaction_date'])) {
+                $tx_time = strtotime($tx['transaction_date']);
+                if ($tx_time !== false && ($latest_tx_date === null || $tx_time > strtotime($latest_tx_date))) {
+                    $latest_tx_date = $tx['transaction_date'];
+                }
             }
         }
 
@@ -147,15 +158,22 @@ if ($result) {
         $tenure = creditlab_loan_tenure_days($row, (int)($row['days'] ?? 30));
         $processed_ts = strtotime($row['processed_date']);
         $processed_date_str = date('Y-m-d', $processed_ts);
-        $repayment_date_str = date('d-m-Y', strtotime($processed_date_str . ' +' . ($tenure - 1) . ' day'));
+        $due_date_str = date('d-m-Y', strtotime($processed_date_str . ' +' . ($tenure - 1) . ' day'));
 
         // Financial amounts
         $disbursed_amt = (float)$row['processed_amount'];
+        if ($disbursed_amt <= 0 && (float)$row['amount'] > 0) {
+            $disbursed_amt = (float)$row['amount'];
+        }
         $pf_amt = (float)$row['processing_fees'];
+        if ($pf_amt <= 0 && (float)$row['p_fee'] > 0) {
+            $pf_amt = (float)$row['p_fee'];
+        }
         $pf_per = isset($row['pro_fee_per']) && $row['pro_fee_per'] !== '' ? $row['pro_fee_per'] : '14';
-        $sanction_amt = (float)$row['total_amount'] > 0 ? (float)$row['total_amount'] : round((float)$row['amount'] + ($pf_amt * 1.18), 2);
+        $origination_fee = (float)($row['origination_fee'] ?? ($row['la_origination_fee'] ?? 0));
 
         $repayment_base = creditlab_loan_repayment_base($disbursed_amt, $pf_amt);
+        $sanction_amt = round($repayment_base + $origination_fee, 2);
 
         if ($status === 'Active') {
             // Loan was active as of snapshot date
@@ -215,18 +233,37 @@ if ($result) {
 
             $principal_collected = min($total_collected, $sanction_amt);
             $interest_collected = max(0.0, $total_collected - $sanction_amt);
+
+            // Total outstanding as of snapshot date for active loans
+            $total_outstanding = max(0.0, ($sanction_amt + $accrued_interest + $penalty_amt) - $total_collected);
+            $total_outstanding_str = number_format($total_outstanding, 2, '.', '');
+            $repayment_amt = $total_collected;
         } elseif ($status === 'Closed') {
             $dpd = 0;
             $accrued_interest = 0.0;
             $principal_collected = $total_collected > 0 ? min($total_collected, $sanction_amt) : $sanction_amt;
             $interest_collected = (float)$row['service_charge'] > 0 ? (float)$row['service_charge'] : max(0.0, $total_collected - $sanction_amt);
             $penalty_amt = (float)$row['penality_charge'];
+
+            $total_outstanding_str = '';
+            $repayment_amt = $total_collected > 0 ? $total_collected : ($principal_collected + $interest_collected);
         } else { // Settled
             $dpd = 0;
             $accrued_interest = 0.0;
             $principal_collected = min($total_collected, $sanction_amt);
             $interest_collected = max(0.0, $total_collected - $sanction_amt);
             $penalty_amt = 0.0;
+
+            $total_outstanding_str = '';
+            $repayment_amt = $total_collected;
+        }
+
+        // Actual repayment date: date of payment received against that loan id
+        $actual_repayment_date_str = '';
+        if (!empty($latest_tx_date)) {
+            $actual_repayment_date_str = date('d-m-Y', strtotime($latest_tx_date));
+        } elseif ($is_cleared_as_of && !empty($row['cleard_date']) && $row['cleard_date'] !== '0000-00-00') {
+            $actual_repayment_date_str = date('d-m-Y', strtotime($row['cleard_date']));
         }
 
         $customer_id = !empty($row['rcid']) ? $row['rcid'] : ('CL' . $row['uid']);
@@ -269,7 +306,10 @@ if ($result) {
             number_format($accrued_interest, 2, '.', ''),
             $status,
             $dpd,
-            $repayment_date_str,
+            $due_date_str,
+            $actual_repayment_date_str,
+            number_format($repayment_amt, 2, '.', ''),
+            $total_outstanding_str,
             number_format($principal_collected, 2, '.', ''),
             number_format($interest_collected, 2, '.', ''),
             number_format($penalty_amt, 2, '.', ''),
