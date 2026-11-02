@@ -1726,7 +1726,7 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                         <td <?php if($usersd_action == "no data"){ ?>class="bg-success" <?php }?>><?=$usersd_status_log?></td>
                                         <td><?php $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); $paid_amtf = towfetch($paid_amt); echo $paid_amtf['paid_amt'] ? $paid_amtf['paid_amt'] : 0;?></td>
                                         <td><?=$usersd_cleard_date?></td>
-                                        <td><?php $dpd = creditlab_calculate_dpd(['processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days, 'status_log' => $usersd_status_log, 'cleard_date' => $usersd_cleard_date ?? '']); echo $dpd; ?></td>
+                                        <td><?php $dpd = creditlab_calculate_dpd(['lid' => $usersd_lid, 'processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days, 'status_log' => $usersd_status_log, 'action' => $usersd_action ?? '', 'cleard_date' => $usersd_cleard_date ?? '']); echo $dpd; ?></td>
                                     </tr></form>
                                 <?php } ?>
             </tbody>

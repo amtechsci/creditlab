@@ -125,11 +125,6 @@ if ($result) {
         $lid = trim((string)$row['lid']);
         $loan_txs = $tx_map[$lid] ?? [];
 
-        // Determine if loan was cleared on or before the snapshot As of Date
-        $is_cleared_as_of = (!empty($row['cleard_date']) 
-                             && $row['cleard_date'] !== '0000-00-00' 
-                             && strtotime(date('Y-m-d', strtotime($row['cleard_date']))) <= strtotime($as_of_date));
-
         // Total payments collected on or before snapshot date
         $total_collected = 0.0;
         $has_settlement_tx = false;
@@ -145,6 +140,29 @@ if ($result) {
                     $latest_tx_date = $tx['transaction_date'];
                 }
             }
+        }
+
+        // Determine effective cleared date
+        $effective_cleared_date = null;
+        if (!empty($row['cleard_date']) && $row['cleard_date'] !== '0000-00-00') {
+            $effective_cleared_date = date('Y-m-d', strtotime($row['cleard_date']));
+        } elseif (in_array(strtolower(trim((string)$row['status_log'])), ['cleared', 'settlement']) || in_array(strtolower(trim((string)$row['action'])), ['cleared', 'settlement'])) {
+            if (!empty($latest_tx_date)) {
+                $effective_cleared_date = date('Y-m-d', strtotime($latest_tx_date));
+            }
+        }
+
+        // If the loan was cleared prior to From Date, skip it (it was already cleared in an earlier period)
+        if ($effective_cleared_date !== null && $effective_cleared_date < $from_date_escaped) {
+            continue;
+        }
+
+        // Determine if loan was cleared on or before the snapshot As of Date
+        $is_cleared_as_of = false;
+        if (!empty($effective_cleared_date)) {
+            $is_cleared_as_of = (strtotime($effective_cleared_date) <= strtotime($as_of_date));
+        } elseif (in_array(strtolower(trim((string)$row['status_log'])), ['cleared', 'settlement']) || in_array(strtolower(trim((string)$row['action'])), ['cleared', 'settlement'])) {
+            $is_cleared_as_of = true;
         }
 
         // Determine Loan Status as of snapshot date
@@ -262,8 +280,8 @@ if ($result) {
         $actual_repayment_date_str = '';
         if (!empty($latest_tx_date)) {
             $actual_repayment_date_str = date('d-m-Y', strtotime($latest_tx_date));
-        } elseif ($is_cleared_as_of && !empty($row['cleard_date']) && $row['cleard_date'] !== '0000-00-00') {
-            $actual_repayment_date_str = date('d-m-Y', strtotime($row['cleard_date']));
+        } elseif ($is_cleared_as_of && !empty($effective_cleared_date)) {
+            $actual_repayment_date_str = date('d-m-Y', strtotime($effective_cleared_date));
         }
 
         $customer_id = !empty($row['rcid']) ? $row['rcid'] : ('CL' . $row['uid']);

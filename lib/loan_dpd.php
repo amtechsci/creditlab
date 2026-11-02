@@ -29,12 +29,25 @@ function creditlab_calculate_dpd(array $loanRow): int
     }
 
     $status = $loanRow['status_log'] ?? '';
-    if ($status === 'cleared' && !empty($loanRow['cleard_date'])) {
+    $action = $loanRow['action'] ?? '';
+    $isCleared = ($status === 'cleared' || $action === 'cleared' || $action === 'settlement');
+    if ($isCleared) {
+        $clearDate = !empty($loanRow['cleard_date']) && $loanRow['cleard_date'] !== '0000-00-00' ? $loanRow['cleard_date'] : null;
+        if (!$clearDate && !empty($loanRow['lid']) && function_exists('towquery') && function_exists('towfetch')) {
+            $lid_safe = (int)$loanRow['lid'];
+            $res = towquery("SELECT transaction_date FROM transaction_details WHERE cllid = '$lid_safe' AND transaction_flow != 'creditlab To Customer' ORDER BY transaction_date DESC LIMIT 1");
+            if ($res && ($tx = towfetch($res))) {
+                $clearDate = $tx['transaction_date'] ?? null;
+            }
+        }
+        if (!$clearDate) {
+            return 0;
+        }
         $due = creditlab_loan_due_date($loanRow);
         if ($due === null) {
             return 0;
         }
-        $clearTs = strtotime(date('Y-m-d', strtotime($loanRow['cleard_date'])));
+        $clearTs = strtotime(date('Y-m-d', strtotime($clearDate)));
         $dueTs = strtotime($due);
         return max(0, (int) round(($clearTs - $dueTs) / 86400));
     }
