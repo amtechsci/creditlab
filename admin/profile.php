@@ -1106,80 +1106,142 @@
         ?>
                 <!-- Mobile Menu end -->
             <div class="breadcome-area">
-                    <div class="container-fluid">
-                        <div class="row">
-                            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                <div class="breadcome-list">
-                                    <div class="row">
-                                        <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
-                    <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
-                    <p>Mobile : <?=$userpro_mobile;?></p>
-                    <p<?=$limit_percentage_style_attr?>>Limit vs Salary: <?=$limit_percentage_display?></p>
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                            <ul class="breadcome-menu">
+                                <li><a href="index.php"><i class="fa-solid fa-house" style="font-size:12px;"></i> Admin</a> <span class="bread-slash">/</span></li>
+                                <li><a href="users.php">Users</a> <span class="bread-slash">/</span></li>
+                                <li><span class="bread-blod"><?= htmlspecialchars($userpro_name) ?> (<?= htmlspecialchars($userpro_rcid) ?>)</span></li>
+                            </ul>
+                        </div>
                     </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                        <?php $account_manager = towquery("SELECT * FROM `account_manager` WHERE id=$userpro_assign_account_manager");
-                        $account_manager = towfetch($account_manager);
-                        ?>
-                        <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
-                        $recovery_officer = towfetch($recovery_officer);
-                        ?>
-                    <p>Account Manager : <?=isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?> </p><p>Recovery Officer : <?=isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';?></p>
-                    <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
-                    <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                    $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
-                    $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                    $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
-                    $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                    $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
-                    ?>
-                    <p>Creditlab score<span class="bread-slash">:</span> <span class="bread-blod"><?=$userpro_credit_score?></span></p>
-                    </div>
-                                        <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <p>Pan : Y</p>
-                    <p>Enach : <?=$userpro_enach_label?></p>
-                    <p>adhar : Y</p>
-                    <p>Bank check : Y </p>
-                    <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
-                                                        if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
-                    </div></div>
+                </div>
+            </div>
+
+            <!-- Customer Dossier Hero Card -->
+            <?php
+            $account_manager = towfetch(towquery("SELECT * FROM `account_manager` WHERE id=" . (int)$userpro_assign_account_manager));
+            $recovery_officer = towfetch(towquery("SELECT * FROM `recovery_officer` WHERE id=" . (int)$userpro_assign_recovery_officer));
+            
+            $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=" . (int)$userpro_id));
+            $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? (float)$totalfls['total'] : 0.0;
+            
+            $member_label = 'Silver';
+            $member_bg = '#f1f5f9';
+            $member_fg = '#475569';
+            if ($userpro_member == 1) { $member_label = 'Gold'; $member_bg = '#fef3c7'; $member_fg = '#b45309'; }
+            elseif ($userpro_member == 2) { $member_label = 'Diamond'; $member_bg = '#e0f2fe'; $member_fg = '#0369a1'; }
+            elseif ($userpro_member == 3) { $member_label = 'Platinum'; $member_bg = '#f3e8ff'; $member_fg = '#7e22ce'; }
+            elseif ($userpro_member == 4) { $member_label = 'RISKY'; $member_bg = '#fee2e2'; $member_fg = '#b91c1c'; }
+            ?>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        <div class="profile-dossier-card">
+                            <div class="profile-dossier-header">
+                                <div class="profile-user-main">
+                                    <div class="profile-big-avatar">
+                                        <?= strtoupper(substr(trim($userpro_name !== '' ? $userpro_name : 'U'), 0, 1)) ?>
+                                    </div>
+                                    <div class="profile-user-titles">
+                                        <h2>
+                                            <?= htmlspecialchars($userpro_name) ?>
+                                            <?php 
+                                                if (!empty($userpro_loan)) { echo "<span title='Loan Active' style='color:#dc2626; font-size:16px;'>#</span>"; }
+                                                if (!empty($userpro_sloan)) { echo "<span title='Special Loan' style='color:#dc2626; font-size:16px;'>@</span>"; }
+                                            ?>
+                                        </h2>
+                                        <div class="profile-tag-badges">
+                                            <span class="badge-modern" style="background:#e0f2fe; color:#0369a1; font-family:monospace; font-size:12px;">
+                                                <i class="fa-solid fa-id-card-clip" style="margin-right:4px;"></i> <?= htmlspecialchars($userpro_rcid) ?>
+                                            </span>
+                                            <?= creditlab_status_badge($userpro_status) ?>
+                                            <span class="badge-modern" style="background:<?= $member_bg ?>; color:<?= $member_fg ?>; font-weight:700;">
+                                                <i class="fa-solid fa-gem" style="margin-right:3px;"></i> <?= $member_label ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <a href="http://wa.me/91<?= urlencode($userpro_mobile) ?>" target="_blank" class="btn btn-success" style="padding:6px 14px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fab fa-whatsapp" style="font-size:14px;"></i> WhatsApp
+                                    </a>
+                                    <a href="tel:<?= htmlspecialchars($userpro_mobile) ?>" class="btn btn-default" style="border:1px solid var(--cl-slate-200); padding:6px 14px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-phone" style="font-size:12px;"></i> Call
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="profile-dossier-grid">
+                                <!-- Contact & Registered -->
+                                <div class="profile-tile">
+                                    <div class="profile-tile-label"><i class="fa-solid fa-address-card" style="color:var(--cl-primary);"></i> Contact &amp; Onboarding</div>
+                                    <div class="profile-tile-row"><span class="k">Mobile:</span><span class="v" style="font-family:monospace;"><?= htmlspecialchars($userpro_mobile) ?></span></div>
+                                    <div class="profile-tile-row"><span class="k">Email:</span><span class="v" style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?= htmlspecialchars($userpro_email) ?></span></div>
+                                    <div class="profile-tile-row"><span class="k">Registered:</span><span class="v"><?= getDateTimeDiff($userpro_reg_date) ?></span></div>
+                                </div>
+
+                                <!-- Financial Health & Score -->
+                                <div class="profile-tile">
+                                    <div class="profile-tile-label"><i class="fa-solid fa-chart-line" style="color:#16a34a;"></i> Credit &amp; Eligibility</div>
+                                    <div class="profile-tile-row"><span class="k">CreditLab Score:</span><span class="v"><strong style="color:var(--cl-primary);"><?= htmlspecialchars((string)$userpro_credit_score) ?></strong></span></div>
+                                    <div class="profile-tile-row"><span class="k">Limit vs Salary:</span><span class="v"<?= $limit_percentage_style_attr ?>><?= $limit_percentage_display ?></span></div>
+                                    <div class="profile-tile-row"><span class="k">Total Repaid:</span><span class="v" style="color:#15803d;"><?= creditlab_currency($totalflss) ?></span></div>
+                                </div>
+
+                                <!-- Verification Status -->
+                                <div class="profile-tile">
+                                    <div class="profile-tile-label"><i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> Verification Checks</div>
+                                    <div class="profile-tile-row"><span class="k">PAN &amp; Aadhaar:</span><span class="v" style="color:#15803d;"><i class="fa-solid fa-circle-check"></i> Verified</span></div>
+                                    <div class="profile-tile-row"><span class="k">Bank Check:</span><span class="v" style="color:#15803d;"><i class="fa-solid fa-circle-check"></i> Verified</span></div>
+                                    <div class="profile-tile-row"><span class="k">eNACH:</span><span class="v"><span class="badge-modern" style="background:#f1f5f9; color:#334155; font-size:11px;"><?= htmlspecialchars((string)$userpro_enach_label) ?></span></span></div>
+                                </div>
+
+                                <!-- Assigned Staff -->
+                                <div class="profile-tile">
+                                    <div class="profile-tile-label"><i class="fa-solid fa-user-tie" style="color:#7c3aed;"></i> Portfolio Assignment</div>
+                                    <div class="profile-tile-row"><span class="k">Account Mgr:</span><span class="v"><?= isset($account_manager['name']) ? htmlspecialchars($account_manager['name']) : '<span style="color:#94a3b8;">Not Assigned</span>' ?></span></div>
+                                    <div class="profile-tile-row"><span class="k">Recovery Officer:</span><span class="v"><?= isset($recovery_officer['name']) ? htmlspecialchars($recovery_officer['name']) : '<span style="color:#94a3b8;">Not Assigned</span>' ?></span></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <div class="single-pro-review-area mt-t-30 mg-b-15">
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                             <div class="product-payment-inner-st">
-                                <ul id="myTabedu1" class="tab-review-design">
-                                    <li class="active" style="margin-bottom:30px;"><a href="#Personal" data-toggle="tab">Personal</a></li>
-                                    <!--<li><a h data-toggle="tab"ref="#additional"> additional</a></li>-->
-                                    <li><a href="#INFORMATION" data-toggle="tab">Documents</a></li>
-                                    <li><a href="#Bank" data-toggle="tab">Bank Information</a></li>
-                                    <li><a href="#Reference" data-toggle="tab">Reference</a></li>
-                                    <li><a href="#login_data" data-toggle="tab">Login Data</a></li>
-                                    <li><a href="#profile_detail" data-toggle="tab">Profile Detail</a></li>
-                                    <li><a href="#user_contact" data-toggle="tab">Number Contact</a></li>
-                                    <li><a href="#contact" data-toggle="tab">Contact</a></li>
-                                    <li><a href="#loan" data-toggle="tab">Apply Loan</a></li>
-                                    <li><a href="#oldloan" data-toggle="tab">All Loan</a></li>
-                                    <li><a href="#transaction_details" data-toggle="tab">Transaction Details</a></li>
-                                    <li><a href="#Validation" data-toggle="tab">Validation</a></li>
-                                    <li><a href="#follow_up" data-toggle="tab">Follow Up</a></li>
-                                    <li><a href="#note" data-toggle="tab">Note</a></li>
-                                    <li><a href="#sms" data-toggle="tab">SMS</a></li>
-                                    <li><a href="#cibil_analysis" data-toggle="tab">CIBIL ANALYSIS</a></li>
-                                    <li><a href="#pan_analysis" data-toggle="tab">PAN ANALYSIS</a></li>
-                                    <li><a href="#adhar_analysis" data-toggle="tab">Adhar ANALYSIS</a></li>
-                                    <li><a href="#bank_analysis" data-toggle="tab">Bank Statement ANALYSIS</a></li>
-                                    <li><a href="#mail" data-toggle="tab">Mail</a></li>
-                                    <li><a href="#manager" data-toggle="tab">Account manager</a></li>
-                                    <li><a href="#pg_link" data-toggle="tab">PG link</a></li>
-                                    <li><a href="#payment" data-toggle="tab">payment</a></li>
-                                </ul>
+                                <div class="profile-tab-scroll">
+                                    <ul id="myTabedu1" class="tab-review-design">
+                                        <li class="active"><a href="#Personal" data-toggle="tab"><i class="fa-solid fa-user"></i> Personal</a></li>
+                                        <li><a href="#INFORMATION" data-toggle="tab"><i class="fa-solid fa-file"></i> Documents</a></li>
+                                        <li><a href="#Bank" data-toggle="tab"><i class="fa-solid fa-building-columns"></i> Bank Info</a></li>
+                                        <li><a href="#Reference" data-toggle="tab"><i class="fa-solid fa-address-book"></i> Reference</a></li>
+                                        <li><a href="#login_data" data-toggle="tab"><i class="fa-solid fa-right-to-bracket"></i> Login Data</a></li>
+                                        <li><a href="#profile_detail" data-toggle="tab"><i class="fa-solid fa-id-card"></i> Profile Detail</a></li>
+                                        <li><a href="#user_contact" data-toggle="tab"><i class="fa-solid fa-phone"></i> Contacts</a></li>
+                                        <li><a href="#contact" data-toggle="tab"><i class="fa-solid fa-address-card"></i> Contact Logs</a></li>
+                                        <li><a href="#loan" data-toggle="tab"><i class="fa-solid fa-plus-circle"></i> Apply Loan</a></li>
+                                        <li><a href="#oldloan" data-toggle="tab"><i class="fa-solid fa-file-invoice-dollar"></i> All Loans</a></li>
+                                        <li><a href="#transaction_details" data-toggle="tab"><i class="fa-solid fa-receipt"></i> Transactions</a></li>
+                                        <li><a href="#Validation" data-toggle="tab"><i class="fa-solid fa-shield-halved"></i> Validation</a></li>
+                                        <li><a href="#follow_up" data-toggle="tab"><i class="fa-solid fa-phone-volume"></i> Follow Up</a></li>
+                                        <li><a href="#note" data-toggle="tab"><i class="fa-solid fa-note-sticky"></i> Notes</a></li>
+                                        <li><a href="#sms" data-toggle="tab"><i class="fa-solid fa-comment-sms"></i> SMS</a></li>
+                                        <li><a href="#cibil_analysis" data-toggle="tab"><i class="fa-solid fa-chart-line"></i> CIBIL</a></li>
+                                        <li><a href="#pan_analysis" data-toggle="tab"><i class="fa-solid fa-id-badge"></i> PAN</a></li>
+                                        <li><a href="#adhar_analysis" data-toggle="tab"><i class="fa-solid fa-fingerprint"></i> Aadhaar</a></li>
+                                        <li><a href="#bank_analysis" data-toggle="tab"><i class="fa-solid fa-chart-simple"></i> Bank Statement</a></li>
+                                        <li><a href="#mail" data-toggle="tab"><i class="fa-solid fa-envelope"></i> Mail</a></li>
+                                        <li><a href="#manager" data-toggle="tab"><i class="fa-solid fa-briefcase"></i> Account Manager</a></li>
+                                        <li><a href="#pg_link" data-toggle="tab"><i class="fa-solid fa-link"></i> PG Link</a></li>
+                                        <li><a href="#payment" data-toggle="tab"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+                                    </ul>
+                                </div>
                                 <div id="myTabContent" class="tab-content custom-product-edit">
                                     <div class="product-tab-list tab-pane fade active in" id="Personal">
                                         <div class="row">

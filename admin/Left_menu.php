@@ -4,7 +4,7 @@ $counts = towquery("
     SELECT
         (SELECT COUNT(*) FROM `pay_ref`) AS loanclearance_count,
         (SELECT COUNT(*) FROM `user` WHERE `active`=1 AND `verify`=0) AS newusers_count,
-        (SELECT COUNT(*) FROM `user` WHERE `verify`=0) AS approved_users_count,
+        (SELECT COUNT(*) FROM `user` WHERE `verify`=1 AND `status`='Approved') AS approved_users_count,
         (SELECT COUNT(DISTINCT uid) FROM `loan_apply` WHERE `status`='pending') AS applied_loans_count,
         (SELECT COUNT(DISTINCT loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND user.sloan > 0) AS repeat_loan_d_count,
         (SELECT COUNT(DISTINCT loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='cancel') AS cancelled_loans_count,
@@ -12,99 +12,242 @@ $counts = towquery("
         (SELECT COUNT(DISTINCT uid) FROM `loan_apply` WHERE `status`='follow up') AS follow_up_count,
         (SELECT COUNT(loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND sloan=0) AS disbursal_count,
         (SELECT COUNT(DISTINCT uid) FROM loan_apply WHERE `status`='account manager') AS account_manager_count,
-        (SELECT COUNT(DISTINCT uid) FROM loan_apply WHERE `status`='recovery officer') AS recovery_officer_count
+        (SELECT COUNT(DISTINCT uid) FROM loan_apply WHERE `status`='recovery officer') AS recovery_officer_count,
+        (SELECT COUNT(*) FROM `loan` WHERE `advance_amount` > 0 AND (`status_log` != 'cleared' OR `status_log` IS NULL)) AS part_payment_count
 ");
 
 // Fetch the data into an associative array
 $counts_data = towfetch($counts);
+
+if (!function_exists('cl_nav_active')) {
+    function cl_nav_active($file, $tab = null) {
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if ($tab !== null) {
+            return (isset($_GET['tab']) && $_GET['tab'] === $tab) ? 'active' : '';
+        }
+        if ($file === 'index.php') {
+            return ($uri === '/admin/' || $uri === '/admin/index.php' || (strpos($uri, 'index.php') !== false && !isset($_GET['tab']))) ? 'active' : '';
+        }
+        return (strpos($uri, $file) !== false) ? 'active' : '';
+    }
+}
 ?>
 
-<div class="left-sidebar-pro" style="background-color: #ddd !important;">
+<div class="left-sidebar-pro">
     <nav id="sidebar">
         <div class="sidebar-header">
-            <!-- <a href="../index.php"><img src="https://creditlab.in/assets/img/logo.jpeg" class="black-logo" style="width:160px;" alt="Logo"></a>
-            <strong><a href="index.php"><img src="img/logo/logosnaa.png" alt="" /></a></strong> -->
+            <a href="index.php" class="brand-link">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <div class="brand-name">CreditLab</div>
+                </div>
+                <span class="brand-badge">ADMIN</span>
+            </a>
         </div>
         <div class="left-custom-menu-adp-wrap sidebar-menu-scroll">
             <nav class="sidebar-nav left-sidebar-menu-pro">
                 <ul class="metismenu" id="menu1">
-                    <li>
-                        <a href="index.php" <?php if($_SERVER['REQUEST_URI'] == "/admin/index.php"){ ?> style="background: whitesmoke;" <?php }?>>
-                            <span> <i class="fas fa-tachometer-alt"></i></span>
+                    <!-- SECTION: OVERVIEW -->
+                    <li class="sidebar-section-title">Overview</li>
+                    <li class="<?= cl_nav_active('index.php') ?>">
+                        <a href="index.php">
+                            <i class="fa-solid fa-gauge-high"></i>
                             <span class="mini-click-non">Dashboard</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="loanclearance.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loanclearance.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Loan clearance (<?= $counts_data['loanclearance_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('index.php', 'performance') ?>">
+                        <a href="index.php?tab=performance">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span class="mini-click-non">Performance</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="newusers.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/newusers.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Just registered (<?= $counts_data['newusers_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('overview.php') ?>">
+                        <a href="overview.php">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span class="mini-click-non">Portfolio Overview</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="apnlt.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/apnlt.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Existing no loan taken</span></a>
+
+                    <!-- SECTION: LOAN PIPELINE -->
+                    <li class="sidebar-section-title">Loan Pipeline</li>
+                    <li class="<?= cl_nav_active('newloan.php') ?>">
+                        <a href="newloan.php">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            <span class="mini-click-non">Applied Loans</span>
+                            <?php if (!empty($counts_data['applied_loans_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['applied_loans_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="users.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/users.php"){ ?> style="background: whitesmoke;" <?php }?>> <i class="fas fa-user-alt"></i> <span class="mini-click-non">Approved Users (<?= $counts_data['approved_users_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('disbursal.php') ?>">
+                        <a href="disbursal.php">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span class="mini-click-non">Disbursal</span>
+                            <?php if (!empty($counts_data['disbursal_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['disbursal_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="newloan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/newloan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Applied Loans (<?= $counts_data['applied_loans_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('repeat_loan_d.php') ?>">
+                        <a href="repeat_loan_d.php">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span class="mini-click-non">Repeat Loan D</span>
+                            <?php if (!empty($counts_data['repeat_loan_d_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['repeat_loan_d_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="repeat_loan_d.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/repeat_loan_d.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Repeat Loan D (<?= $counts_data['repeat_loan_d_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('loanclearance.php') ?>">
+                        <a href="loanclearance.php">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span class="mini-click-non">Loan Clearance</span>
+                            <?php if (!empty($counts_data['loanclearance_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['loanclearance_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="cancel_loan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/cancel_loan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Cancelled Loan (<?= $counts_data['cancelled_loans_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('part_payment.php') ?>">
+                        <a href="part_payment.php">
+                            <i class="fa-solid fa-receipt"></i>
+                            <span class="mini-click-non">Part Payment</span>
+                            <?php if (!empty($counts_data['part_payment_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['part_payment_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="hold_loan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/hold_loan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Hold Loan (<?= $counts_data['hold_loans_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('follow_up.php') ?>">
+                        <a href="follow_up.php">
+                            <i class="fa-solid fa-phone-volume"></i>
+                            <span class="mini-click-non">Follow Up</span>
+                            <?php if (!empty($counts_data['follow_up_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['follow_up_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="part_payment.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/part_payment.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Part Payment (<?= $counts_data['cancelled_loans_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('hold_loan.php') ?>">
+                        <a href="hold_loan.php">
+                            <i class="fa-solid fa-circle-pause"></i>
+                            <span class="mini-click-non">Hold Loans</span>
+                            <?php if (!empty($counts_data['hold_loans_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['hold_loans_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="follow_up.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/follow_up.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Follow Up (<?= $counts_data['follow_up_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('cancel_loan.php') ?>">
+                        <a href="cancel_loan.php">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span class="mini-click-non">Cancelled Loans</span>
+                            <?php if (!empty($counts_data['cancelled_loans_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['cancelled_loans_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="disbursal.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/disbursal.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Disbursal (<?= $counts_data['disbursal_count']; ?>)</span></a>
+
+                    <!-- SECTION: COLLECTIONS & RECOVERY -->
+                    <li class="sidebar-section-title">Collections &amp; Recovery</li>
+                    <li class="<?= cl_nav_active('account_manager.php') ?>">
+                        <a href="account_manager.php">
+                            <i class="fa-solid fa-briefcase"></i>
+                            <span class="mini-click-non">Account Manager</span>
+                            <?php if (!empty($counts_data['account_manager_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['account_manager_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="loan_slider.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loan_slider.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Loan slider</span></a>
+                    <li class="<?= cl_nav_active('recovery_officer.php') ?>">
+                        <a href="recovery_officer.php">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span class="mini-click-non">Recovery Officer</span>
+                            <?php if (!empty($counts_data['recovery_officer_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['recovery_officer_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="dynamic_search.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/dynamic_search.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Dynamic Search</span></a>
+
+                    <!-- SECTION: USERS & CUSTOMERS -->
+                    <li class="sidebar-section-title">Users &amp; Customers</li>
+                    <li class="<?= cl_nav_active('users.php') ?>">
+                        <a href="users.php">
+                            <i class="fa-solid fa-user-check"></i>
+                            <span class="mini-click-non">Approved Users</span>
+                            <?php if (!empty($counts_data['approved_users_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['approved_users_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="account_manager.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/account_manager.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Account Manager (<?= $counts_data['account_manager_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('newusers.php') ?>">
+                        <a href="newusers.php">
+                            <i class="fa-solid fa-user-clock"></i>
+                            <span class="mini-click-non">Just Registered</span>
+                            <?php if (!empty($counts_data['newusers_count'])): ?>
+                                <span class="nav-count-badge"><?= (int)$counts_data['newusers_count']; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
-                    <li>
-                        <a href="recovery_officer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/recovery_officer.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Recovery Officer (<?= $counts_data['recovery_officer_count']; ?>)</span></a>
+                    <li class="<?= cl_nav_active('apnlt.php') ?>">
+                        <a href="apnlt.php">
+                            <i class="fa-solid fa-user-slash"></i>
+                            <span class="mini-click-non">Existing (No Loan)</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="add_user.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/add_user.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Users</span></a>
+                    <li class="<?= cl_nav_active('add_user.php') ?>">
+                        <a href="add_user.php">
+                            <i class="fa-solid fa-users-gear"></i>
+                            <span class="mini-click-non">Manage Staff Users</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="email.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/email.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Email</span></a>
+
+                    <!-- SECTION: TOOLS & SYSTEM -->
+                    <li class="sidebar-section-title">Tools &amp; Reports</li>
+                    <li class="<?= cl_nav_active('downloader.php') ?>">
+                        <a href="downloader.php">
+                            <i class="fa-solid fa-cloud-arrow-down"></i>
+                            <span class="mini-click-non">Downloader / Reports</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="bank_statistics.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/bank_statistics.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Bank Statistics</span></a>
+                    <li class="<?= cl_nav_active('dynamic_search.php') ?>">
+                        <a href="dynamic_search.php">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            <span class="mini-click-non">Dynamic Search</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="index.php?tab=performance" aria-expanded="false" <?php if(isset($_GET['tab']) && $_GET['tab'] === 'performance'){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-line-chart"></i> <span class="mini-click-non">Performance Dashboard</span></a>
+                    <li class="<?= cl_nav_active('bank_statistics.php') ?>">
+                        <a href="bank_statistics.php">
+                            <i class="fa-solid fa-building-columns"></i>
+                            <span class="mini-click-non">Bank Statistics</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
+                    <li class="<?= cl_nav_active('loan_slider.php') ?>">
+                        <a href="loan_slider.php">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span class="mini-click-non">Loan Slider</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="downloader.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/downloader.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-download"></i> <span class="mini-click-non">Downloader</span></a>
+                    <li class="<?= cl_nav_active('email.php') ?>">
+                        <a href="email.php">
+                            <i class="fa-solid fa-envelope"></i>
+                            <span class="mini-click-non">Email Center</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="logs.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/logs.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-file-lines"></i> <span class="mini-click-non">Logs</span></a>
+                    <li class="<?= cl_nav_active('logs.php') ?>">
+                        <a href="logs.php">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            <span class="mini-click-non">System Logs</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="sql.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/sql.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-database"></i> <span class="mini-click-non">SQL</span></a>
+                    <li class="<?= cl_nav_active('sql.php') ?>">
+                        <a href="sql.php">
+                            <i class="fa-solid fa-database"></i>
+                            <span class="mini-click-non">SQL Console</span>
+                        </a>
                     </li>
-                    <li>
-                        <a href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
+                    <li class="<?= cl_nav_active('settings.php') ?>">
+                        <a href="settings.php">
+                            <i class="fa-solid fa-gear"></i>
+                            <span class="mini-click-non">Settings</span>
+                        </a>
                     </li>
                 </ul>
             </nav>

@@ -1,98 +1,185 @@
+<?php
+// Use $counts_data from Left_menu.php if present; fallback to avoid notice
+if (!isset($counts_data) || !is_array($counts_data)) {
+    $counts = towquery("
+        SELECT
+            (SELECT COUNT(*) FROM `pay_ref`) AS loanclearance_count,
+            (SELECT COUNT(*) FROM `user` WHERE `active`=1 AND `verify`=0) AS newusers_count,
+            (SELECT COUNT(*) FROM `user` WHERE `verify`=1 AND `status`='Approved') AS approved_users_count,
+            (SELECT COUNT(DISTINCT uid) FROM `loan_apply` WHERE `status`='pending') AS applied_loans_count,
+            (SELECT COUNT(DISTINCT loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND user.sloan > 0) AS repeat_loan_d_count,
+            (SELECT COUNT(DISTINCT loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='cancel') AS cancelled_loans_count,
+            (SELECT COUNT(DISTINCT loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE user.status='HOLD') AS hold_loans_count,
+            (SELECT COUNT(DISTINCT uid) FROM `loan_apply` WHERE `status`='follow up') AS follow_up_count,
+            (SELECT COUNT(loan_apply.uid) FROM loan_apply LEFT JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND sloan=0) AS disbursal_count,
+            (SELECT COUNT(DISTINCT uid) FROM loan_apply WHERE `status`='account manager') AS account_manager_count,
+            (SELECT COUNT(DISTINCT uid) FROM loan_apply WHERE `status`='recovery officer') AS recovery_officer_count,
+            (SELECT COUNT(*) FROM `loan` WHERE `advance_amount` > 0 AND (`status_log` != 'cleared' OR `status_log` IS NULL)) AS part_payment_count
+    ");
+    $counts_data = towfetch($counts);
+}
+?>
 <div class="mobile-menu-area">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="mobile-menu">
-                                <nav id="dropdown">
-                                   <ul class="metismenu" id="menu1">
-                        <li>
-                            <a href="index.php" <?php if($_SERVER['REQUEST_URI'] == "/admin/index.php"){ ?> style="background: whitesmoke;" <?php }?>>
-                                <span> <i class="fas fa-tachometer-alt"></i></span>
-                                 <span class="mini-click-non" >Dashboard</span>
-                            </a>
-                        </li>
-                        <?php $regicount = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=0");?>
-                        <li>
-                            <a class="" href="newusers.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/newusers.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Just registered (<?=townum($regicount);?>)</span></a>
-                            
-                        </li> 
-                        <li>
-                            <a class="" href="apnlt.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/apnlt.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Existing no loan taken</span></a>
-                            
-                        </li>
-                        <?php $appcount = towquery("SELECT * FROM `user` WHERE `active`=1 AND `verify`=1 AND status='Approved'");?>
-                        <li>
-                           <a class="" href="users.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/users.php"){ ?> style="background: whitesmoke;" <?php }?>> <i class="fas fa-user-alt"></i> <span class="mini-click-non">Approved Users (<?=townum($appcount);?>)</span></a>
-                        </li>
-                        <?php $appicount = towquery("SELECT DISTINCT uid FROM `loan_apply` WHERE `status`='pending'");?>
-                         <li>
-                            <a class="" href="newloan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/newloan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Applied Loans (<?=townum($appicount);?>)</span></a>
-                        </li>
-                        <?php $rldcount = towquery("SELECT DISTINCT uid FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND user.sloan > 0");?>
-                         <li>
-                            <a class="" href="repeat_loan_d.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/repeat_loan_d.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Repeat Loan D (<?=townum($rldcount);?>)</span></a>
-                        </li>
-                        <?php $cancount = towquery("SELECT DISTINCT uid FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='cancel'");?>
-                         <li>
-                            <a class="" href="cancel_loan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/cancel_loan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">cancelled Loan (<?=townum($cancount);?>)</span></a>
-                        </li>
-                        <?php $cancount = towquery("SELECT DISTINCT uid FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE user.status='HOLD'");?>
-                         <li>
-                            <a class="" href="hold_loan.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/hold_loan.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Hold Loan (<?=townum($cancount);?>)</span></a>
-                        </li>
-                        <?php $cancount = towquery("SELECT DISTINCT uid FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='cancel'");?>
-                         <li>
-                            <a class="" href="part_payment.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/part_payment.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="fa fa-user-plus"></span> <span class="mini-click-non">Part Payment (<?=townum($cancount);?>)</span></a>
-                        </li>
-                        <?php $follow_up = towquery("SELECT DISTINCT uid FROM `loan_apply` WHERE `status`='follow up'");?>
-                        <li>
-                            <a class="" href="follow_up.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/follow_up.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Follow Up (<?=townum($follow_up);?>)</span></a>
-                        </li>
-                        <?php $disbursal = towquery("SELECT DISTINCT uid FROM `loan_apply` WHERE `status`='disbursal'");?>
-                         <li>
-                            <a class="" href="disbursal.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/disbursal.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Disbursal (<?=townum($disbursal);?>)</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="loan_slider.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/loan_slider.php"){ ?> style="background: whitesmoke;" <?php }?>><i class="fas fa-landmark"></i> <span class="mini-click-non">Loan slider</span></a>
-                        </li>
-                         <li>
-                            <a class="" href="dynamic_search.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/dynamic_search.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Dynamic Search</span></a>
-                        </li>
-                        <?php $account_manager = towquery("SELECT DISTINCT uid FROM `loan_apply` WHERE `status`='account manager'");?>
-                        <li>
-                            <a class="" href="account_manager.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/account_manager.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Account Manager (<?=townum($account_manager);?>)</span></a>
-                        </li>
-                        <?php $recovery_officer = towquery("SELECT DISTINCT uid FROM `loan_apply` WHERE `status`='recovery officer'");?>
-                        <li>
-                            <a class="" href="recovery_officer.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/recovery_officer.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Recovery Officer (<?=townum($recovery_officer);?>)</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="add_user.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/add_user.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Users</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="email.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/email.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Email</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="bank_statistics.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/bank_statistics.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Bank Statistics</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="list_of_admins.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/list_of_admins.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">List of admins</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="overview.php" aria-expanded="false" <?php if($_SERVER['REQUEST_URI'] == "/admin/overview.php"){ ?> style="background: whitesmoke;" <?php }?>><span class="educate-icon educate-library icon-wrap"></span> <span class="mini-click-non">Overview</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="sql.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/sql.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-database"></i> <span class="mini-click-non">SQL</span></a>
-                        </li>
-                        <li>
-                            <a class="" href="settings.php" aria-expanded="false" <?php if(strpos($_SERVER['REQUEST_URI'], '/admin/settings.php') !== false){ ?> style="background: whitesmoke;" <?php }?>><i class="fa fa-cog"></i> <span class="mini-click-non">Settings</span></a>
-                        </li>
-                        
-                        
-                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                <div class="mobile-menu">
+                    <nav id="dropdown">
+                        <ul class="metismenu" id="menu-mobile">
+                            <li>
+                                <a href="index.php">
+                                    <i class="fa-solid fa-gauge-high"></i>
+                                    <span class="mini-click-non">Dashboard</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="index.php?tab=performance">
+                                    <i class="fa-solid fa-chart-pie"></i>
+                                    <span class="mini-click-non">Performance</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="overview.php">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                    <span class="mini-click-non">Portfolio Overview</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="newloan.php">
+                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                                    <span class="mini-click-non">Applied Loans (<?= (int)($counts_data['applied_loans_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="disbursal.php">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    <span class="mini-click-non">Disbursal (<?= (int)($counts_data['disbursal_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="repeat_loan_d.php">
+                                    <i class="fa-solid fa-arrows-rotate"></i>
+                                    <span class="mini-click-non">Repeat Loan D (<?= (int)($counts_data['repeat_loan_d_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="loanclearance.php">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span class="mini-click-non">Loan Clearance (<?= (int)($counts_data['loanclearance_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="part_payment.php">
+                                    <i class="fa-solid fa-receipt"></i>
+                                    <span class="mini-click-non">Part Payment (<?= (int)($counts_data['part_payment_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="follow_up.php">
+                                    <i class="fa-solid fa-phone-volume"></i>
+                                    <span class="mini-click-non">Follow Up (<?= (int)($counts_data['follow_up_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="hold_loan.php">
+                                    <i class="fa-solid fa-circle-pause"></i>
+                                    <span class="mini-click-non">Hold Loans (<?= (int)($counts_data['hold_loans_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="cancel_loan.php">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                    <span class="mini-click-non">Cancelled Loans (<?= (int)($counts_data['cancelled_loans_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="account_manager.php">
+                                    <i class="fa-solid fa-briefcase"></i>
+                                    <span class="mini-click-non">Account Manager (<?= (int)($counts_data['account_manager_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="recovery_officer.php">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                    <span class="mini-click-non">Recovery Officer (<?= (int)($counts_data['recovery_officer_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="users.php">
+                                    <i class="fa-solid fa-user-check"></i>
+                                    <span class="mini-click-non">Approved Users (<?= (int)($counts_data['approved_users_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="newusers.php">
+                                    <i class="fa-solid fa-user-clock"></i>
+                                    <span class="mini-click-non">Just Registered (<?= (int)($counts_data['newusers_count'] ?? 0); ?>)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="apnlt.php">
+                                    <i class="fa-solid fa-user-slash"></i>
+                                    <span class="mini-click-non">Existing (No Loan)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="add_user.php">
+                                    <i class="fa-solid fa-users-gear"></i>
+                                    <span class="mini-click-non">Manage Staff Users</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="downloader.php">
+                                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                                    <span class="mini-click-non">Downloader / Reports</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="dynamic_search.php">
+                                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                                    <span class="mini-click-non">Dynamic Search</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="bank_statistics.php">
+                                    <i class="fa-solid fa-building-columns"></i>
+                                    <span class="mini-click-non">Bank Statistics</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="loan_slider.php">
+                                    <i class="fa-solid fa-sliders"></i>
+                                    <span class="mini-click-non">Loan Slider</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="email.php">
+                                    <i class="fa-solid fa-envelope"></i>
+                                    <span class="mini-click-non">Email Center</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="logs.php">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <span class="mini-click-non">System Logs</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="sql.php">
+                                    <i class="fa-solid fa-database"></i>
+                                    <span class="mini-click-non">SQL Console</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="settings.php">
+                                    <i class="fa-solid fa-gear"></i>
+                                    <span class="mini-click-non">Settings</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             </div>
+        </div>
+    </div>
+</div>

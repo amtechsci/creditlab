@@ -35,7 +35,9 @@ extract(creditlab_staff_head_count_queries());
     <!-- <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico"> -->
     <!-- Google Fonts
 		============================================ -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,700,900" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Bootstrap CSS
 		============================================ -->
     <link rel="stylesheet" href="css/bootstrap.min.css">
@@ -85,6 +87,9 @@ extract(creditlab_staff_head_count_queries());
 		============================================ -->
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/admin-mobile.css">
+    <!-- modern admin UI CSS
+		============================================ -->
+    <link rel="stylesheet" href="css/modern_admin.css">
     <!-- modernizr JS
 		============================================ -->
     <script src="js/vendor/modernizr-2.8.3.min.js"></script>
