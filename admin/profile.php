@@ -1,16 +1,10 @@
-    <?php
-    // ini_set('display_errors', 1);
-    // ini_set('display_startup_errors', 1);
-    // error_reporting(E_ALL);
+<?php
     ob_start(); // Start output buffering to prevent header issues
-
-
-
-    // POST data processing - debug removed
 
     // Authentication processing
 
     include_once 'head.php';
+    require_once __DIR__ . '/../lib/admin_ui.php';
     require_once __DIR__ . '/../lib/zxc_mail.php';
     require_once __DIR__ . '/../lib/http_fetch.php';
     require_once __DIR__ . '/../lib/auth.php';
@@ -1148,8 +1142,8 @@
                                         <h2>
                                             <?= htmlspecialchars($userpro_name) ?>
                                             <?php 
-                                                if (!empty($userpro_loan)) { echo "<span title='Loan Active' style='color:#dc2626; font-size:16px;'>#</span>"; }
-                                                if (!empty($userpro_sloan)) { echo "<span title='Special Loan' style='color:#dc2626; font-size:16px;'>@</span>"; }
+                                                if (!empty($userpro_loan)) { echo '<span class="badge-modern badge-rejected" style="font-size:11px; vertical-align:middle; margin-left:6px;" title="Loan Active"><i class="fa-solid fa-bolt"></i> Active Loan</span>'; }
+                                                if (!empty($userpro_sloan)) { echo '<span class="badge-modern badge-hold" style="font-size:11px; vertical-align:middle; margin-left:6px;" title="Special Loan"><i class="fa-solid fa-star"></i> Special Loan</span>'; }
                                             ?>
                                         </h2>
                                         <div class="profile-tag-badges">
@@ -1185,7 +1179,7 @@
                                 <!-- Financial Health & Score -->
                                 <div class="profile-tile">
                                     <div class="profile-tile-label"><i class="fa-solid fa-chart-line" style="color:#16a34a;"></i> Credit &amp; Eligibility</div>
-                                    <div class="profile-tile-row"><span class="k">CreditLab Score:</span><span class="v"><strong style="color:var(--cl-primary);"><?= htmlspecialchars((string)$userpro_credit_score) ?></strong></span></div>
+                                    <div class="profile-tile-row"><span class="k">CreditLab Score:</span><span class="v"><strong style="color:var(--cl-brand); font-size:13.5px;"><i class="fa-solid fa-gauge-high" style="font-size:11px; margin-right:2px;"></i> <?= htmlspecialchars((string)$userpro_credit_score) ?></strong></span></div>
                                     <div class="profile-tile-row"><span class="k">Limit vs Salary:</span><span class="v"<?= $limit_percentage_style_attr ?>><?= $limit_percentage_display ?></span></div>
                                     <div class="profile-tile-row"><span class="k">Total Repaid:</span><span class="v" style="color:#15803d;"><?= creditlab_currency($totalflss) ?></span></div>
                                 </div>
@@ -2438,7 +2432,7 @@
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="oldloan">
                                         <div class="table-responsive">
-            <table class="table table-bordered" >
+            <table class="table table-bordered modern-table">
             <thead class="thead-light">
                 <tr>                
                                             <th>Loan ID</th>        
@@ -2462,7 +2456,7 @@
                                             <th>Paid Amount</th>       
                                             <th>cleared date</th>    
                                             <th>DPD</th>  
-                                            <td>Auto pay</td>
+                                            <th>Auto pay</th>
                                         </tr>
             </thead>
             <tbody>
@@ -2533,7 +2527,7 @@
                     
                 }
     ?>
-                                        <form action="" method="post"><tr>
+                                        <tr>
                                             <td>CLL<?=$usersd_lid?><?php if (!empty($usersd_paid_via_agency_name)) { echo ' <small class="text-muted">(' . htmlspecialchars($usersd_paid_via_agency_name) . ')</small>'; } ?></td>
                                             <td>
                                                 <?=$usersd_processed_date?>
@@ -2578,14 +2572,32 @@
                                             <td></td>
                                             <td></td>
                                             <?php }?>
-                                            <td <?php if($usersd_action == "no data"){ ?>class="bg-success" <?php }?>><?=$usersd_status_log?></td>
+                                            <td><?= creditlab_status_badge($usersd_status_log) ?></td>
                                             <td><?php 
                                             $paid_amt = towquery("SELECT SUM(transaction_amount) AS paid_amt FROM `transaction_details` WHERE cllid='".$usersd_lid."' AND transaction_flow IN ('firstemi','part','full','secondemi','preclose')"); 
                                             $paid_amtf = towfetch($paid_amt); 
                                             echo isset($paid_amtf['paid_amt']) ? $paid_amtf['paid_amt'] : 0;
                                             ?></td>
                                             <td><?=$usersd_cleard_date?></td>
-                                            <td><?php $dpd = creditlab_calculate_dpd(['lid' => $usersd_lid, 'processed_date' => $usersd_processed_date, 'is_emi' => $usersd_is_emi, 'total_time' => $usersd_total_time ?? 0, 'loan_apply_days' => $loan_days, 'status_log' => $usersd_status_log, 'action' => $usersd_action ?? '', 'cleard_date' => $usersd_cleard_date ?? '']); echo $dpd; ?></td>
+                                            <td><?php 
+                                            $dpd = creditlab_calculate_dpd([
+                                                'lid' => $usersd_lid, 
+                                                'processed_date' => $usersd_processed_date, 
+                                                'is_emi' => $usersd_is_emi, 
+                                                'total_time' => $usersd_total_time ?? 0, 
+                                                'loan_apply_days' => $loan_days, 
+                                                'status_log' => $usersd_status_log, 
+                                                'action' => $usersd_action ?? '', 
+                                                'cleard_date' => $usersd_cleard_date ?? ''
+                                            ]);
+                                            if ($dpd <= 0) {
+                                                echo '<span class="badge-modern badge-approved">' . (int)$dpd . ' DPD</span>';
+                                            } elseif ($dpd <= 30) {
+                                                echo '<span class="badge-modern badge-hold">' . (int)$dpd . ' DPD</span>';
+                                            } else {
+                                                echo '<span class="badge-modern badge-rejected">' . (int)$dpd . ' DPD</span>';
+                                            }
+                                            ?></td>
                                             <td><?php 
                                             if($usersd_enach_request == 0 and $usersd_status_log == 'account manager'){ 
                                                 echo '<a href="/payment/zzenach.php?lid='.$usersd_lid.'" class="btn btn-primary btn-sm">Request E-NACH</a>';
@@ -2608,7 +2620,7 @@
                                                 echo '<span class="badge badge-secondary">N/A</span>';
                                             }
                                             ?></td>
-                                        </tr></form>
+                                        </tr>
                                     <?php } ?>
                 </tbody>
         </table>
@@ -2616,7 +2628,7 @@
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="transaction_details">
                                         <div class="table-responsive">
-            <table class="table table-bordered" >
+            <table class="table table-bordered modern-table">
             <thead class="thead-light">
                 <tr>                
                                             <th>CLL ID</th>        
@@ -2637,23 +2649,31 @@
                                             <td><?=$users_transaction_flow?></td>
                                         </tr>
                                     <?php } ?>
-                                    <form action="" method="post"><tr>
-                                            <td><input type="text" name="cllid" required></td>
-                                            <td><input type="text" name="transaction_number" required></td>
-                                            <td><input type="datetime-local" name="transaction_date" value="<?=date('Y-m-d\TH:i')?>" required></td>
-                                            <td><input type="text" name="transaction_amount" required></td>
-                                            <td><select name="transaction_flow" required>
-                                                <option value="creditlab To Customer">creditlab To Customer</option>
-                                                <option value="preclose">Pre Close EMI</option>
-                                                <option value="firstemi">First EMI</option>
-                                                <option value="secondemi">Second EMI</option>
-                                                <option value="full">Full payment</option>
-                                                <option value="renew">Renew Payment</option>
-                                                <option value="part">Part Payment</option>
-                                                <option value="settlement">Settlement</option>
-                                            </select></td>
-                                        </tr>
-                                        <button class="btn btn-" name="transaction">Save</button></form>
+                                    <form action="" method="post" id="addTransactionForm">
+                                        <input type="hidden" name="id" value="<?= $id ?>">
+                                        <input type="hidden" name="transaction" value="1">
+                                    </form>
+                                    <tr>
+                                        <td><input type="text" name="cllid" form="addTransactionForm" class="form-control input-sm" placeholder="e.g. CLL62598" required></td>
+                                        <td><input type="text" name="transaction_number" form="addTransactionForm" class="form-control input-sm" placeholder="UTR / Txn Ref" required></td>
+                                        <td><input type="datetime-local" name="transaction_date" form="addTransactionForm" class="form-control input-sm" value="<?=date('Y-m-d\TH:i')?>" required></td>
+                                        <td><input type="text" name="transaction_amount" form="addTransactionForm" class="form-control input-sm" placeholder="Amount (₹)" required></td>
+                                        <td>
+                                            <div style="display:flex; gap:8px; align-items:center;">
+                                                <select name="transaction_flow" form="addTransactionForm" class="form-control input-sm" required style="flex:1;">
+                                                    <option value="creditlab To Customer">creditlab To Customer</option>
+                                                    <option value="preclose">Pre Close EMI</option>
+                                                    <option value="firstemi">First EMI</option>
+                                                    <option value="secondemi">Second EMI</option>
+                                                    <option value="full">Full payment</option>
+                                                    <option value="renew">Renew Payment</option>
+                                                    <option value="part">Part Payment</option>
+                                                    <option value="settlement">Settlement</option>
+                                                </select>
+                                                <button class="btn btn-primary btn-sm" type="submit" form="addTransactionForm" style="flex-shrink:0;"><i class="fa-solid fa-plus"></i> Save</button>
+                                            </div>
+                                        </td>
+                                    </tr>
                 </tbody>
         </table>
         </div>
@@ -2916,7 +2936,7 @@
                                                         
                                                         </div></form>
                                         <div>
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered modern-table">
             <thead class="thead-light">
                 <tr>                        
                                             <th>S.No</th> 
@@ -2936,7 +2956,6 @@
                 extract($bank_fetch,EXTR_PREFIX_ALL,'ub');
                 ?>
                     <tr>
-                        <form method="post">
                         <td><?=$ub_id;?></td>
                         <td><?=$ub_lid;?></td>
                         <td><?=$ub_customer_response;?></td>
@@ -2944,7 +2963,6 @@
                         <td><?=$ub_commitment_text;?></td>
                         <td><?=$ub_updated_at;?></td>
                         <td><?=isset($ub_updated_by) && !empty($ub_updated_by) ? $ub_updated_by : 'N/A';?></td>
-                        </form>
                     </tr>
                     <?php } ?>
                 </tbody>
@@ -2954,7 +2972,7 @@
                                     <?php include __DIR__ . '/../includes/profile_pg_link_tab.php'; ?>
                                     <div class="product-tab-list tab-pane fade" id="payment">
                                         <div>
-                                    <table class="table table-bordered">
+                                    <table class="table table-bordered modern-table">
             <thead class="thead-light">
                 <tr>                        
                                             <th>S.No</th> 
@@ -2998,7 +3016,15 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const activeTab = urlParams.get('tab');
                 if (activeTab) {
-                    $(`#myTabedu1 a[href="#${activeTab}"]`).tab('show');
+                    const $tabLink = $(`#myTabedu1 a[href="#${activeTab}"]`);
+                    if ($tabLink.length) {
+                        $tabLink.tab('show');
+                        setTimeout(function() {
+                            if ($tabLink[0] && typeof $tabLink[0].scrollIntoView === 'function') {
+                                $tabLink[0].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                            }
+                        }, 150);
+                    }
                 }
 
                 // Update the URL query parameter on tab click
@@ -3009,6 +3035,9 @@
                     url.searchParams.set('tab', tabId); // Set the tab parameter
                     window.history.replaceState({}, '', url); // Update URL without reload
                     $(this).tab('show');
+                    if (this && typeof this.scrollIntoView === 'function') {
+                        this.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                    }
                 });
             });
         </script>

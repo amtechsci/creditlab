@@ -27,8 +27,8 @@ $seausersquery = towquery("SELECT * FROM `user` WHERE `rcid` LIKE '%$search%' OR
                             <?= creditlab_dash_text($users_name ?? ''); ?>
                         </span>
                         <?php
-                            if (!empty($users_loan)) { echo "<span title='Loan' style='color:#dc2626; font-weight:bold; margin-left:3px;'>#</span>"; }
-                            if (!empty($users_sloan)) { echo "<span title='Sloan' style='color:#dc2626; font-weight:bold; margin-left:2px;'>@</span>"; }
+                            if (!empty($users_loan)) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }
+                            if (!empty($users_sloan)) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }
                         ?>
                     </td>
                     <td data-title="Email" style="color:var(--cl-slate-600);"><?= creditlab_dash_text($users_email ?? '') ?></td>

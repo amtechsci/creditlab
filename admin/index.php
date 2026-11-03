@@ -63,7 +63,7 @@ include_once 'm_menu.php';
                                         <a class="dash-stat" href="users.php">
                                             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                                 <span>Verified Users</span>
-                                                <div style="width:32px; height:32px; border-radius:8px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                                                <div style="width:32px; height:32px; border-radius:8px; background:#e8f8f4; color:#23b893; display:flex; align-items:center; justify-content:center; font-size:14px;">
                                                     <i class="fa-solid fa-user-check"></i>
                                                 </div>
                                             </div>
@@ -122,6 +122,7 @@ include_once 'm_menu.php';
                                 </div>
 
                                 <!-- Data Table -->
+                                <?= creditlab_render_table_legend() ?>
                                 <div class="table-responsive" id="searchtable">
                                     <table class="table table-bordered" id="loan_history_datatable">
                                         <thead>
@@ -139,15 +140,15 @@ include_once 'm_menu.php';
                                                 <?php while($loanfetch = towfetch($usersquery)): extract($loanfetch, EXTR_PREFIX_ALL, "users"); ?>
                                                     <tr>
                                                         <td data-title="RCID">
-                                                            <strong style="color:var(--cl-primary);"><?= creditlab_dash_text($users_rcid ?? '') ?></strong>
+                                                            <strong style="color:var(--cl-brand);"><?= creditlab_dash_text($users_rcid ?? '') ?></strong>
                                                         </td>
                                                         <td data-title="Name">
                                                             <span style="font-weight:600; color:var(--cl-slate-800);">
                                                                 <?= creditlab_dash_text($users_name ?? ''); ?>
                                                             </span>
                                                             <?php
-                                                                if (!empty($users_loan)) { echo "<span title='Loan' style='color:#dc2626; font-weight:bold; margin-left:3px;'>#</span>"; }
-                                                                if (!empty($users_sloan)) { echo "<span title='Sloan' style='color:#dc2626; font-weight:bold; margin-left:2px;'>@</span>"; }
+                                                                if (!empty($users_loan)) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }
+                                                                if (!empty($users_sloan)) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }
                                                             ?>
                                                         </td>
                                                         <td data-title="Email" style="color:var(--cl-slate-600);"><?= creditlab_dash_text($users_email ?? '') ?></td>

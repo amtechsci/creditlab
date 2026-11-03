@@ -38,13 +38,16 @@ if (!function_exists('cl_nav_active')) {
         <div class="sidebar-header">
             <a href="index.php" class="brand-link">
                 <div class="brand-icon">
-                    <i class="fa-solid fa-shield-halved"></i>
+                    <img src="/logo.svg" alt="CreditLab" style="width:100%; height:100%; object-fit:contain; border-radius:6px;">
                 </div>
                 <div>
                     <div class="brand-name">CreditLab</div>
                 </div>
                 <span class="brand-badge">ADMIN</span>
             </a>
+            <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation menu" title="Close menu">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
         <div class="left-custom-menu-adp-wrap sidebar-menu-scroll">
             <nav class="sidebar-nav left-sidebar-menu-pro">
@@ -254,3 +257,103 @@ if (!function_exists('cl_nav_active')) {
         </div>
     </nav>
 </div>
+<div class="cl-sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<script>
+(function() {
+    function closeMobileNav() {
+        document.body.classList.remove('mobile-nav-open');
+        var sidebarPro = document.querySelector('.left-sidebar-pro');
+        if (sidebarPro) sidebarPro.classList.remove('active');
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.remove('active');
+    }
+
+    function openMobileNav() {
+        document.body.classList.remove('mini-navbar');
+        document.body.classList.add('mobile-nav-open');
+        var sidebarPro = document.querySelector('.left-sidebar-pro');
+        if (sidebarPro) sidebarPro.classList.add('active');
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.add('active');
+    }
+
+    // Use capture phase so we intercept before jQuery's main.js on mobile
+    document.addEventListener('click', function(e) {
+        var toggleBtn = e.target.closest('#sidebarCollapse, .cl-hamburger-btn');
+        if (toggleBtn) {
+            if (window.innerWidth <= 991) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                if (document.body.classList.contains('mobile-nav-open') || document.querySelector('.left-sidebar-pro.active')) {
+                    closeMobileNav();
+                } else {
+                    openMobileNav();
+                }
+                return;
+            }
+        }
+
+        var closeBtn = e.target.closest('#sidebarCloseBtn');
+        if (closeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileNav();
+            return;
+        }
+
+        var backdrop = e.target.closest('#sidebarBackdrop');
+        if (backdrop) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileNav();
+            return;
+        }
+
+        // Mobile search toggle
+        var searchToggle = e.target.closest('#mobileSearchToggle');
+        if (searchToggle) {
+            e.preventDefault();
+            e.stopPropagation();
+            var searchBar = document.getElementById('mobileSearchBar');
+            if (searchBar) {
+                searchBar.classList.toggle('active');
+                if (searchBar.classList.contains('active')) {
+                    var input = searchBar.querySelector('input');
+                    if (input) input.focus();
+                }
+            }
+            return;
+        }
+
+        var searchClose = e.target.closest('#mobileSearchClose');
+        if (searchClose) {
+            e.preventDefault();
+            e.stopPropagation();
+            var searchBar2 = document.getElementById('mobileSearchBar');
+            if (searchBar2) searchBar2.classList.remove('active');
+            return;
+        }
+
+        // Clicking any link in the sidebar menu closes the mobile drawer
+        if (window.innerWidth <= 991 && e.target.closest('.sidebar-nav a')) {
+            closeMobileNav();
+        }
+    }, true);
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 991) {
+            closeMobileNav();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeMobileNav();
+            var searchBar = document.getElementById('mobileSearchBar');
+            if (searchBar) searchBar.classList.remove('active');
+        }
+    });
+})();
+</script>

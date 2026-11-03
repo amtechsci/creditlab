@@ -190,7 +190,7 @@ switch ((int)$user_member) {
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
+                                        <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"><?=$user_altmobile?></td>
@@ -335,7 +335,7 @@ switch ((int)$user_member) {
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th> 
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><br>
+                                        <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"></td>

@@ -83,6 +83,8 @@ include_once 'm_menu.php';
                             </div>
                         </div>
 
+                        <?= creditlab_render_table_legend() ?>
+
                         <div class="table-responsive">
                             <table class="table table-bordered" id="loan_history_datatable">
                                 <thead>
@@ -125,8 +127,8 @@ include_once 'm_menu.php';
                                                     <?= creditlab_dash_text($row['name'] ?? '') ?>
                                                 </span>
                                                 <?php 
-                                                    if (!empty($row['user_loan_flag'])) { echo "<span title='Loan' style='color:#dc2626; font-weight:bold; margin-left:3px;'>#</span>"; } 
-                                                    if (!empty($row['user_sloan_flag'])) { echo "<span title='Sloan' style='color:#dc2626; font-weight:bold; margin-left:2px;'>@</span>"; } 
+                                                    if (!empty($row['user_loan_flag'])) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } 
+                                                    if (!empty($row['user_sloan_flag'])) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } 
                                                 ?>
                                             </td>
                                             <td data-title="Mobile" style="font-family:monospace; font-size:12.5px;"><?= creditlab_dash_text($row['mobile'] ?? '') ?></td>

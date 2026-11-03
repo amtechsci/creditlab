@@ -23,6 +23,7 @@ $newloanquery = mysqli_query($db, "
         loan_apply.processing_fees as loan_pfees,
         loan_apply.apply_date as loan_apply_date,
         loan_apply.status as loan_status,
+        loan_apply.agreement as loan_agreement,
         user.id as u_id,
         user.rcid as u_rcid,
         user.name as u_name,
@@ -92,6 +93,8 @@ include_once 'm_menu.php';
                             </div>
                         </div>
 
+                        <?= creditlab_render_table_legend() ?>
+
                         <div class="table-responsive">
                             <table class="table table-bordered" id="loan_history_datatable">
                                 <thead>
@@ -131,9 +134,9 @@ include_once 'm_menu.php';
                                                         <?= creditlab_dash_text($row['u_name'] ?? '') ?>
                                                     </span>
                                                     <?php 
-                                                        if (!empty($row['u_loan'])) { echo "<span title='Loan' style='color:#dc2626; font-weight:bold; margin-left:3px;'>#</span>"; }
-                                                        if (!empty($row['u_sloan'])) { echo "<span title='Sloan' style='color:#dc2626; font-weight:bold; margin-left:2px;'>@</span>"; }
-                                                        if ($has_all_docs) { echo " <span title='All Documents Verified' style='color:#16a34a; font-weight:bold; margin-left:4px;'><i class='fa-solid fa-circle-check'></i></span>"; }
+                                                        if (!empty($row['u_loan'])) { echo "<span title='Has Active Loan (loan > 0)' class='cl-symbol cl-symbol-loan'>#</span>"; }
+                                                        if (!empty($row['u_sloan'])) { echo "<span title='Special / Repeat Borrower (sloan > 0)' class='cl-symbol cl-symbol-sloan'>@</span>"; }
+                                                        if ($has_all_docs) { echo " <span title='All Mandatory Documents Uploaded & Verified' class='cl-symbol cl-symbol-docs'>✔</span>"; }
                                                     ?>
                                                 </td>
                                                 <td data-title="Mobile" style="font-family:monospace; font-size:12.5px;"><?= creditlab_dash_text($row['u_mobile'] ?? '') ?></td>
@@ -152,7 +155,7 @@ include_once 'm_menu.php';
                                                     <?= creditlab_currency($row['loan_pfees'] ?? 0) ?>
                                                 </td>
                                                 <td data-title="User Status" style="text-align:center;">
-                                                    <?= creditlab_status_badge($row['u_status'] ?? '') ?>
+                                                    <?= creditlab_status_badge($row['u_status'] ?? '', $row['loan_agreement'] ?? 0) ?>
                                                 </td>
                                                 <td data-title="Officer" style="font-size:12px; color:var(--cl-slate-600);">
                                                     <?= creditlab_dash_text($row['officer_name'] ?? '', 'Unassigned') ?>

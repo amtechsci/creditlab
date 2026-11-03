@@ -36,9 +36,19 @@
 	
 	$('[data-toggle="tooltip"]').tooltip(); 
 	
-	$('#sidebarCollapse').on('click', function () {
-		 $('#sidebar').toggleClass('active');
-	 });
+	$('#sidebarCollapse').on('click', function (e) {
+		if ($(window).width() <= 991) {
+			e.preventDefault();
+			$('body').toggleClass('mobile-nav-open');
+			$('.left-sidebar-pro, #sidebar').toggleClass('active');
+		} else {
+			$('#sidebar').toggleClass('active');
+			$("body").toggleClass("mini-navbar");
+			if (typeof SmoothlyMenu === 'function') {
+				SmoothlyMenu();
+			}
+		}
+	});
 	// Collapse ibox function
 	$('#sidebar ul li').on('click', function () {
 		var button = $(this).find('i.fa.indicator-mn');
@@ -49,11 +59,6 @@
 		Menu Stick
 	---------------------------------*/
 	$(".sicker-menu").sticky({topSpacing:0});
-		
-	$('#sidebarCollapse').on('click', function () {
-		$("body").toggleClass("mini-navbar");
-		SmoothlyMenu();
-	});
 	$(document).on('click', '.header-right-menu .dropdown-menu', function (e) {
 		  e.stopPropagation();
 	});

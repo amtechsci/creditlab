@@ -43,7 +43,7 @@ include_once 'm_menu.php';
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; border-bottom:2px solid var(--cl-slate-200); padding-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px; border-bottom:2px solid var(--cl-slate-200); padding-bottom:12px;">
                             <div>
                                 <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--cl-slate-900);">
                                     <i class="fa-solid fa-user-check" style="color:var(--cl-primary); margin-right:6px;"></i> Approved Users
@@ -58,6 +58,8 @@ include_once 'm_menu.php';
                                 </a>
                             </div>
                         </div>
+
+                        <?= creditlab_render_table_legend() ?>
 
                         <div class="table-responsive">
                             <table class="table table-bordered" id="loan_history_datatable">
@@ -88,8 +90,8 @@ include_once 'm_menu.php';
                                                 <td data-title="Name">
                                                     <span style="font-weight:600; color:var(--cl-slate-900);"><?= creditlab_dash_text($users_name ?? '') ?></span>
                                                     <?php 
-                                                        if (!empty($users_loan)) { echo "<span title='Loan' style='color:#dc2626; font-weight:bold; margin-left:3px;'>#</span>"; }
-                                                        if (!empty($users_sloan)) { echo "<span title='Sloan' style='color:#dc2626; font-weight:bold; margin-left:2px;'>@</span>"; }
+                                                        if (!empty($users_loan)) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }
+                                                        if (!empty($users_sloan)) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }
                                                     ?>
                                                 </td>
                                                 <td data-title="Email" style="color:var(--cl-slate-600);"><?= creditlab_dash_text($users_email ?? '') ?></td>

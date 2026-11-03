@@ -81,7 +81,7 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
         <p id="pg_outstanding_hint" class="text-muted"></p>
         <p id="pg_create_msg"></p>
 
-        <table class="table table-bordered">
+        <table class="table table-bordered modern-table">
             <thead class="thead-light">
                 <tr>
                     <th>S.no</th>
@@ -115,8 +115,8 @@ $pgPaneActive = (isset($profile_pane_active) && is_callable($profile_pane_active
                     <td><?= htmlspecialchars($pl['amount']) ?></td>
                     <td><?= htmlspecialchars($agencyLabel) ?></td>
                     <td><?= htmlspecialchars($pl['created_by_name']) ?></td>
-                    <td><?php if ($url) { ?><a href="<?= htmlspecialchars($url) ?>" target="_blank" rel="noopener">Pay link</a><?php } else { ?>—<?php } ?></td>
-                    <td><?= htmlspecialchars($pl['status']) ?></td>
+                    <td><?php if ($url) { ?><a href="<?= htmlspecialchars($url) ?>" target="_blank" rel="noopener" class="btn btn-xs btn-primary"><i class="fa-solid fa-arrow-up-right-from-square"></i> Pay link</a><?php } else { ?>—<?php } ?></td>
+                    <td><?= creditlab_status_badge($pl['status']) ?></td>
                 </tr>
                         <?php
                     }

@@ -93,7 +93,7 @@ if (isset($_GET['pageno'])) {
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?></td>
+                                        <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?></td>
                                         <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Mobile"><?=$users_processed_amount + $users_p_fee?></td>

@@ -55,6 +55,7 @@ if (isset($_GET['pageno'])) {
                                 <div class="product-tab-list tab-pane fade active in" id="description">
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                            <?= creditlab_render_table_legend() ?>
                                             <div class="review-content-section">
                                                 <div id="dropzone1" class="pro-ad">
                                                     <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
@@ -92,14 +93,21 @@ if (isset($_GET['pageno'])) {
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($users_sloan) && $users_sloan > 0){echo "<span style='color:red'>@</span>";}?><?php if(empty($user_conpanydocument) or empty($user_personaldocument) or empty($user_salarydocument) or empty($user_bankdocument) or empty($user_addressdocument) or empty($user_companyidcard)){}else{echo " <span style='color:green; font-size:18px;'>✔</span>";}?></td>
+                                        <td data-title="Name">
+                                            <span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span>
+                                            <?php if(isset($user_loan) && $user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                            <?php if((isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                            <?php if(empty($user_conpanydocument) or empty($user_personaldocument) or empty($user_salarydocument) or empty($user_bankdocument) or empty($user_addressdocument) or empty($user_companyidcard)){}else{ echo '<span class="cl-symbol-docs" title="All 6 Documents Uploaded (✔)">✔</span>'; } ?>
+                                        </td>
                                         <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="approvenew"><?=$user_approvenew?></td>
                                         <td data-title="amount"><?=$users_amount + $users_processing_fees?></td>
                                         <td data-title="amount"><?=$users_amount?></td>
                                         <td data-title="amount"><?=$users_processing_fees?></td>
-                                        <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php if($user_status == "waiting"){echo "Just Register";}else{echo $user_status;}?></td>
+                                        <td data-title="Status" style="text-align:center;">
+                                            <?= creditlab_status_badge($user_status, $loanfetch['agreement'] ?? 0) ?>
+                                        </td>
                                         <td data-title="approvenew"><?php 
                                         $recovery_officer = towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"));
                                         echo isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';

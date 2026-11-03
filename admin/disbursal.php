@@ -50,9 +50,15 @@ if (isset($_GET['pageno'])) {
                 <div class="row">
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active"><a href="#description">Disbursal</a></li>
-                            </ul><a href="https://creditlab.in/downloader/z.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--cl-slate-200); margin-bottom:18px;">
+                                <ul id="myTabedu1" class="tab-review-design" style="margin-bottom:-2px !important; border-bottom:none !important; width:auto !important; display:inline-flex !important;">
+                                    <li class="active"><a href="#description"><i class="fa-solid fa-paper-plane"></i> Disbursal</a></li>
+                                </ul>
+                                <a href="https://creditlab.in/downloader/z.php" class="btn btn-primary" style="color:#fff; margin-bottom:8px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-file-arrow-down"></i> Download Payout File
+                                </a>
+                            </div>
+                            <?= creditlab_render_table_legend() ?>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade active in" id="description">
                                     <div class="row">
@@ -93,19 +99,34 @@ if (isset($_GET['pageno'])) {
                                     <tr>
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th>
-                                        <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($users_sloan) && $users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
+                                        <td data-title="CID"><strong><?=$user_rcid?></strong></td>
+                                        <td data-title="Name">
+                                            <span><?=$user_name?></span><?php 
+                                                $has_loan = (isset($user_loan) && $user_loan > 0) || (isset($users_loan) && $users_loan > 0);
+                                                $has_sloan = (isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0);
+                                                if ($has_loan) { echo "<span class='cl-symbol cl-symbol-loan' title='Has Active Loan (loan > 0)'>#</span>"; }
+                                                if ($has_sloan) { echo "<span class='cl-symbol cl-symbol-sloan' title='Special Loan / Repeat Customer (sloan > 0)'>@</span>"; }
+                                            ?>
+                                        </td>
                                         <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="approvenew"><?=$user_approvenew?></td>
-                                        <td data-title="amount"><?=$users_amount + $users_processing_fees?></td>
-                                        <td data-title="amount"><?=$users_amount?></td>
-                                        <td data-title="amount"><?=$users_processing_fees?></td>
-                                        <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){if(isset($loanfetch['agreement']) && $loanfetch['agreement'] == 1){
+                                        <td data-title="amount"><?= creditlab_currency($users_amount + $users_processing_fees) ?></td>
+                                        <td data-title="amount"><?= creditlab_currency($users_amount) ?></td>
+                                        <td data-title="amount"><?= creditlab_currency($users_processing_fees) ?></td>
+                                        <td data-title="Status" style="color:white; font-weight:700; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){if(isset($loanfetch['agreement']) && (int)$loanfetch['agreement'] === 1){
                                         echo "#FFC0CB;"; 
                                         }else{
                                         echo "#008000;";
-                                        }}else{echo "blue;";}?>"><?php if($user_status == "waiting"){echo "Just Register";}else{echo $user_status;}?></td>
+                                        }}else{echo "blue;";}?>"><?php 
+                                            if($user_status == "disbursal" && isset($loanfetch['agreement']) && (int)$loanfetch['agreement'] === 1){
+                                                echo 'Signed (Disburse)';
+                                            } elseif($user_status == "waiting"){
+                                                echo "Just Register";
+                                            } else {
+                                                echo $user_status;
+                                            }
+                                        ?></td>
                                         <td data-title="approvenew"><?php 
                                         $recovery_officer = towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"));
                                         echo isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';

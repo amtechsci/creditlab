@@ -58,6 +58,7 @@ if (isset($_GET['pageno'])) {
                                 <div class="product-tab-list tab-pane fade active in" id="description">
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                            <?= creditlab_render_table_legend() ?>
                                             <div class="review-content-section">
                                                 <div id="dropzone1" class="pro-ad">
                                                     <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
@@ -90,17 +91,23 @@ if (isset($_GET['pageno'])) {
                                         <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($users_sloan) && $users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
+                                        <td data-title="Name">
+                                            <span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span>
+                                            <?php if(isset($user_loan) && $user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                            <?php if((isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                        </td>
                                         <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
-                                        <td data-title="Mobile"><?=$user_loan_limit?></td>
-                                        <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){
-                                        if($loanfetch['agreement'] == 1){
-                                        echo "#FFC0CB;"; 
-                                        }else{
-                                        echo "#008000;";
-                                        }
-                                        }else{echo "blue;";}?>"><?=$user_status?></td>
+                                        <td data-title="Limit"><?=creditlab_currency($user_loan_limit ?? 0)?></td>
+                                        <td data-title="Status" style="text-align:center;">
+                                            <?php
+                                            if ($users_status == "disbursal" && ($loanfetch['agreement'] ?? 0) == 1) {
+                                                echo '<span class="badge-modern badge-signed" style="background:#ff3377 !important; color:#ffffff !important; font-weight:700; padding:6px 12px; border-radius:12px; box-shadow:0 2px 6px rgba(255,51,119,0.3); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-signature"></i> Signed (Disburse)</span>';
+                                            } else {
+                                                echo creditlab_status_badge($users_status, $loanfetch['agreement'] ?? 0);
+                                            }
+                                            ?>
+                                        </td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
                                     </tr>
                                 <?php $ii++; } ?>

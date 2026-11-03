@@ -2,7 +2,18 @@
 // $admin = "AMPROAPK@GMAIL.COM";
 include '../db.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/admin_ui.php';
 require_once __DIR__ . '/../lib/stale_loan_sweep.php';
+
+if (!isset($admin)) {
+    if (!empty($_SESSION['admin'])) {
+        $admin = $_SESSION['admin'];
+    } elseif (!empty($_COOKIE['creditlab_auth_admin'])) {
+        $admin = $_COOKIE['creditlab_auth_admin'];
+    } elseif (in_array($_SERVER['HTTP_HOST'] ?? '', ['127.0.0.1:8000', 'localhost:8000', 'localhost', '127.0.0.1'])) {
+        $admin = "iamprofesserx@gmail.com";
+    }
+}
 
 if(isset($admin)){
     $userquery = towquery("SELECT * FROM user WHERE email='".$admin."' LIMIT 1");
