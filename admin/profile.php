@@ -2365,7 +2365,7 @@
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="loan">
                                         <div class="table-responsive">
-            <table class="table table-bordered" >
+            <table class="table table-bordered modern-table profile-inner-table" >
             <thead class="thead-light">
                 <tr>                
                                             <th>Loan ID</th>        
@@ -2432,7 +2432,7 @@
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="oldloan">
                                         <div class="table-responsive">
-            <table class="table table-bordered modern-table">
+            <table class="table table-bordered modern-table profile-inner-table">
             <thead class="thead-light">
                 <tr>                
                                             <th>Loan ID</th>        
@@ -2627,11 +2627,51 @@
         </div>
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="transaction_details">
+                                        <div class="profile-pane-add-card">
+                                            <h4 class="profile-pane-add-card__title"><i class="fa-solid fa-plus-circle"></i> Add transaction</h4>
+                                            <form action="" method="post" id="addTransactionForm" class="profile-txn-add-form">
+                                                <input type="hidden" name="id" value="<?= $id ?>">
+                                                <input type="hidden" name="transaction" value="1">
+                                                <div class="form-group profile-txn-field">
+                                                    <label>CLL ID</label>
+                                                    <input type="text" name="cllid" class="form-control input-sm" placeholder="e.g. 62598" required>
+                                                </div>
+                                                <div class="form-group profile-txn-field">
+                                                    <label>UTR / Txn ref</label>
+                                                    <input type="text" name="transaction_number" class="form-control input-sm" placeholder="UTR / Txn Ref" required>
+                                                </div>
+                                                <div class="form-group profile-txn-field">
+                                                    <label>Date &amp; time</label>
+                                                    <input type="datetime-local" name="transaction_date" class="form-control input-sm" value="<?=date('Y-m-d\TH:i')?>" required>
+                                                </div>
+                                                <div class="form-group profile-txn-field">
+                                                    <label>Amount (₹)</label>
+                                                    <input type="text" name="transaction_amount" class="form-control input-sm" placeholder="Amount" required>
+                                                </div>
+                                                <div class="form-group profile-txn-field profile-txn-field--flow">
+                                                    <label>Flow</label>
+                                                    <select name="transaction_flow" class="form-control input-sm" required>
+                                                        <option value="creditlab To Customer">creditlab To Customer</option>
+                                                        <option value="preclose">Pre Close EMI</option>
+                                                        <option value="firstemi">First EMI</option>
+                                                        <option value="secondemi">Second EMI</option>
+                                                        <option value="full">Full payment</option>
+                                                        <option value="renew">Renew Payment</option>
+                                                        <option value="part">Part Payment</option>
+                                                        <option value="settlement">Settlement</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-group profile-txn-field profile-txn-field--submit">
+                                                    <label class="profile-txn-submit-label">&nbsp;</label>
+                                                    <button class="btn btn-success btn-sm btn-block" type="submit"><i class="fa-solid fa-plus"></i> Save transaction</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                         <div class="table-responsive">
-            <table class="table table-bordered modern-table">
+            <table class="table table-bordered modern-table profile-inner-table">
             <thead class="thead-light">
-                <tr>                
-                                            <th>CLL ID</th>        
+                <tr>
+                                            <th>CLL ID</th>
                                             <th>Transaction Number</th>
                                             <th>Transaction Date</th>
                                             <th>Transaction Amount</th>
@@ -2639,41 +2679,15 @@
                                         </tr>
             </thead>
             <tbody>
-                    
                                     <?php $loan_data = towquery("SELECT * FROM transaction_details WHERE uid='$userpro_id' ORDER BY id DESC"); while($loan_fetch = towfetch($loan_data)){ extract($loan_fetch,EXTR_PREFIX_ALL,"users"); ?>
                                         <tr>
                                             <td>CLL<?=$users_cllid?></td>
-                                            <td><?=$users_transaction_number?> <a href="edit_loan.php?cllid=<?=$users_id?>" class="btn btn-submit">Edit</a></td>
+                                            <td class="profile-txn-ref-cell"><span><?=htmlspecialchars($users_transaction_number)?></span> <a href="edit_loan.php?cllid=<?=$users_id?>" class="btn btn-default btn-xs profile-txn-edit">Edit</a></td>
                                             <td><?=$users_transaction_date?></td>
-                                            <td><?=$users_transaction_amount?></td>
-                                            <td><?=$users_transaction_flow?></td>
+                                            <td class="text-right"><?=$users_transaction_amount?></td>
+                                            <td><?=htmlspecialchars($users_transaction_flow)?></td>
                                         </tr>
                                     <?php } ?>
-                                    <form action="" method="post" id="addTransactionForm">
-                                        <input type="hidden" name="id" value="<?= $id ?>">
-                                        <input type="hidden" name="transaction" value="1">
-                                    </form>
-                                    <tr>
-                                        <td><input type="text" name="cllid" form="addTransactionForm" class="form-control input-sm" placeholder="e.g. CLL62598" required></td>
-                                        <td><input type="text" name="transaction_number" form="addTransactionForm" class="form-control input-sm" placeholder="UTR / Txn Ref" required></td>
-                                        <td><input type="datetime-local" name="transaction_date" form="addTransactionForm" class="form-control input-sm" value="<?=date('Y-m-d\TH:i')?>" required></td>
-                                        <td><input type="text" name="transaction_amount" form="addTransactionForm" class="form-control input-sm" placeholder="Amount (₹)" required></td>
-                                        <td>
-                                            <div style="display:flex; gap:8px; align-items:center;">
-                                                <select name="transaction_flow" form="addTransactionForm" class="form-control input-sm" required style="flex:1;">
-                                                    <option value="creditlab To Customer">creditlab To Customer</option>
-                                                    <option value="preclose">Pre Close EMI</option>
-                                                    <option value="firstemi">First EMI</option>
-                                                    <option value="secondemi">Second EMI</option>
-                                                    <option value="full">Full payment</option>
-                                                    <option value="renew">Renew Payment</option>
-                                                    <option value="part">Part Payment</option>
-                                                    <option value="settlement">Settlement</option>
-                                                </select>
-                                                <button class="btn btn-primary btn-sm" type="submit" form="addTransactionForm" style="flex-shrink:0;"><i class="fa-solid fa-plus"></i> Save</button>
-                                            </div>
-                                        </td>
-                                    </tr>
                 </tbody>
         </table>
         </div>
