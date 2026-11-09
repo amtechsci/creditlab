@@ -101,6 +101,7 @@ extract(creditlab_staff_head_count_queries());
     <!-- modern admin UI CSS
 		============================================ -->
     <link rel="stylesheet" href="css/modern_admin.css">
+    <link rel="stylesheet" href="css/profile_tabs.css">
     <!-- modernizr JS
 		============================================ -->
     <script src="js/vendor/modernizr-2.8.3.min.js"></script>

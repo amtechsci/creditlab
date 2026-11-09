@@ -979,6 +979,26 @@ ul.tab-custon-design li a:after,
     font-weight: 700 !important;
 }
 
+/* Admin profile: pill tabs live in .profile-tab-scroll (see profile_tabs.css) */
+.product-payment-inner-st .profile-tab-scroll .tab-review-design,
+.product-payment-inner-st .profile-tab-scroll #myTabedu1.tab-review-design {
+    align-items: center !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+.product-payment-inner-st .profile-tab-scroll .tab-review-design li a,
+.product-payment-inner-st .profile-tab-scroll #myTabedu1.tab-review-design li a {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
+    background: transparent !important;
+}
+
+.product-payment-inner-st .profile-tab-scroll .tab-review-design li.active a,
+.product-payment-inner-st .profile-tab-scroll #myTabedu1.tab-review-design li.active a {
+    border-bottom: none !important;
+}
+
 /* ==========================================================================
    METRIC / STAT CARDS
    ========================================================================== */
@@ -1669,8 +1689,6 @@ ul.tab-custon-design li a:after,
     font-weight: 600;
     color: var(--cl-slate-800);
 }
-
-@import url("profile_tabs.css");
 
 /* Sidebar Scrollbar Enhanced Contrast */
 #sidebar .left-custom-menu-adp-wrap::-webkit-scrollbar-thumb {
