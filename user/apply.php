@@ -93,23 +93,23 @@ if(isset($_POST['amount']) and isset($_POST['reason'])){
                     }
     }else{
                         if($user_member == 0){
-                            $user_interest_percentage = 0.1;
+                            $user_interest_percentage = 0.2;
                             $p_f_per = 14;
                             $p_f = ($amount / 100)*14;
                         }elseif($user_member == 1){
-                            $user_interest_percentage = 0.1;
+                            $user_interest_percentage = 0.2;
                             $p_f_per = 13;
                             $p_f = ($amount / 100)*13;
                         }elseif($user_member == 2){
-                            $user_interest_percentage = 0.05;
+                            $user_interest_percentage = 0.1;
                             $p_f_per = 13;
                             $p_f = ($amount / 100)*13;
                         }elseif($user_member == 3){
-                            $user_interest_percentage = 0.1;
+                            $user_interest_percentage = 0.2;
                             $p_f_per = 12;
                             $p_f = ($amount / 100)*12;
                         }elseif($user_member == 4){
-                            $user_interest_percentage = 0.1;
+                            $user_interest_percentage = 0.2;
                             $p_f_per = 14;
                             $p_f = ($amount / 100)*14;
                         }

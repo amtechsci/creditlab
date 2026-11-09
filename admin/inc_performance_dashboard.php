@@ -32,7 +32,7 @@ extract($pd, EXTR_SKIP);
     text-decoration: none;
 }
 #performance-dashboard .perf-subnav li.active a {
-    background: #006DF0;
+    background: #23b893;
     color: #fff;
 }
 #performance-dashboard .perf-toolbar {
@@ -147,8 +147,8 @@ extract($pd, EXTR_SKIP);
     min-width: 36px;
     padding: 3px 8px;
     border-radius: 12px;
-    background: #e8f1fe;
-    color: #006DF0;
+    background: #e8f8f4;
+    color: #1a8a6e;
     font-weight: 700;
     font-size: 12px;
 }

@@ -1327,27 +1327,15 @@ ul.tab-custon-design li, ul.tab-review-design li {
 	transition:all .4s ease 0s;
 }
 #myTab3.tab-review-design li a:before, #myTab4.tab-review-design li a:before, #myTabedu1.tab-review-design li a:before {
-    position: absolute;
-    bottom: -15px;
-    left: 0px;
-    width: 0%;
-    height: 2px;
-    background: #006DF0;
-    content: "";
-	transition:all .4s ease 0s;
+    display: none !important;
+    content: none !important;
 }
 #myTab3.tab-review-design li.active a:before, #myTab4.tab-review-design li.active a:before, #myTabedu1.tab-review-design li.active a:before {
-    position: absolute;
-    bottom: -15px;
-    left: 0px;
-    width: 80%;
-    height: 2px;
-    background: #006DF0;
-    content: "";
-	transition:all .4s ease 0s;
+    display: none !important;
+    content: none !important;
 }
 ul.tab-custon-design li.active a, ul.tab-review-design li.active a {
-    color: #006DF0 !important;
+    color: #23b893 !important;
 }
 ul.tab-custon-design li a, ul.tab-custon-design li a:hover, ul.tab-custon-design li a:focus, ul.tab-review-design li a, ul.tab-review-design li a:hover, ul.tab-review-design li a:focus {
     font-size: 18px;

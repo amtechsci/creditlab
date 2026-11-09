@@ -34,10 +34,10 @@ if (isset($_POST['amount'], $_POST['salary_date'], $_POST['processed_date'])
                  $se = strtotime($semi_date);
                  $fedatediff = $fe - $di;
                  $feday_gap = round($fedatediff / (60 * 60 * 24));
-                 $femi_amount = ($loan_amountc/2) + ($loan_amountc*0.003*$feday_gap)+($loan_amountc*0.018/2);
+                 $femi_amount = ($loan_amountc/2) + ($loan_amountc*0.02*$feday_gap)+($loan_amountc*0.018/2);
                  $sedatediff = $se - $fe;
                  $seday_gap = round($sedatediff / (60 * 60 * 24));
-                 $semi_amount = ($loan_amountc / 2) + ($loan_amountc * 0.003 * $seday_gap)+($loan_amountc*0.018/2);
+                 $semi_amount = ($loan_amountc / 2) + ($loan_amountc * 0.02 * $seday_gap)+($loan_amountc*0.018/2);
              }
              }
              }

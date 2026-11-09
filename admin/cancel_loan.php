@@ -21,52 +21,44 @@ if (isset($_GET['pageno'])) {
     include_once 'welcome.php';
     include_once 'm_menu.php';
     ?>
-           <div class="breadcome-area">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="breadcome-list">
-                                <div class="row">
-                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                    </div>
-                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                        <ul class="breadcome-menu">
-                                            <li><a href="../user">Home</a> <span class="bread-slash">/</span>
-                                            </li>
-                                            <li><span class="bread-blod">Repeat Loan D</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="breadcome-area">
+            <div class="container-fluid">
+                <ul class="breadcome-menu">
+                    <li><a href="index.php"><i class="fa-solid fa-house" style="font-size:12px;"></i> Admin</a> <span class="bread-slash">/</span></li>
+                    <li><a href="newloan.php">Loans</a> <span class="bread-slash">/</span></li>
+                    <li><span class="bread-blod">Cancelled Loans</span></li>
+                </ul>
             </div>
         </div>
-        <!-- Single pro tab review Start-->
-        <div class="single-pro-review-area mt-t-30 mg-b-15">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                        <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active"><a href="#description">Repeat Loan D</a></li>
-                                
-                            </ul>
-                            <div id="myTabContent" class="tab-content custom-product-edit">
-                                <div class="product-tab-list tab-pane fade active in" id="description">
-                                    <div class="row">
-                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                            <?= creditlab_render_table_legend() ?>
-                                            <div class="review-content-section">
-                                                <div id="dropzone1" class="pro-ad">
-                                                    <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
-                                            
-                                                            <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                                                
-    <div class="table-responsive">
-        <table class="table table-bordered" id="loan_history_datatable">
+    </div>
+
+    <div class="single-pro-review-area mg-b-15">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                    <div class="product-payment-inner-st">
+                        <div class="cl-card-header">
+                            <div class="cl-card-header-left">
+                                <h3 class="cl-card-header-title">
+                                    <i class="fa-solid fa-ban"></i> Cancelled Loans
+                                    <span class="cl-badge-pill"><?= number_format($total_rows) ?></span>
+                                </h3>
+                                <p class="cl-card-header-desc">Loan applications rejected or cancelled during underwriting or by customer request</p>
+                            </div>
+                            <div class="cl-card-header-actions">
+                                <a href="newloan.php" class="btn btn-default" style="border:1px solid var(--cl-slate-200); background:#fff; font-weight:600;">
+                                    <i class="fa-solid fa-file-invoice-dollar" style="margin-right:4px;"></i> Applied Loans
+                                </a>
+                                <a href="disbursal.php" class="btn btn-primary" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-paper-plane"></i> Disbursal
+                                </a>
+                            </div>
+                        </div>
+
+                        <?= creditlab_render_table_legend() ?>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="loan_history_datatable">
         <thead class="thead-light">
                                     <tr>
                                         <th><input type='checkbox'></th>   
@@ -130,32 +122,22 @@ if (isset($_GET['pageno'])) {
         <span class="sr-only">Next</span>
       </a>
     </li>
-  </ul>
-</nav>
-    </div>
-    
-
-                                                                
-                                                            </div>
-                                                         
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                            
-                            </div>
                         </div>
+
+                        <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-top:1px solid var(--cl-slate-100);">
+                            <div style="font-size:12.5px; color:var(--cl-slate-500);">
+                                Showing <strong><?= min($total_rows, $offset + 1) ?></strong> to <strong><?= min($total_rows, $offset + $no_of_records_per_page) ?></strong> of <strong><?= number_format($total_rows) ?></strong> records
+                            </div>
+                            <?= creditlab_render_pagination($pageno, $total_pages, '?pageno=') ?>
+                        </div>
+
                     </div>
                 </div>
             </div>
-        </div><br>
-       <?php
-       include_once 'foot.php';
-       ?>
-
+        </div>
+    </div>
+<?php
+include_once 'foot.php';
+?>
 </body>
-
 </html>

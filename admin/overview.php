@@ -52,22 +52,17 @@ include_once 'm_menu.php';
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; border-bottom:2px solid var(--cl-slate-200); padding-bottom:14px;">
-                            <div>
-                                <h3 style="margin:0; font-size:19px; font-weight:700; color:var(--cl-slate-900);">
-                                    <i class="fa-solid fa-layer-group" style="color:var(--cl-primary); margin-right:6px;"></i> Loan Portfolio Overview
-                                </h3>
-                                <p style="margin:4px 0 0; font-size:13px; color:var(--cl-slate-500);">
-                                    Aggregated metrics across all disbursed, cleared, active, and default loan accounts
-                                </p>
+                        <div class="cl-card-header">
+                            <div class="cl-card-header-left">
+                                <h2 class="cl-card-header-title">
+                                    <i class="fa-solid fa-layer-group" style="color:var(--cl-brand); font-size:17px;"></i>
+                                    Loan Portfolio Overview
+                                </h2>
+                                <p class="cl-card-header-desc">Aggregated metrics across all disbursed, cleared, active, and default loan accounts</p>
                             </div>
-                            <div style="display:flex; gap:10px;">
-                                <a href="downloader.php" class="btn btn-default" style="border:1px solid var(--cl-slate-200); background:#fff; font-weight:600;">
-                                    <i class="fa-solid fa-cloud-arrow-down" style="margin-right:4px;"></i> Export Reports
-                                </a>
-                                <a href="loanclearance.php" class="btn btn-primary">
-                                    <i class="fa-solid fa-circle-check" style="margin-right:4px;"></i> Loan Clearance
-                                </a>
+                            <div class="cl-card-header-actions">
+                                <a href="downloader.php" class="btn btn-default"><i class="fa-solid fa-cloud-arrow-down"></i> Export Reports</a>
+                                <a href="loanclearance.php" class="btn btn-primary"><i class="fa-solid fa-circle-check"></i> Loan Clearance</a>
                             </div>
                         </div>
 

@@ -74,22 +74,19 @@ include_once 'm_menu.php';
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; border-bottom:2px solid var(--cl-slate-200); padding-bottom:12px;">
-                            <div>
-                                <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--cl-slate-900);">
-                                    <i class="fa-solid fa-file-invoice-dollar" style="color:var(--cl-primary); margin-right:6px;"></i> Applied Loans (Pending)
-                                </h3>
-                                <p style="margin:4px 0 0; font-size:13px; color:var(--cl-slate-500);">
-                                    Showing <?= number_format($total_rows) ?> new loan applications pending review and approval
-                                </p>
+                        <div class="cl-card-header">
+                            <div class="cl-card-header-left">
+                                <h2 class="cl-card-header-title">
+                                    <i class="fa-solid fa-file-invoice-dollar" style="color:var(--cl-brand); font-size:17px;"></i>
+                                    Applied Loans
+                                    <span class="cl-badge-pill"><?= number_format($total_rows) ?></span>
+                                </h2>
+                                <p class="cl-card-header-desc">New loan applications pending review and approval</p>
                             </div>
-                            <div style="display:flex; gap:8px;">
-                                <a href="disbursal.php" class="btn btn-default" style="border:1px solid var(--cl-slate-200); background:#fff; font-weight:600;">
-                                    <i class="fa-solid fa-paper-plane" style="margin-right:4px;"></i> Disbursals
-                                </a>
-                                <a href="loanclearance.php" class="btn btn-primary">
-                                    <i class="fa-solid fa-circle-check" style="margin-right:4px;"></i> Loan Clearance
-                                </a>
+                            <div class="cl-card-header-actions">
+                                <a href="loan.php" class="btn btn-default"><i class="fa-solid fa-hand-holding-dollar"></i> Approved Loans</a>
+                                <a href="disbursal.php" class="btn btn-default"><i class="fa-solid fa-paper-plane"></i> Disbursals</a>
+                                <a href="loanclearance.php" class="btn btn-primary"><i class="fa-solid fa-circle-check"></i> Loan Clearance</a>
                             </div>
                         </div>
 

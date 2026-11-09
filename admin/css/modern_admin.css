@@ -743,7 +743,8 @@ html, body {
    ========================================================================== */
 
 .breadcome-area {
-    padding: 16px 0 4px !important;
+    padding: 12px 0 2px !important;
+    margin: 0 !important;
     background: transparent !important;
 }
 
@@ -755,14 +756,36 @@ html, body {
     border: none !important;
 }
 
+.breadcome-list .row {
+    margin: 0 !important;
+}
+
+.breadcome-list .row > [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    padding: 0 !important;
+    float: none !important;
+    text-align: left !important;
+}
+
 .breadcome-menu {
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    float: none !important;
+    text-align: left !important;
     gap: 6px !important;
     padding: 0 !important;
     margin: 0 !important;
     list-style: none !important;
     font-size: 13px !important;
+}
+
+.breadcome-menu li {
+    display: inline-flex !important;
+    align-items: center !important;
+    float: none !important;
 }
 
 .breadcome-menu li a {
@@ -789,14 +812,85 @@ html, body {
    CARDS & CONTAINERS
    ========================================================================== */
 
+.single-pro-review-area,
+.single-pro-review-area.mt-t-30,
+.mt-t-30 {
+    margin-top: 8px !important;
+}
+
+.mg-b-15 {
+    margin-bottom: 20px !important;
+}
+
 .product-payment-inner-st,
 .single-pro-review-area .product-payment-inner-st {
     background: #ffffff !important;
     border: 1px solid var(--cl-card-border) !important;
     border-radius: var(--cl-radius-lg) !important;
     box-shadow: var(--cl-shadow-xs) !important;
-    padding: 24px !important;
-    margin-top: 10px !important;
+    padding: 20px 22px !important;
+    margin-top: 6px !important;
+}
+
+/* ==========================================================================
+   STANDARDIZED MODERN CARD HEADER
+   ========================================================================== */
+
+.cl-card-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 16px !important;
+    border-bottom: 1px solid var(--cl-slate-200) !important;
+}
+
+.cl-card-header-left {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+}
+
+.cl-card-header-title {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--cl-slate-900) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    line-height: 1.3 !important;
+}
+
+.cl-card-header-title i {
+    color: var(--cl-brand) !important;
+}
+
+.cl-card-header-desc {
+    margin: 0 !important;
+    font-size: 12.5px !important;
+    color: var(--cl-slate-500) !important;
+}
+
+.cl-card-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-left: auto !important;
+}
+
+.cl-badge-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 2px 8px !important;
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    border-radius: 9999px !important;
+    background: var(--cl-brand-light) !important;
+    color: var(--cl-brand) !important;
+    margin-left: 6px !important;
 }
 
 /* ==========================================================================
@@ -830,7 +924,7 @@ ul.tab-custon-design li a:after,
 #myTab4.tab-review-design,
 #myTabedu1.tab-review-design {
     display: flex !important;
-    align-items: center !important;
+    align-items: flex-end !important;
     gap: 8px !important;
     border-bottom: 2px solid var(--cl-slate-200) !important;
     margin-bottom: 20px !important;
@@ -845,6 +939,7 @@ ul.tab-custon-design li a:after,
     margin: 0 !important;
     display: inline-block !important;
     position: relative !important;
+    vertical-align: bottom !important;
 }
 
 .tab-review-design li a,
@@ -860,7 +955,7 @@ ul.tab-custon-design li a:after,
     color: var(--cl-slate-500) !important;
     text-decoration: none !important;
     border: none !important;
-    border-bottom: 3px solid transparent !important;
+    border-bottom: 2px solid transparent !important;
     margin-bottom: -2px !important;
     background: transparent !important;
     transition: all 0.15s ease !important;
@@ -879,7 +974,7 @@ ul.tab-custon-design li a:after,
 #myTab4.tab-review-design li.active a,
 #myTabedu1.tab-review-design li.active a {
     color: var(--cl-brand) !important;
-    border-bottom: 3px solid var(--cl-brand) !important;
+    border-bottom: 2px solid var(--cl-brand) !important;
     background: transparent !important;
     font-weight: 700 !important;
 }
@@ -1358,10 +1453,16 @@ ul.tab-custon-design li a:after,
 .btn {
     border-radius: var(--cl-radius-sm) !important;
     font-size: 13px !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     padding: 7px 14px !important;
     transition: all 0.15s ease !important;
     box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    line-height: 1.4 !important;
 }
 
 .btn-brand,

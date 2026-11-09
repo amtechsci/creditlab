@@ -56,52 +56,55 @@ if (isset($_GET['pageno'])) {
     include_once 'welcome.php';
     include_once 'm_menu.php';
     ?>
-           <div class="breadcome-area">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="breadcome-list">
-                                <div class="row">
-                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                    </div>
-                                    <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
-                                        <ul class="breadcome-menu">
-                                            <li><a href="../user">Home</a> <span class="bread-slash">/</span>
-                                            </li>
-                                            <li><span class="bread-blod">Account Manager</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div class="breadcome-area">
+            <div class="container-fluid">
+                <ul class="breadcome-menu">
+                    <li><a href="index.php"><i class="fa-solid fa-house" style="font-size:12px;"></i> Admin</a> <span class="bread-slash">/</span></li>
+                    <li><a href="recovery_officer.php">Collections</a> <span class="bread-slash">/</span></li>
+                    <li><span class="bread-blod">Account Manager</span></li>
+                </ul>
             </div>
         </div>
-        <!-- Single pro tab review Start-->
-        <div class="single-pro-review-area mt-t-30 mg-b-15">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                        <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="<?= $active_tab == 'daily' ? 'active' : '' ?>"><a href="#description">Daily follow ups (less than 35 DPD)</a></li>
-                                <li class="<?= $active_tab == 'default' ? 'active' : '' ?>"><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
-                            </ul>
-                            <?php if (creditlab_can_download_account_manager_data()) { ?>
-                            <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
-                            <?php } ?>
-                            <div id="myTabContent" class="tab-content custom-product-edit">
-                                <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
-                                    <div class="row">
-                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                            <div class="review-content-section">
-                                                <div id="dropzone1" class="pro-ad">
-                                                    <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
-                                                            <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                                                <div class="table-responsive">
-        <table class="table table-bordered" id="loan_history_datatable">
+    </div>
+
+    <div class="single-pro-review-area mg-b-15">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                    <div class="product-payment-inner-st">
+                        <div class="cl-card-header">
+                            <div class="cl-card-header-left">
+                                <h3 class="cl-card-header-title">
+                                    <i class="fa-solid fa-briefcase"></i> Account Manager Delinquency Follow-ups
+                                </h3>
+                                <p class="cl-card-header-desc">Active collections pipeline categorized by DPD risk thresholds</p>
+                            </div>
+                            <div class="cl-card-header-actions">
+                                <?php if (creditlab_can_download_account_manager_data()) { ?>
+                                    <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                        <i class="fa-solid fa-file-arrow-down"></i> Download Data
+                                    </a>
+                                <?php } ?>
+                            </div>
+                        </div>
+
+                        <ul id="myTabedu1" class="tab-review-design" style="margin-bottom:16px !important;">
+                            <li class="<?= $active_tab == 'daily' ? 'active' : '' ?>">
+                                <a href="?tab=daily"><i class="fa-solid fa-calendar-day"></i> Daily Follow-ups (&le; 35 DPD) <span class="cl-badge-pill"><?= number_format($total_rows_daily) ?></span></a>
+                            </li>
+                            <li class="<?= $active_tab == 'default' ? 'active' : '' ?>">
+                                <a href="?tab=default"><i class="fa-solid fa-triangle-exclamation"></i> Default (&gt; 35 DPD) <span class="cl-badge-pill" style="background:#fee2e2; color:#dc2626;"><?= number_format($total_rows_default) ?></span></a>
+                            </li>
+                        </ul>
+
+                        <?= creditlab_render_table_legend() ?>
+
+                        <div id="myTabContent" class="tab-content custom-product-edit">
+                            <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
+                                <div class="row">
+                                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered" id="loan_history_datatable">
         <thead class="thead-light">
             <tr>                
                                         <th><input type='checkbox'></th>   

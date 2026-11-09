@@ -64,22 +64,18 @@ include_once 'm_menu.php';
                 <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                     <div class="product-payment-inner-st">
                         
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; border-bottom:2px solid var(--cl-slate-200); padding-bottom:12px;">
-                            <div>
-                                <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--cl-slate-900);">
-                                    <i class="fa-solid fa-circle-check" style="color:#16a34a; margin-right:6px;"></i> Loan Clearance Logs (Pay References)
-                                </h3>
-                                <p style="margin:4px 0 0; font-size:13px; color:var(--cl-slate-500);">
-                                    Showing <?= number_format($total_rows) ?> settlement and clearance payment transactions recorded in system
-                                </p>
+                        <div class="cl-card-header">
+                            <div class="cl-card-header-left">
+                                <h2 class="cl-card-header-title">
+                                    <i class="fa-solid fa-circle-check" style="color:var(--cl-brand); font-size:17px;"></i>
+                                    Loan Clearance Logs
+                                    <span class="cl-badge-pill"><?= number_format($total_rows) ?></span>
+                                </h2>
+                                <p class="cl-card-header-desc">Settlement and clearance payment transactions recorded in system</p>
                             </div>
-                            <div style="display:flex; gap:8px;">
-                                <a href="part_payment.php" class="btn btn-default" style="border:1px solid var(--cl-slate-200); background:#fff; font-weight:600;">
-                                    <i class="fa-solid fa-receipt" style="margin-right:4px;"></i> Part Payment
-                                </a>
-                                <a href="overview.php" class="btn btn-primary">
-                                    <i class="fa-solid fa-layer-group" style="margin-right:4px;"></i> Portfolio Overview
-                                </a>
+                            <div class="cl-card-header-actions">
+                                <a href="part_payment.php" class="btn btn-default"><i class="fa-solid fa-receipt"></i> Part Payment</a>
+                                <a href="overview.php" class="btn btn-primary"><i class="fa-solid fa-layer-group"></i> Portfolio Overview</a>
                             </div>
                         </div>
 
