@@ -1,0 +1,126 @@
+/**
+ * Shared profile tab strip (pill tabs + full-width divider).
+ * Used on admin profile and staff profiles via includes/profile_tab_nav.php.
+ */
+
+.profile-tab-scroll {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 0 20px 0;
+    padding: 0 0 14px 0;
+    border-bottom: none;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.profile-tab-scroll::-webkit-scrollbar {
+    display: none;
+    height: 0;
+}
+
+.profile-tab-scroll::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: #e2e8f0;
+    pointer-events: none;
+}
+
+.profile-tab-scroll ul.tab-review-design,
+.profile-tab-scroll #myTabedu1.tab-review-design {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-bottom: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-wrap: nowrap !important;
+    background: transparent !important;
+    width: auto !important;
+    min-width: 100%;
+}
+
+.profile-tab-scroll ul.tab-review-design li,
+.profile-tab-scroll #myTabedu1.tab-review-design li {
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+
+.profile-tab-scroll ul.tab-review-design li a,
+.profile-tab-scroll #myTabedu1.tab-review-design li a {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 8px 14px !important;
+    border-radius: 9999px !important;
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+    border: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    text-decoration: none !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+    margin-bottom: 0 !important;
+    position: static !important;
+}
+
+.profile-tab-scroll ul.tab-review-design li a::before,
+.profile-tab-scroll ul.tab-review-design li a::after,
+.profile-tab-scroll #myTabedu1.tab-review-design li a::before,
+.profile-tab-scroll #myTabedu1.tab-review-design li a::after {
+    display: none !important;
+    content: none !important;
+}
+
+.profile-tab-scroll ul.tab-review-design li a:hover,
+.profile-tab-scroll #myTabedu1.tab-review-design li a:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+.profile-tab-scroll ul.tab-review-design li.active a,
+.profile-tab-scroll #myTabedu1.tab-review-design li.active a {
+    background-color: #23b893 !important;
+    background-image: linear-gradient(135deg, #23b893, #158066) !important;
+    color: #ffffff !important;
+    border-color: #23b893 !important;
+    border-bottom-color: #23b893 !important;
+    box-shadow: 0 2px 8px rgba(35, 184, 147, 0.35) !important;
+}
+
+.profile-tab-scroll ul.tab-review-design li.active a i,
+.profile-tab-scroll #myTabedu1.tab-review-design li.active a i {
+    color: #ffffff !important;
+}
+
+.product-payment-inner-st > .profile-tab-scroll + .tab-content {
+    padding-top: 4px;
+}
+
+@media only screen and (max-width: 767px) {
+    .profile-tab-scroll {
+        margin-bottom: 12px !important;
+        padding-bottom: 12px !important;
+    }
+
+    .profile-tab-scroll ul.tab-review-design,
+    .profile-tab-scroll #myTabedu1.tab-review-design {
+        gap: 6px !important;
+    }
+
+    .profile-tab-scroll ul.tab-review-design li a,
+    .profile-tab-scroll #myTabedu1.tab-review-design li a {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+    }
+}

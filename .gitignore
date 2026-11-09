@@ -5,3 +5,5 @@ config_s3.php
 zzre/*.csv
 *.sql.gz
 u969389823_credit.sql
+credit_from_s3_2026-11-02_021501.sql
+Credit LAB portfolio Dump format.xlsx

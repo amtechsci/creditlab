@@ -1670,70 +1670,7 @@ ul.tab-custon-design li a:after,
     color: var(--cl-slate-800);
 }
 
-/* Profile Scrollable Tabs Bar */
-.profile-tab-scroll {
-    overflow-x: auto;
-    white-space: nowrap;
-    padding-bottom: 4px;
-    margin-bottom: 18px;
-    border-bottom: 2px solid var(--cl-slate-200);
-}
-
-.profile-tab-scroll::-webkit-scrollbar {
-    height: 5px;
-}
-
-.profile-tab-scroll::-webkit-scrollbar-thumb {
-    background: var(--cl-slate-300);
-    border-radius: 4px;
-}
-
-.profile-tab-scroll ul.tab-review-design {
-    display: flex !important;
-    gap: 6px !important;
-    border-bottom: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    flex-wrap: nowrap !important;
-}
-
-.profile-tab-scroll ul.tab-review-design li {
-    margin: 0 !important;
-    flex-shrink: 0 !important;
-}
-
-.profile-tab-scroll ul.tab-review-design li a {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    padding: 8px 14px !important;
-    border-radius: 20px !important;
-    background: var(--cl-slate-100) !important;
-    color: var(--cl-slate-600) !important;
-    font-size: 12.5px !important;
-    font-weight: 600 !important;
-    border: 1px solid var(--cl-slate-200) !important;
-    text-decoration: none !important;
-    transition: all 0.15s ease !important;
-    margin-bottom: 0 !important;
-}
-
-.profile-tab-scroll ul.tab-review-design li a:hover {
-    background: var(--cl-slate-200) !important;
-    color: var(--cl-slate-900) !important;
-}
-
-.profile-tab-scroll ul.tab-review-design li.active a {
-    background-color: var(--cl-brand) !important;
-    background-image: linear-gradient(135deg, #23b893, #158066) !important;
-    color: #ffffff !important;
-    border-color: #23b893 !important;
-    box-shadow: 0 2px 8px rgba(35, 184, 147, 0.35) !important;
-}
-
-.profile-tab-scroll ul.tab-review-design li.active a i {
-    color: #ffffff !important;
-}
+@import url("profile_tabs.css");
 
 /* Sidebar Scrollbar Enhanced Contrast */
 #sidebar .left-custom-menu-adp-wrap::-webkit-scrollbar-thumb {
@@ -2003,27 +1940,6 @@ ul.tab-custon-design li a:after,
         flex: 1 1 50% !important;
         text-align: center !important;
         justify-content: center !important;
-    }
-
-    /* Clean Tab strip touch scrolling without scrollbar */
-    .profile-tab-scroll {
-        scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
-        margin-bottom: 12px !important;
-        padding-bottom: 2px !important;
-    }
-
-    .profile-tab-scroll::-webkit-scrollbar {
-        display: none !important;
-    }
-
-    .profile-tab-scroll ul.tab-review-design {
-        gap: 6px !important;
-    }
-
-    .profile-tab-scroll ul.tab-review-design li a {
-        padding: 6px 12px !important;
-        font-size: 12px !important;
     }
 
     /* Touch-friendly responsive data tables */
