@@ -35,16 +35,8 @@ if (!function_exists('cl_nav_active')) {
 
 <div class="left-sidebar-pro">
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <a href="index.php" class="brand-link">
-                <div class="brand-icon">
-                    <img src="/logo.svg" alt="CreditLab" style="width:100%; height:100%; object-fit:contain; border-radius:6px;">
-                </div>
-                <div>
-                    <div class="brand-name">CreditLab</div>
-                </div>
-                <span class="brand-badge">ADMIN</span>
-            </a>
+        <div class="sidebar-header sidebar-header-minimal">
+            <span class="brand-badge">ADMIN</span>
             <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation menu" title="Close menu">
                 <i class="fa-solid fa-xmark"></i>
             </button>

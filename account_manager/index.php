@@ -205,7 +205,7 @@ switch ((int)$user_member) {
                                         <td data-title="Customer Response"><?php echo $concatenated_responses; ?></td>
                                         <td data-title="Commitment Date"><?php echo $concatenated_dates; ?></td>
                                         <td data-title="Updated At"><?php echo $concatenated_updates; ?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>&tab=manager&lid=<?=(int)$user_lid?>" target="_blank">View</a></td>
                                     </tr>
                                 <?php $ii++;} ?>
             </tbody>
@@ -350,7 +350,7 @@ switch ((int)$user_member) {
                                         <td data-title="Commitment Date"><?php echo $concatenated_dates; ?></td>
                                         <td data-title="Updated At"><?php echo $concatenated_updates; ?></td>
                                         <!--<td data-title="Status" style="color:white; background:<?php #if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php #$user_status?></td>-->
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>&tab=manager&lid=<?=(int)$user_lid?>" target="_blank">View</a></td>
                                     </tr>
                                 <?php $ii++;} ?>
             </tbody>

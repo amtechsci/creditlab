@@ -144,6 +144,18 @@ html, body {
     margin: 0;
 }
 
+.sidebar-header.sidebar-header-minimal {
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+    min-height: 48px !important;
+}
+
+.sidebar-header.sidebar-header-minimal .brand-link,
+.sidebar-header.sidebar-header-minimal .brand-icon,
+.sidebar-header.sidebar-header-minimal .brand-name {
+    display: none !important;
+}
+
 .sidebar-header .brand-badge {
     font-size: 10px;
     font-weight: 700;

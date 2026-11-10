@@ -6,10 +6,6 @@
                     <button type="button" id="sidebarCollapse" class="cl-hamburger-btn" title="Toggle Navigation" aria-label="Toggle Navigation">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    <a href="index.php" class="cl-mobile-brand" title="CreditLab Admin">
-                        <img src="/logo.svg" alt="CreditLab" class="cl-mobile-brand-logo">
-                        <span class="cl-mobile-brand-title">CreditLab</span>
-                    </a>
                     <div class="cl-desktop-search">
                         <form class="header-search-form" action="sea.php" method="get" target="_blank">
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>

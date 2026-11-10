@@ -117,3 +117,54 @@ function creditlab_loan_acc_man_recent_rows(int $lid, ?int $agencyId = null, int
         'updated_ats' => $updated_ats,
     ];
 }
+
+/**
+ * loan_apply.id values for a user currently in account-manager collections.
+ *
+ * @return int[]
+ */
+function creditlab_account_manager_loan_ids_for_user(int $uid): array
+{
+    $uid = (int) $uid;
+    if ($uid <= 0) {
+        return [];
+    }
+    $ids = [];
+    $q = towquery(
+        "SELECT id FROM loan_apply WHERE uid={$uid} AND status='account manager' ORDER BY id DESC"
+    );
+    if ($q) {
+        while ($row = towfetch($q)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+    return $ids;
+}
+
+/**
+ * Default loan id for Account Manager follow-up form (account_manager / agency staff).
+ */
+function creditlab_default_account_manager_loan_id(int $uid, ?int $hintLid = null): ?int
+{
+    $ids = creditlab_account_manager_loan_ids_for_user($uid);
+    if ($ids === []) {
+        return null;
+    }
+    if ($hintLid !== null && $hintLid > 0 && in_array($hintLid, $ids, true)) {
+        return $hintLid;
+    }
+    $q = towquery(
+        "SELECT la.id FROM loan_apply la
+        INNER JOIN loan l ON l.lid = la.id
+        WHERE la.uid=" . (int) $uid . "
+        AND la.status='account manager'
+        AND l.status_log='account manager'
+        ORDER BY la.id DESC
+        LIMIT 1"
+    );
+    if ($q && townum($q) > 0) {
+        $row = towfetch($q);
+        return (int) $row['id'];
+    }
+    return $ids[0];
+}

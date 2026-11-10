@@ -45,6 +45,12 @@ if(isset($_GET['id'])){
         }
         return $tab === $paneId ? ' active in' : '';
     };
+    $profile_auto_am_loan = in_array($creditlab_profile_role, ['account_manager', 'agency_admin'], true);
+    $profile_default_am_loan_id = null;
+    if ($profile_auto_am_loan) {
+        $hintLid = isset($_GET['lid']) ? (int) $_GET['lid'] : null;
+        $profile_default_am_loan_id = creditlab_default_account_manager_loan_id((int) $userpro_id, $hintLid);
+    }
     
     $limit_percentage = null;
     $limit_percentage_display = 'N/A';
@@ -2033,13 +2039,18 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                                              
                                                               <div class="form-group">
                                                                   <lable>Loan Id</lable>
-                                                                <select name="loan_id" class="form-control" required>
-                                                                    <?php 
-                                                                    $date = date('Y-m-d');
-                                                                    $loan_data = towquery("SELECT * FROM loan_apply WHERE uid=$userpro_id AND status='account manager' ORDER BY id ASC");
-                                                                    echo "<option value=''>Select loan</option>";
-                                                                    while($loan_fetch = towfetch($loan_data)){ extract($loan_fetch,EXTR_PREFIX_ALL,"follow");
-                                                                        echo "<option value='".$follow_id."'>CLL".$follow_id."</option>";
+                                                                <select name="loan_id" id="profileAmLoanId" class="form-control" required>
+                                                                    <?php
+                                                                    $amLoanIds = creditlab_account_manager_loan_ids_for_user((int) $userpro_id);
+                                                                    if (!$profile_auto_am_loan || $profile_default_am_loan_id === null) {
+                                                                        echo "<option value=''>Select loan</option>";
+                                                                    }
+                                                                    foreach ($amLoanIds as $amLid) {
+                                                                        $sel = ($profile_default_am_loan_id !== null && $profile_default_am_loan_id === $amLid) ? ' selected' : '';
+                                                                        echo "<option value='" . (int) $amLid . "'" . $sel . '>CLL' . (int) $amLid . '</option>';
+                                                                    }
+                                                                    if ($amLoanIds === []) {
+                                                                        echo "<option value=''>No account-manager loan</option>";
                                                                     }
                                                                     ?>
                                                                 </select>
