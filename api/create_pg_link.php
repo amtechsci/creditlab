@@ -26,6 +26,12 @@ if ($uid < 1 || $loanInternalId < 1) {
     exit;
 }
 
+if (creditlab_is_agency_staff() && !creditlab_agency_can_view_customer($uid)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 $result = creditlab_create_pg_link($uid, $loanInternalId, $linkType, $manualAmount);
 if (!$result['ok']) {
     http_response_code(400);

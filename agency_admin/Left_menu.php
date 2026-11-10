@@ -10,8 +10,8 @@ creditlab_staff_sidebar_open('AGENCY');
                             <span class="mini-click-non"><?= htmlspecialchars($agency_admin_agency_name ?? 'Default list') ?></span>
                         </a>
                     </li>
-                    <li class="<?= creditlab_staff_nav_active('sea.php') ?>">
-                        <a href="sea.php">
+                    <li class="<?= creditlab_staff_nav_active('search.php') ?>">
+                        <a href="search.php">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <span class="mini-click-non">Search</span>
                         </a>

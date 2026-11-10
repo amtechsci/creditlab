@@ -57,5 +57,5 @@ sudo -u www-data php scripts/backfill_pg_link_agency.php --apply
 - URL: `/agency_admin/`
 - Login: same `/account/login.php` as other staff
 - List: only **DPD &gt; 35** (same columns as account manager default bucket)
-- Profile: Personal, Reference, Login Data, All Loan, Note, Account manager, **PG link**
-- PAN / Aadhar hidden
+- Profile: Personal (view-only contact), Reference (view-only), All Loan, Note, Account manager, **PG link** — no login/IP data or full profile edit
+- PAN / Aadhar / email / salary / internal assignment fields hidden

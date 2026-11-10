@@ -110,6 +110,58 @@ function creditlab_can_view_documents(): bool
     return creditlab_staff_role() !== 'agency_admin';
 }
 
+function creditlab_is_agency_staff(): bool
+{
+    return creditlab_staff_role() === 'agency_admin';
+}
+
+/**
+ * Agency portal may only open customers in the default bucket (DPD > 35).
+ */
+function creditlab_agency_can_view_customer(int $userId): bool
+{
+    if (!creditlab_is_agency_staff()) {
+        return true;
+    }
+    $userId = (int) $userId;
+    if ($userId <= 0) {
+        return false;
+    }
+    require_once __DIR__ . '/loan_dpd.php';
+    $rows = creditlab_account_manager_loan_rows();
+    foreach ($rows['default'] as $row) {
+        $uid = (int) ($row['id'] ?? $row['uid'] ?? 0);
+        if ($uid === $userId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** Agency may only post collection notes and account-manager follow-ups (not full profile edits). */
+function creditlab_agency_profile_post_allowed(): bool
+{
+    if (isset($_POST['loan_acc_man'])) {
+        return true;
+    }
+    if (array_key_exists('comment', $_POST)) {
+        return true;
+    }
+    return false;
+}
+
+function creditlab_enforce_agency_profile_post_or_exit(): void
+{
+    if (!creditlab_is_agency_staff() || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return;
+    }
+    if (!creditlab_agency_profile_post_allowed()) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+}
+
 function creditlab_mask_sensitive_id(?string $value): string
 {
     $value = trim((string) $value);

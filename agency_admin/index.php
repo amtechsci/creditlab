@@ -21,27 +21,36 @@ include_once 'm_menu.php';
 ?>
 <div class="breadcome-area">
     <div class="container-fluid">
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="breadcome-list">
-                    <p><strong><?= htmlspecialchars($agency_admin_agency_name ?? 'Agency') ?></strong> — loans with DPD &gt; 35 only</p>
-                </div>
-            </div>
-        </div>
+        <ul class="breadcome-menu">
+            <li><span class="bread-blod"><?= htmlspecialchars($agency_admin_agency_name ?? 'Agency') ?></span></li>
+        </ul>
     </div>
 </div>
 </div>
-<div class="single-pro-review-area mt-t-30 mg-b-15">
+<div class="single-pro-review-area mg-b-15">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                 <div class="product-payment-inner-st">
-                    <a href="download_recovery.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
-                    <div class="table-responsive">
-                        <table class="table table-bordered" id="loan_history_datatable">
+                    <div class="cl-card-header">
+                        <div class="cl-card-header-left">
+                            <h3 class="cl-card-header-title">
+                                <i class="fa-solid fa-building-columns"></i>
+                                <?= htmlspecialchars($agency_admin_agency_name ?? 'Agency') ?> portfolio
+                            </h3>
+                            <p class="cl-card-header-desc">Loans with DPD &gt; 35 only · <?= number_format($total_rows) ?> record<?= $total_rows === 1 ? '' : 's' ?></p>
+                        </div>
+                        <div class="cl-card-header-actions">
+                            <a href="download_recovery.php" class="btn btn-primary cl-card-download-btn" target="_blank" rel="noopener" style="font-weight:600; display:inline-flex; align-items:center; gap:6px; position:relative; z-index:2;">
+                                <i class="fa-solid fa-file-arrow-down"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="position:relative; z-index:1;">
+                        <table class="table table-bordered agency-loan-table" id="agency_loan_table">
                             <thead class="thead-light">
                                 <tr>
-                                    <th><input type="checkbox"></th>
+                                    <th style="width:40px;text-align:center;"><input type="checkbox" id="selectAllAgency" title="Select all on this page" aria-label="Select all"></th>
                                     <th>SLNO</th>
                                     <th>CID</th>
                                     <th>Name</th>
@@ -112,8 +121,8 @@ include_once 'm_menu.php';
                                     }
                                     ?>
                                 <tr>
-                                    <th><input type="checkbox" name="check[]" value="<?= (int) $user_id ?>"></th>
-                                    <th><?= $ii ?></th>
+                                    <td style="text-align:center;"><input type="checkbox" class="agency-row-check" name="check[]" value="<?= (int) $user_id ?>"></td>
+                                    <td><?= $ii ?></td>
                                     <td data-title="CID"><?= htmlspecialchars($user_rcid ?? '') ?></td>
                                     <td data-title="Name"><?= htmlspecialchars($user_name ?? '') ?><?php if (isset($user_loan) && $user_loan > 0) {
                                         echo "<span style='color:red'>#</span>";
@@ -174,6 +183,25 @@ include_once 'm_menu.php';
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var master = document.getElementById('selectAllAgency');
+    var table = document.getElementById('agency_loan_table');
+    if (!master || !table) return;
+    master.addEventListener('change', function () {
+        table.querySelectorAll('input.agency-row-check').forEach(function (cb) {
+            cb.checked = master.checked;
+        });
+    });
+    table.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('agency-row-check')) return;
+        var boxes = table.querySelectorAll('input.agency-row-check');
+        var checked = table.querySelectorAll('input.agency-row-check:checked');
+        master.checked = boxes.length > 0 && checked.length === boxes.length;
+        master.indeterminate = checked.length > 0 && checked.length < boxes.length;
+    });
+})();
+</script>
 <?php include_once 'foot.php'; ?>
 </body>
 </html>

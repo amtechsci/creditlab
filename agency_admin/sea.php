@@ -15,9 +15,11 @@ if (isset($agency_admin)) {
     exit;
 }
 
+require_once __DIR__ . '/../lib/staff_context.php';
+
 $search = isset($_GET['sea']) ? trim(towreal($_GET['sea'])) : '';
 if ($search === '') {
-    echo "<script>alert('Enter a search term'); window.close();</script>";
+    header('Location: search.php');
     exit;
 }
 
@@ -30,17 +32,29 @@ $seausersquery = towquery(
     "SELECT id FROM `user` WHERE `altmobile` = '$search' OR `mobile` = '$search' OR `email` = '$search'
      OR `altemail` = '$search' OR `rcid` = '$search' OR `account_no` = '$search' LIMIT 1"
 );
+$uid = 0;
 if ($seausersquery && townum($seausersquery) > 0) {
     $a = towfetch($seausersquery);
-    header('Location: profile.php?id=' . (int) $a['id']);
+    $uid = (int) ($a['id'] ?? 0);
+}
+
+if ($uid <= 0) {
+    $seausersquerys = towquery("SELECT uid FROM `loan_apply` WHERE `id` = '" . towreal($loanId) . "' LIMIT 1");
+    if ($seausersquerys && townum($seausersquerys) > 0) {
+        $aa = towfetch($seausersquerys);
+        $uid = (int) ($aa['uid'] ?? 0);
+    }
+}
+
+if ($uid > 0) {
+    if (!creditlab_agency_can_view_customer($uid)) {
+        header('Location: search.php?q=' . rawurlencode($search) . '&err=not_on_list');
+        exit;
+    }
+    $tab = ($loanId !== $search && preg_match('/^CLL?\d+/i', $search)) ? '&tab=oldloan' : '';
+    header('Location: profile.php?id=' . $uid . $tab);
     exit;
 }
 
-$seausersquerys = towquery("SELECT uid FROM `loan_apply` WHERE `id` = '" . towreal($loanId) . "' LIMIT 1");
-if ($seausersquerys && townum($seausersquerys) > 0) {
-    $aa = towfetch($seausersquerys);
-    header('Location: profile.php?id=' . (int) $aa['uid'] . '&tab=oldloan');
-    exit;
-}
-
-echo "<script>alert('Not Found'); window.close();</script>";
+header('Location: search.php?q=' . rawurlencode($search) . '&err=not_found');
+exit;

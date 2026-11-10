@@ -20,6 +20,9 @@ function creditlab_staff_nav_active(string $file): string
         }
         return (strpos($uri, 'index.php') !== false && !isset($_GET['tab'])) ? 'active' : '';
     }
+    if ($file === 'search.php' && strpos($uri, 'sea.php') !== false) {
+        return 'active';
+    }
     return (strpos($uri, $file) !== false) ? 'active' : '';
 }
 
@@ -51,6 +54,8 @@ function creditlab_render_staff_welcome(array $opts = []): void
     $showHelp = !empty($opts['show_help']);
     $showSettings = !empty($opts['show_settings']);
     $searchAction = $opts['search_action'] ?? 'sea.php';
+    $searchSameTab = !empty($opts['search_same_tab']);
+    $searchTarget = $searchSameTab ? '' : ' target="_blank"';
     $logoutHref = $opts['logout_href'] ?? 'logout.php';
     $settingsHref = $opts['settings_href'] ?? 'settings.php';
     $passwordHref = $opts['password_href'] ?? 'changepassword.php';
@@ -66,9 +71,9 @@ function creditlab_render_staff_welcome(array $opts = []): void
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <div class="cl-desktop-search">
-                        <form class="header-search-form" action="<?= htmlspecialchars($searchAction) ?>" method="get" target="_blank">
+                        <form class="header-search-form" action="<?= htmlspecialchars($searchAction) ?>" method="get"<?= $searchTarget ?>>
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                            <input type="text" name="sea" class="form-control" placeholder="Search UID, name, mobile, PAN, loan ID..." autocomplete="off">
+                            <input type="text" name="sea" id="clStaffHeaderSearch" class="form-control" placeholder="Search UID, name, mobile, PAN, loan ID..." autocomplete="off">
                         </form>
                     </div>
                 </div>
@@ -114,7 +119,7 @@ function creditlab_render_staff_welcome(array $opts = []): void
                 </div>
             </div>
             <div class="cl-mobile-search-bar" id="mobileSearchBar">
-                <form class="cl-mobile-search-form" action="<?= htmlspecialchars($searchAction) ?>" method="get" target="_blank">
+                <form class="cl-mobile-search-form" action="<?= htmlspecialchars($searchAction) ?>" method="get"<?= $searchTarget ?>>
                     <i class="fa-solid fa-magnifying-glass cl-mobile-search-icon"></i>
                     <input type="text" name="sea" class="cl-mobile-search-input" placeholder="Search UID, name, phone, PAN, loan..." autocomplete="off">
                     <button type="button" class="cl-mobile-search-close" id="mobileSearchClose" aria-label="Close search">
@@ -222,6 +227,26 @@ function creditlab_staff_sidebar_mobile_script(): void
                 if (searchBar.classList.contains('active')) {
                     var input = searchBar.querySelector('input');
                     if (input) input.focus();
+                }
+            }
+            return;
+        }
+        if (e.target.closest('[data-cl-focus-search]')) {
+            e.preventDefault();
+            var desktop = document.getElementById('clStaffHeaderSearch');
+            if (desktop) {
+                desktop.focus();
+                desktop.select();
+                return;
+            }
+            if (window.innerWidth <= 991) {
+                var searchBarOpen = document.getElementById('mobileSearchBar');
+                if (searchBarOpen) {
+                    searchBarOpen.classList.add('active');
+                }
+                var mobileInput = document.querySelector('.cl-mobile-search-input');
+                if (mobileInput) {
+                    mobileInput.focus();
                 }
             }
             return;

@@ -4,4 +4,5 @@ creditlab_render_staff_welcome([
     'show_help' => true,
     'show_settings' => false,
     'search_action' => 'sea.php',
+    'search_same_tab' => true,
 ]);

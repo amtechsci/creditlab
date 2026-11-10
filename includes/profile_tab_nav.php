@@ -14,7 +14,10 @@ foreach ($allowed as $key) {
     $d = $defs[$key];
     $isActive = ($activeTab === $key);
     $liClass = $isActive ? ' class="active"' : '';
-    echo '<li' . $liClass . '><a href="' . htmlspecialchars($d['href']) . '" data-toggle="tab">' . htmlspecialchars($d['label']) . '</a></li>';
+    $href = $d['href'];
+    $icon = isset($d['icon']) ? (string) $d['icon'] : '';
+    $iconHtml = $icon !== '' ? '<i class="' . htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') . '"></i> ' : '';
+    echo '<li' . $liClass . '><a href="' . htmlspecialchars($href) . '" class="cl-profile-tab-link" data-tab="' . htmlspecialchars($key) . '">' . $iconHtml . htmlspecialchars($d['label']) . '</a></li>';
 }
 echo '</ul>';
 echo '</div>';

@@ -12,6 +12,6 @@ $hide = array_diff($allPanes, $allowedPanes);
 ?>
 <style>
 <?php foreach ($hide as $paneId) { ?>
-#myTabContent #<?= htmlspecialchars($paneId) ?> { display: none !important; }
+#myTabContent > #<?= htmlspecialchars($paneId) ?> { display: none !important; visibility: hidden !important; }
 <?php } ?>
 </style>

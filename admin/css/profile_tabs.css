@@ -135,6 +135,53 @@
     padding-top: 8px;
 }
 
+.product-payment-inner-st #myTabContent .review-content-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 18px 20px 8px;
+    margin-bottom: 8px;
+}
+
+.product-payment-inner-st #myTabContent .form-group lable,
+.product-payment-inner-st #myTabContent .form-group label {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+}
+
+.product-payment-inner-st #myTabContent .form-group {
+    margin-bottom: 14px;
+}
+
+.product-payment-inner-st #myTabContent .form-control,
+.product-payment-inner-st #myTabContent select.form-control {
+    min-height: 38px;
+    border-radius: 8px;
+    border-color: #e2e8f0;
+    font-size: 13.5px;
+    color: #0f172a;
+}
+
+.product-payment-inner-st #myTabContent .form-control:focus {
+    border-color: #23b893;
+    box-shadow: 0 0 0 3px rgba(35, 184, 147, 0.15);
+}
+
+.product-payment-inner-st #myTabContent .form-control[readonly],
+.product-payment-inner-st #myTabContent .form-control:disabled {
+    background: #f8fafc;
+    color: #475569;
+}
+
+.product-payment-inner-st #myTabContent .input-group .btn-success {
+    border-radius: 0 8px 8px 0;
+}
+
 .product-payment-inner-st #myTabContent .tab-pane .table-responsive {
     margin-top: 0;
     border-radius: 8px;

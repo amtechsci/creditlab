@@ -10,6 +10,7 @@ require_once __DIR__ . '/../lib/loan_dpd.php';
 require_once __DIR__ . '/../lib/staff_context.php';
 require_once __DIR__ . '/../lib/loan_acc_man.php';
 $creditlab_profile_role = creditlab_profile_page_role();
+creditlab_enforce_agency_profile_post_or_exit();
 require_once '../lib/s3_upload_helper.php';
 
 // Get base URL from database
@@ -28,13 +29,27 @@ if(isset($_GET['id'])){
     }
   
     extract($userprofetch,EXTR_PREFIX_ALL,"userpro");
+    $is_agency_profile = ($creditlab_profile_role === 'agency_admin');
+    if ($is_agency_profile && !creditlab_agency_can_view_customer((int) $userpro_id)) {
+        echo "<script>alert('You can only view customers assigned to your agency list (DPD > 35).'); window.location.replace('index.php');</script>";
+        exit;
+    }
+    $agency_customer_dpd = null;
+    if ($is_agency_profile) {
+        require_once __DIR__ . '/../lib/loan_dpd.php';
+        foreach (creditlab_account_manager_loan_rows()['default'] as $agencyRow) {
+            if ((int) ($agencyRow['id'] ?? 0) === (int) $userpro_id) {
+                $agency_customer_dpd = (int) ($agencyRow['calculated_dpd'] ?? 0);
+                break;
+            }
+        }
+    }
     require_once __DIR__ . '/../lib/easebuzz_enach.php';
     $profile_enach_state = creditlab_user_enach_sync_flag((int)$id, $userpro_easebuzz ?? 0);
     $userpro_enach_label = $profile_enach_state['label'];
     $userpro_easebuzz = $profile_enach_state['easebuzz'];
     $date = date('Y-m-d H:i:s');
     $tab = isset($_GET['tab']) ? towreal($_GET['tab']) : 'Personal';
-    $is_agency_profile = ($creditlab_profile_role === 'agency_admin');
     $agency_allowed_tabs = creditlab_profile_tabs_for_role('agency_admin');
     if ($is_agency_profile && !in_array($tab, $agency_allowed_tabs, true)) {
         $tab = 'Personal';
@@ -567,52 +582,31 @@ if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty
             <!-- Mobile Menu end -->
           <div class="breadcome-area">
                 <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="breadcome-list">
-                                <div class="row">
-                                    <?php if ($is_agency_profile) { ?>
-                                    <?php include __DIR__ . '/../includes/profile_agency_header.php'; ?>
-                                    <?php } else { ?>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
-                   <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
-                   <p>Mobile : <?=$userpro_mobile;?></p>
-                   <p<?=$limit_percentage_style_attr?>>Limit vs Salary: <?=$limit_percentage_display?></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <?php $account_manager = towquery("SELECT * FROM `account_manager` WHERE id=$userpro_assign_account_manager");
-                    $account_manager = towfetch($account_manager);
-                    ?>
-                    <?php $recovery_officer = towquery("SELECT * FROM `recovery_officer` WHERE id=$userpro_assign_recovery_officer");
-                    $recovery_officer = towfetch($recovery_officer);
-                    ?>
-                   <p>Account Manager : <?= isset($account_manager['name']) ? $account_manager['name'] : 'Not Assigned';?> </p><p>Recovery Officer : <?= isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';?></p>
-                   <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
-                   <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                   $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
-                   $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
-                   $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
-                   ?>
-                   <p>Creditlab score<span class="bread-slash">:</span> <span class="bread-blod"><?=$userpro_credit_score?></span></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>Pan : Y</p>
-                   <p>Enach : <?= htmlspecialchars($userpro_enach_label) ?></p>
-                   <p>adhar : Y</p>
-                   <p>Bank check : Y</p>
-                   <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
-                                                     if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
-                </div></div>
-                                    <?php } ?>
-                            </div>
-                        </div>
-                    </div>
+                    <?php if ($is_agency_profile) { ?>
+                    <ul class="breadcome-menu">
+                        <li><a href="index.php"><i class="fa-solid fa-building-columns" style="font-size:12px;"></i> Agency</a> <span class="bread-slash">/</span></li>
+                        <li><span class="bread-blod"><?= htmlspecialchars($userpro_name) ?> (<?= htmlspecialchars($userpro_rcid ?? '') ?>)</span></li>
+                    </ul>
+                    <?php } else { ?>
+                    <ul class="breadcome-menu">
+                        <li><a href="index.php"><i class="fa-solid fa-briefcase" style="font-size:12px;"></i> Account Manager</a> <span class="bread-slash">/</span></li>
+                        <li><span class="bread-blod"><?= htmlspecialchars($userpro_name) ?> (<?= htmlspecialchars($userpro_rcid ?? '') ?>)</span></li>
+                    </ul>
+                    <?php } ?>
                 </div>
             </div>
         </div>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        <?php if ($is_agency_profile) {
+                            include __DIR__ . '/../includes/profile_agency_header.php';
+                        } else {
+                            include __DIR__ . '/../includes/profile_staff_dossier_header.php';
+                        } ?>
+                    </div>
+                </div>
+            </div>
           <div class="single-pro-review-area mt-t-30 mg-b-15">
             <div class="container-fluid">
                 <div class="row">
@@ -625,6 +619,9 @@ if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty
                                     <div class="row">
                                         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                             <div class="review-content-section">
+                                                <?php if ($is_agency_profile) {
+                                                    include __DIR__ . '/../includes/profile_agency_personal_readonly.php';
+                                                } else { ?>
                                                 <form id="add-department" action="" method="post" class="add-department">
                                                     <div class="row">
                                                         <div class="col-lg-6 col-md-6 col-sm-6 col-xs-12">
@@ -1008,6 +1005,7 @@ if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty
                                                         </div>
                                                     </div>
                                                 </form>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                         
@@ -1438,6 +1436,9 @@ if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty
                                 </div>
                                 <div class="product-tab-list tab-pane fade<?= $profile_pane_active('Reference') ?>" id="Reference">
                                     <div class="table-responsive">
+        <?php if ($is_agency_profile) {
+            include __DIR__ . '/../includes/profile_agency_reference_readonly.php';
+        } else { ?>
         <form action="" method="post" id="referralForm">
     <table class="table table-bordered" id="referralTable">
         <thead class="thead-light">
@@ -1512,6 +1513,7 @@ document.querySelectorAll('.remove-row').forEach(button => {
     });
 });
 </script>
+        <?php } ?>
 
     </div>
                                 </div>
@@ -2196,36 +2198,47 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
         ?>
         <script>
         $(document).ready(function () {
-            function showProfileTab(href) {
-                if (!href || href.charAt(0) !== '#') {
-                    return;
+            function showProfileTab(tabId) {
+                if (!tabId) {
+                    return false;
                 }
-                var $link = $('#myTabedu1 a[href="' + href + '"]');
-                if (!$link.length) {
-                    return;
+                var paneSel = '#' + tabId.replace(/[^a-zA-Z0-9_-]/g, '');
+                var $pane = $(paneSel);
+                if (!$pane.length) {
+                    return false;
                 }
+                var $link = $('#myTabedu1 a[data-tab="' + tabId + '"], #myTabedu1 a[href="' + paneSel + '"]');
                 $('#myTabedu1 li').removeClass('active');
-                $link.parent('li').addClass('active');
+                if ($link.length) {
+                    $link.parent('li').addClass('active');
+                }
                 $('#myTabContent > .tab-pane').removeClass('active in');
-                $(href).addClass('active in');
+                $pane.addClass('active in');
+                return true;
             }
 
             const urlParams = new URLSearchParams(window.location.search);
-            const activeTab = urlParams.get('tab');
-            if (activeTab) {
-                showProfileTab('#' + activeTab);
-            }
+            const activeTab = urlParams.get('tab') || 'Personal';
+            showProfileTab(activeTab);
 
-            $('#myTabedu1 a[data-toggle="tab"]').on('click', function (e) {
-                e.preventDefault();
-                const href = $(this).attr('href');
-                const tabId = href ? href.substring(1) : '';
-                if (tabId) {
-                    const url = new URL(window.location);
-                    url.searchParams.set('tab', tabId);
-                    window.history.replaceState({}, '', url);
+            $('#myTabedu1').on('click', 'a.cl-profile-tab-link, a[data-toggle="tab"]', function (e) {
+                var tabId = $(this).attr('data-tab') || '';
+                var href = $(this).attr('href') || '';
+                if (!tabId && href.charAt(0) === '#') {
+                    tabId = href.substring(1);
                 }
-                showProfileTab(href);
+                if (!tabId) {
+                    return;
+                }
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (showProfileTab(tabId)) {
+                    try {
+                        var url = new URL(window.location.href);
+                        url.searchParams.set('tab', tabId);
+                        window.history.replaceState({}, '', url.toString());
+                    } catch (err) {}
+                }
             });
         });
     </script>
