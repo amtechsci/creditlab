@@ -114,6 +114,11 @@
     display: block !important;
 }
 
+.product-payment-inner-st #myTabContent > .tab-pane:not(.active) {
+    display: none !important;
+    pointer-events: none !important;
+}
+
 @media (max-width: 767px) {
     .profile-tab-scroll {
         margin: 12px 0 16px;

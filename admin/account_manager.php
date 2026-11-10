@@ -81,7 +81,7 @@ if (isset($_GET['pageno'])) {
                             </div>
                             <div class="cl-card-header-actions">
                                 <?php if (creditlab_can_download_account_manager_data()) { ?>
-                                    <a href="<?=htmlspecialchars(creditlab_downloader_href('zz.php'))?>" class="btn btn-primary" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                    <a href="<?= htmlspecialchars(creditlab_downloader_href('zz.php')) ?>" class="btn btn-primary cl-card-download-btn" target="_blank" rel="noopener" style="font-weight:600; display:inline-flex; align-items:center; gap:6px; position:relative; z-index:2;">
                                         <i class="fa-solid fa-file-arrow-down"></i> Download Data
                                     </a>
                                 <?php } ?>
@@ -101,13 +101,11 @@ if (isset($_GET['pageno'])) {
 
                         <div id="myTabContent" class="tab-content custom-product-edit">
                             <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
-                                <div class="row">
-                                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered" id="loan_history_datatable">
+                                <div class="table-responsive">
+                                            <table class="table table-bordered am-loan-table" id="am_loan_table_daily">
         <thead class="thead-light">
             <tr>                
-                                        <th><input type='checkbox'></th>   
+                                        <th style="width:40px;text-align:center;"><input type="checkbox" id="selectAllDaily" title="Select all on this page" aria-label="Select all"></th>   
                                         <th>SLNO</th>    
                                         <th>CID</th>        
                                         <th>Name</th>         
@@ -190,8 +188,8 @@ switch ((int)$user_member) {
 }
 ?>
                                    <tr>
-                                        <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
-                                        <th><?=$ii?></th> 
+                                        <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
+                                        <td><?=$ii?></td> 
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
@@ -231,28 +229,14 @@ switch ((int)$user_member) {
     </li>
   </ul>
 </nav>
-    </div>
-                                                            </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
+                            </div>
                                 <div class="product-tab-list tab-pane fade <?= $active_tab == 'default' ? 'active in' : '' ?>" id="INFORMATION">
-                                    <div class="row">
-                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                                            <div class="review-content-section">
-                                                <div id="dropzone1" class="pro-ad">
-                                                    <form method="post" class="dropzone dropzone-custom needsclick add-professors" id="demo1-upload" enctype="multipart/form-data">
-                                            
-                                                            <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                                                
-    <div class="table-responsive">
-        <table class="table table-bordered" id="loan_history_datatable">
+                                <div class="table-responsive">
+        <table class="table table-bordered am-loan-table" id="am_loan_table_default">
         <thead class="thead-light">
             <tr>                
-                                        <th><input type='checkbox'></th>   
+                                        <th style="width:40px;text-align:center;"><input type="checkbox" id="selectAllDefault" title="Select all on this page" aria-label="Select all"></th>   
                                         <th>SLNO</th>    
                                         <th>CID</th>        
                                         <th>Name</th>         
@@ -335,8 +319,8 @@ switch ((int)$user_member) {
 }
 ?>
                                     <tr>
-                                        <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
-                                        <th><?=$ii?></th> 
+                                        <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
+                                        <td><?=$ii?></td> 
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
                                         <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
@@ -377,19 +361,7 @@ switch ((int)$user_member) {
   </ul>
 </nav>
     </div>
-    
-
-                                                                
-                                                            </div>
-                                                         
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                            
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -399,6 +371,25 @@ switch ((int)$user_member) {
        <?php
        include_once 'foot.php';
        ?>
+<script>
+(function () {
+    function wireSelectAll(masterId, tableId) {
+        var master = document.getElementById(masterId);
+        var table = document.getElementById(tableId);
+        if (!master || !table) {
+            return;
+        }
+        master.addEventListener('change', function () {
+            var checked = master.checked;
+            table.querySelectorAll('tbody input.am-row-check').forEach(function (cb) {
+                cb.checked = checked;
+            });
+        });
+    }
+    wireSelectAll('selectAllDaily', 'am_loan_table_daily');
+    wireSelectAll('selectAllDefault', 'am_loan_table_default');
+})();
+</script>
 
 </body>
 

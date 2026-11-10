@@ -879,6 +879,37 @@ html, body {
     align-items: center !important;
     gap: 8px !important;
     margin-left: auto !important;
+    position: relative !important;
+    z-index: 3 !important;
+}
+
+/* Inactive Bootstrap panes must not sit on top and swallow clicks (see admin/account_manager.php). */
+.product-payment-inner-st #myTabContent > .tab-pane:not(.active) {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+.product-payment-inner-st #myTabContent > .tab-pane.active {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.product-payment-inner-st .am-loan-table input[type="checkbox"] {
+    position: relative !important;
+    z-index: 2 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.cl-sidebar-backdrop {
+    display: none !important;
+}
+
+@media (max-width: 991px) {
+    .cl-sidebar-backdrop {
+        display: block !important;
+    }
 }
 
 .cl-badge-pill {
