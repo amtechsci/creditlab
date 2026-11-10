@@ -81,6 +81,10 @@ extract(creditlab_staff_head_count_queries());
     <!-- responsive CSS
 		============================================ -->
     <link rel="stylesheet" href="/admin/css/responsive.css">
+    <?php
+    require_once __DIR__ . '/../lib/staff_portal_ui.php';
+    creditlab_render_staff_modern_styles();
+    ?>
     <!-- modernizr JS
 		============================================ -->
     <script src="/admin/js/vendor/modernizr-2.8.3.min.js"></script>
