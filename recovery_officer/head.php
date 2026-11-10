@@ -7,6 +7,7 @@ if(isset($recovery_officer)){
     if($userquery && townum($userquery) > 0){
         $userfetch = towfetch($userquery);
         extract($userfetch,EXTR_PREFIX_ALL,"user");
+        $user_name = $userfetch['name'] ?? '';
     }else{
         header('location:/user/logout.php');
         exit;

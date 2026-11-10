@@ -60,7 +60,7 @@ if(isset($_GET['id'])){
         }
         return $tab === $paneId ? ' active in' : '';
     };
-    $profile_auto_am_loan = in_array($creditlab_profile_role, ['account_manager', 'agency_admin'], true);
+    $profile_auto_am_loan = in_array($creditlab_profile_role, ['account_manager', 'agency_admin', 'recovery_officer'], true);
     $profile_default_am_loan_id = null;
     if ($profile_auto_am_loan) {
         $hintLid = isset($_GET['lid']) ? (int) $_GET['lid'] : null;
@@ -582,14 +582,26 @@ if (isset($_POST['reset_documents']) && creditlab_can_view_documents() && !empty
             <!-- Mobile Menu end -->
           <div class="breadcome-area">
                 <div class="container-fluid">
+                    <?php
+                    if ($is_agency_profile) {
+                        $profile_portal_label = 'Agency';
+                        $profile_portal_icon = 'fa-building-columns';
+                    } elseif ($creditlab_profile_role === 'recovery_officer') {
+                        $profile_portal_label = 'Recovery Officer';
+                        $profile_portal_icon = 'fa-user-shield';
+                    } else {
+                        $profile_portal_label = 'Account Manager';
+                        $profile_portal_icon = 'fa-briefcase';
+                    }
+                    ?>
                     <?php if ($is_agency_profile) { ?>
                     <ul class="breadcome-menu">
-                        <li><a href="index.php"><i class="fa-solid fa-building-columns" style="font-size:12px;"></i> Agency</a> <span class="bread-slash">/</span></li>
+                        <li><a href="index.php"><i class="fa-solid <?= htmlspecialchars($profile_portal_icon) ?>" style="font-size:12px;"></i> <?= htmlspecialchars($profile_portal_label) ?></a> <span class="bread-slash">/</span></li>
                         <li><span class="bread-blod"><?= htmlspecialchars($userpro_name) ?> (<?= htmlspecialchars($userpro_rcid ?? '') ?>)</span></li>
                     </ul>
                     <?php } else { ?>
                     <ul class="breadcome-menu">
-                        <li><a href="index.php"><i class="fa-solid fa-briefcase" style="font-size:12px;"></i> Account Manager</a> <span class="bread-slash">/</span></li>
+                        <li><a href="index.php"><i class="fa-solid <?= htmlspecialchars($profile_portal_icon) ?>" style="font-size:12px;"></i> <?= htmlspecialchars($profile_portal_label) ?></a> <span class="bread-slash">/</span></li>
                         <li><span class="bread-blod"><?= htmlspecialchars($userpro_name) ?> (<?= htmlspecialchars($userpro_rcid ?? '') ?>)</span></li>
                     </ul>
                     <?php } ?>

@@ -97,7 +97,7 @@ if (isset($_GET['pageno'])) {
                                         <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$user_status?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>">View</a></td>
                                     </tr>
                                 <?php } ?>
             </tbody>

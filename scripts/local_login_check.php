@@ -14,7 +14,7 @@ $cases = [
     'account_manager' => ['email' => 'srikanth@creditlab.in', 'paths' => ['/account_manager/index.php', '/account_manager/profile.php?id=50837&tab=Personal']],
     'verify_user' => ['email' => 'NBFC@creditlab.in', 'paths' => ['/verify_user/index.php']],
     'agency_admin' => ['email' => 'Fairdebt@creditlab.com', 'paths' => ['/agency_admin/index.php', '/agency_admin/profile.php?id=50837&tab=Personal']],
-    'recovery_officer' => ['email' => 'local.recovery@test.local', 'paths' => ['/recovery_officer/index.php']],
+    'recovery_officer' => ['email' => 'local.recovery@test.local', 'paths' => ['/recovery_officer/index.php', '/recovery_officer/profile.php?id=50837&tab=payment']],
     'end_user' => ['email' => 'ramcharanrao@gmail.com', 'paths' => ['/user/index.php']],
 ];
 

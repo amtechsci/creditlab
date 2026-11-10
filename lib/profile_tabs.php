@@ -58,7 +58,7 @@ function creditlab_profile_tabs_for_role(?string $role): array
         return ['Personal', 'Reference', 'oldloan', 'note', 'manager', 'pg_link'];
     }
 
-    $staffWithPg = ['admin', 'account_manager', 'agency_admin'];
+    $staffWithPg = ['admin', 'account_manager', 'agency_admin', 'recovery_officer'];
     if (in_array($role, $staffWithPg, true)) {
         $base = $all;
         if (!in_array('pg_link', $base, true)) {

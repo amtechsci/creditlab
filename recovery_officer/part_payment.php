@@ -7,8 +7,9 @@ if (isset($_GET['pageno'])) {
         }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = mysqli_query($db,"SELECT distinct loan.uid, loan.*, user.* FROM loan Left JOIN user ON loan.uid = user.id WHERE loan.advance_amount > 0 AND assign_account_manager=$user_id ORDER BY loan.id DESC");
-        $newloanquery =  mysqli_query($db,"SELECT distinct loan.uid, loan.*, user.* FROM loan Left JOIN user ON loan.uid = user.id WHERE loan.advance_amount > 0 AND assign_account_manager=$user_id ORDER BY loan.id DESC LIMIT $offset, $no_of_records_per_page");
+        $roId = (int) $user_id;
+        $ress = mysqli_query($db, "SELECT DISTINCT loan.uid, loan.*, user.* FROM loan LEFT JOIN user ON loan.uid = user.id WHERE CAST(loan.advance_amount AS DECIMAL(12,2)) > 0 AND user.assign_recovery_officer = $roId ORDER BY loan.id DESC");
+        $newloanquery = mysqli_query($db, "SELECT DISTINCT loan.uid, loan.*, user.* FROM loan LEFT JOIN user ON loan.uid = user.id WHERE CAST(loan.advance_amount AS DECIMAL(12,2)) > 0 AND user.assign_recovery_officer = $roId ORDER BY loan.id DESC LIMIT $offset, $no_of_records_per_page");
         $total_rows = mysqli_num_rows($ress);
         $total_pages = ceil($total_rows / $no_of_records_per_page);
 ?>
@@ -104,7 +105,7 @@ if (isset($_GET['pageno'])) {
                                         <td data-title="Mobile"><?php echo towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$user_assign_account_manager'"))['name']; ?></td>
                                         <td data-title="Mobile"><?php echo towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"))['name']; ?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$user_status?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>">View</a></td>
                                     </tr>
                                 <?php $ii++; } ?>
             </tbody>
