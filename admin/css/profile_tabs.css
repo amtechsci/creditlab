@@ -1,5 +1,5 @@
 /**
- * Profile tab strip (scrollable pills). Load after modern_admin.css + style.css.
+ * Profile tab strip (wrapped pill tabs). Load after modern_admin.css + style.css.
  */
 
 .profile-tab-scroll {
@@ -8,34 +8,23 @@
     clear: both;
     box-sizing: border-box;
     position: relative;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
     margin: 16px 0 20px;
     padding: 4px 0 16px;
     border-bottom: 1px solid #e2e8f0;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-}
-
-.profile-tab-scroll::-webkit-scrollbar {
-    height: 4px;
-}
-
-.profile-tab-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
 }
 
 .profile-tab-scroll ul.tab-review-design,
 .profile-tab-scroll #myTabedu1.tab-review-design {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
-    gap: 8px !important;
-    width: max-content !important;
-    max-width: none !important;
+    align-content: flex-start !important;
+    gap: 8px 8px !important;
+    row-gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -43,7 +32,7 @@
     border-bottom: none !important;
     background: transparent !important;
     list-style: none !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
 }
 
 .profile-tab-scroll ul.tab-review-design li,
@@ -123,6 +112,12 @@
     .profile-tab-scroll {
         margin: 12px 0 16px;
         padding-bottom: 12px;
+    }
+
+    .profile-tab-scroll ul.tab-review-design,
+    .profile-tab-scroll #myTabedu1.tab-review-design {
+        gap: 6px 6px !important;
+        row-gap: 8px !important;
     }
 
     .profile-tab-scroll ul.tab-review-design li a,
