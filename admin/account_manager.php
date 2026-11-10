@@ -81,7 +81,7 @@ if (isset($_GET['pageno'])) {
                             </div>
                             <div class="cl-card-header-actions">
                                 <?php if (creditlab_can_download_account_manager_data()) { ?>
-                                    <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                                    <a href="<?=htmlspecialchars(creditlab_downloader_href('zz.php'))?>" class="btn btn-primary" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                                         <i class="fa-solid fa-file-arrow-down"></i> Download Data
                                     </a>
                                 <?php } ?>

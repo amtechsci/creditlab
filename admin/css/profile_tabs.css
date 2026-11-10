@@ -110,6 +110,10 @@
     padding-top: 8px;
 }
 
+.product-payment-inner-st #myTabContent .tab-pane.active.in {
+    display: block !important;
+}
+
 @media (max-width: 767px) {
     .profile-tab-scroll {
         margin: 12px 0 16px;

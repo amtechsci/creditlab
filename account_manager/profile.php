@@ -9,7 +9,7 @@ require_once __DIR__ . '/../lib/profile_tabs.php';
 require_once __DIR__ . '/../lib/loan_dpd.php';
 require_once __DIR__ . '/../lib/staff_context.php';
 require_once __DIR__ . '/../lib/loan_acc_man.php';
-$creditlab_profile_role = $GLOBALS['creditlab_staff_role'] ?? 'account_manager';
+$creditlab_profile_role = creditlab_profile_page_role();
 require_once '../lib/s3_upload_helper.php';
 
 // Get base URL from database
@@ -2185,21 +2185,36 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
         ?>
         <script>
         $(document).ready(function () {
-            // Get the tab from URL query parameter
+            function showProfileTab(href) {
+                if (!href || href.charAt(0) !== '#') {
+                    return;
+                }
+                var $link = $('#myTabedu1 a[href="' + href + '"]');
+                if (!$link.length) {
+                    return;
+                }
+                $('#myTabedu1 li').removeClass('active');
+                $link.parent('li').addClass('active');
+                $('#myTabContent > .tab-pane').removeClass('active in');
+                $(href).addClass('active in');
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const activeTab = urlParams.get('tab');
             if (activeTab) {
-                $(`#myTabedu1 a[href="#${activeTab}"]`).tab('show');
+                showProfileTab('#' + activeTab);
             }
 
-            // Update the URL query parameter on tab click
-            $('#myTabedu1 a').on('click', function (e) {
+            $('#myTabedu1 a[data-toggle="tab"]').on('click', function (e) {
                 e.preventDefault();
-                const tabId = $(this).attr('href').substring(1); // Remove #
-                const url = new URL(window.location);
-                url.searchParams.set('tab', tabId); // Set the tab parameter
-                window.history.replaceState({}, '', url); // Update URL without reload
-                $(this).tab('show');
+                const href = $(this).attr('href');
+                const tabId = href ? href.substring(1) : '';
+                if (tabId) {
+                    const url = new URL(window.location);
+                    url.searchParams.set('tab', tabId);
+                    window.history.replaceState({}, '', url);
+                }
+                showProfileTab(href);
             });
         });
     </script>

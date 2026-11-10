@@ -136,8 +136,21 @@ function creditlab_is_master_admin(): bool
     return !empty($admin);
 }
 
-/** Full account-manager CSV export is master-admin only. */
+/** Full account-manager CSV export is admin portal only (not account_manager staff). */
 function creditlab_can_download_account_manager_data(): bool
 {
-    return creditlab_is_master_admin();
+    return creditlab_staff_role() === 'admin';
+}
+
+/**
+ * Downloader URL on the current host (avoids site_config base_url sending exports to another domain).
+ */
+function creditlab_downloader_href(string $filename): string
+{
+    $filename = basename($filename);
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    if (preg_match('#/(admin|account_manager|recovery_officer|verify_user|agency_admin)/#', $script)) {
+        return '../downloader/' . $filename;
+    }
+    return '/downloader/' . $filename;
 }

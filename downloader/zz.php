@@ -2,9 +2,10 @@
 include '../db.php';
 require_once __DIR__ . '/../lib/staff_context.php';
 
-if (!creditlab_can_download_account_manager_data()) {
+if (creditlab_staff_role() !== 'admin') {
     http_response_code(403);
-    exit('Forbidden');
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Forbidden — admin login required to download account manager data.');
 }
 
 // Large AM exports were timed out (browser: "Check Internet connection")

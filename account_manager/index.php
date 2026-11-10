@@ -88,7 +88,7 @@ if (isset($_GET['pageno'])) {
                                 <li class="<?= $active_tab == 'default' ? 'active' : '' ?>"><a href="#INFORMATION">Default (greater than 35 DPD)</a></li>
                             </ul>
                             <?php if (creditlab_can_download_account_manager_data()) { ?>
-                            <a href="<?=getAppUrl()?>/downloader/zz.php" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
+                            <a href="<?=htmlspecialchars(creditlab_downloader_href('zz.php'))?>" class="btn btn-primary" style="color:#fff; float: right;">Download</a>
                             <?php } else { ?>
                             <button type="button" class="btn btn-primary" style="color:#fff; float: right;">Download</button>
                             <?php } ?>

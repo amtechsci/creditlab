@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../lib/profile_tabs.php';
-$role = $creditlab_profile_role ?? creditlab_staff_role() ?? 'account_manager';
+$role = creditlab_profile_page_role();
 $defs = creditlab_profile_tab_definitions();
 $allowed = creditlab_profile_tabs_for_role($role);
 $defaultTab = 'Personal';

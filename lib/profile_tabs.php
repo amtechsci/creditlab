@@ -3,6 +3,24 @@
  * Profile sub-tab visibility by staff role.
  */
 
+/**
+ * Role used for profile tab nav / pane guards (agency wrapper, session, or default).
+ */
+function creditlab_profile_page_role(): string
+{
+    if (!empty($GLOBALS['creditlab_staff_role'])) {
+        return (string) $GLOBALS['creditlab_staff_role'];
+    }
+    if (!function_exists('creditlab_staff_role')) {
+        require_once __DIR__ . '/staff_context.php';
+    }
+    $sessionRole = creditlab_staff_role();
+    if ($sessionRole !== null) {
+        return $sessionRole;
+    }
+    return 'account_manager';
+}
+
 function creditlab_profile_tab_definitions(): array
 {
     return [
