@@ -67,7 +67,6 @@ if (isset($_GET['pageno'])) {
             <tr>                
                                         <th>CID</th>        
                                         <th>Name</th>        
-                                        <th>Email</th>        
                                         <th>Mobile</th>    
                                         <th>Status</th>    
                                         <th>Actions</th>     
@@ -84,7 +83,6 @@ if (isset($_GET['pageno'])) {
                                     <tr>
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><?=$user_name?><?php if(isset($user_loan) && $user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if(isset($user_sloan) && $user_sloan > 0){echo "<span style='color:red'>@</span>";}?><?php if(empty($user_conpanydocument) or empty($user_personaldocument) or empty($user_salarydocument) or empty($user_bankdocument) or empty($user_addressdocument) or empty($user_companyidcard)){}else{echo " <span style='color:green; font-size:18px;'>✔</span>";}?></td>
-                                        <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$user_status?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>">View</a></td>

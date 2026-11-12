@@ -68,21 +68,12 @@ if (isset($_GET['pageno'])) {
         <table class="table table-bordered" id="loan_history_datatable">
         <thead class="thead-light">
             <tr>                
-                                        <th><input type="checkbox"></th>   
-                                        <th>SLNO</th>    
-                                        <th>CID</th>        
-                                        <th>Name</th>         
-                                        <th>Mobile</th>    
-                                        <th>city</th>    
-                                        <th>principal loan Amt</th>    
-                                        <th>loan exhausted days</th>    
-                                        <th>outstanding Amount</th>    
-                                        <th>loan ID</th>    
-                                        <th>Cst response</th>    
-                                        <th>commitment date</th>    
-                                        <th>updated date</th>    
-                                        <th>Actions</th>     
-                                    </tr>
+                <th>CID</th>        
+                <th>Name</th>         
+                <th>Mobile</th>    
+                <th>Status</th>    
+                <th>Actions</th>     
+            </tr>
         </thead>
         <tbody>
                   
@@ -94,7 +85,6 @@ if (isset($_GET['pageno'])) {
                                     <tr>
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
-                                        <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$user_status?></td>
                                         <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>

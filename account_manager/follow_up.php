@@ -69,7 +69,6 @@ if (isset($_GET['pageno'])) {
                                         <th>SLNO</th> 
                                         <th>CID</th>        
                                         <th>Name</th>        
-                                        <th>Email</th>        
                                         <th>Mobile</th>    
                                         <th>EMI/Not EMI</th>    
                                         <th>Req Amount</th>    
@@ -93,7 +92,6 @@ if (isset($_GET['pageno'])) {
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$user_rcid?></td>
                                         <td data-title="Name"><?=$user_name?><?php if($user_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
-                                        <td data-title="Email"><?=$user_email?></td>
                                         <td data-title="Mobile"><?=$user_mobile?></td>
                                         <td data-title="approvenew"><?=$user_approvenew?></td>
                                         <td data-title="amount"><?=$users_amount + $users_processing_fees?></td>

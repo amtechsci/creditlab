@@ -67,7 +67,6 @@ if (isset($_GET['pageno'])) {
             <tr>                
                                         <th>SLNO</th>       
                                         <th>Name</th>        
-                                        <th>Email</th>        
                                         <th>Mobile</th>    
                                         <th>Status</th> 
                                         <th>Ip address of login</th>
@@ -84,7 +83,6 @@ if (isset($_GET['pageno'])) {
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$users_rcid?></td>
                                         <td data-title="Name"><?=$users_name?><?php if($users_loan > 0){echo "<span style='color:red'>#</span>";}?></td>
-                                        <td data-title="Email"><?=$users_email?></td>
                                         <td data-title="Mobile"><?=$users_mobile?></td>
                                         <td data-title="Mobile"><?=$users_mobile?></td>
                                         <td data-title="Mobile"><?=$users_mobile?></td>

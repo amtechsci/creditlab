@@ -47,7 +47,6 @@ include_once 'head.php';
             <tr>                
                                         <th>RCID</th>        
                                         <th>Name</th>        
-                                        <th>Email</th>        
                                         <th>Mobile</th>    
                                         <th>Status</th>    
                                         <th>Actions</th>     

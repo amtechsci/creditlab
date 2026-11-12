@@ -53,7 +53,7 @@ include_once 'm_menu.php';
                                 <thead>
                                     <tr>                
                                         <th>Borrower / RCID</th>        
-                                        <th>Contact</th>    
+                                        <th>Mobile</th>    
                                         <th style="text-align:center;">Status</th>    
                                         <th style="text-align:right; width:110px;">Actions</th>     
                                     </tr>

@@ -61,7 +61,7 @@ if (isset($_GET['pageno'])) {
                                         <th style="width:34px; text-align:center;"><input type='checkbox' id="selectAll"></th>   
                                         <th style="width:48px;">SL</th> 
                                         <th>Borrower / CID</th>        
-                                        <th>Contact</th>    
+                                        <th>Mobile</th>    
                                         <th style="text-align:right;">Amount (Req / Disb)</th>    
                                         <th style="text-align:center;">Status & Plan</th> 
                                         <th>Officer & Date</th> 
@@ -95,15 +95,10 @@ if (isset($_GET['pageno'])) {
                                                 <?= creditlab_dash_text($user_rcid ?? '') ?>
                                             </div>
                                         </td>
-                                        <td data-title="Contact" style="white-space:nowrap;">
+                                        <td data-title="Mobile" style="white-space:nowrap;">
                                             <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
                                                 <?= creditlab_dash_text($user_mobile ?? '') ?>
                                             </div>
-                                            <?php if (!empty($user_email)): ?>
-                                                <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:180px; overflow:hidden; text-overflow:ellipsis;">
-                                                    <?= htmlspecialchars($user_email) ?>
-                                                </div>
-                                            <?php endif; ?>
                                         </td>
                                         <td data-title="Amount" style="text-align:right; white-space:nowrap;">
                                             <div style="font-weight:700; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">

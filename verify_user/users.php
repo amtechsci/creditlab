@@ -70,7 +70,6 @@ if (isset($_GET['pageno'])) {
                                         <th>SLNO</th>  
                                         <th>CID</th>        
                                         <th>Name</th>        
-                                        <th>Email</th>        
                                         <th>Mobile</th>  
                                         <th>Loan Limit</th>   
                                         <th>Status</th>    
@@ -85,7 +84,6 @@ if (isset($_GET['pageno'])) {
                                         <th><?=$ii?></th>
                                         <td data-title="CID"><?=$users_rcid?></td>
                                         <td data-title="Name"><?=$users_name?><?php if($users_loan > 0){echo "<span style='color:red'>#</span>";}?><?php if($users_sloan > 0){echo "<span style='color:red'>@</span>";}?></td>
-                                        <td data-title="Email"><?=maskEmail($users_email)?></td>
                                         <td data-title="Mobile"><?=maskPhone($users_mobile)?></td>
                                         <td data-title="loan_limit"><?=$users_loan_limit?></td>
                                         <td data-title="Status" style="color:white; background:<?php if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?=$users_status?></td>

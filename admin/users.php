@@ -67,7 +67,7 @@ include_once 'm_menu.php';
                                         <th style="width:34px; text-align:center;"><input type="checkbox" id="selectAll"></th>   
                                         <th style="width:48px;">SL</th>  
                                         <th>Borrower / RCID</th>        
-                                        <th>Contact</th>  
+                                        <th>Mobile</th>  
                                         <th style="text-align:right;">Loan Limit</th>   
                                         <th style="text-align:center;">Status</th>    
                                         <th style="text-align:right; width:110px;">Actions</th>     
@@ -93,15 +93,10 @@ include_once 'm_menu.php';
                                                         <?= creditlab_dash_text($users_rcid ?? '') ?>
                                                     </div>
                                                 </td>
-                                                <td data-title="Contact" style="white-space:nowrap;">
+                                                <td data-title="Mobile" style="white-space:nowrap;">
                                                     <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
                                                         <?= creditlab_dash_text($users_mobile ?? '') ?>
                                                     </div>
-                                                    <?php if (!empty($users_email)): ?>
-                                                        <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:180px; overflow:hidden; text-overflow:ellipsis;">
-                                                            <?= htmlspecialchars($users_email) ?>
-                                                        </div>
-                                                    <?php endif; ?>
                                                 </td>
                                                 <td data-title="Loan Limit" style="text-align:right; font-weight:700; color:var(--cl-slate-900); white-space:nowrap;">
                                                     <?= creditlab_currency($users_loan_limit ?? 0) ?>
