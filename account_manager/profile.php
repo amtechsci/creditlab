@@ -132,9 +132,8 @@ if(isset($_POST['validation'])){
         }elseif(in_array("Ready for Disbursal",$processcheck)){
             towquery("UPDATE `user` SET `status`='disbursal' WHERE id=".$id."");
         towquery("UPDATE `loan_apply` SET `status`='disbursal', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
-        $template_id = '1107165683293779914';
-        $base_url = getAppUrl();
-        $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to ' . $base_url . ' & accept the agreement and get the money in minutes.';
+        $template_id = '1407175015930870249';
+        $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes.';
         $mobile = $userpro_mobile;
         define('CREDITLAB_SMS_INCLUDE', true);
         include '../send_sms.php';

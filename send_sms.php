@@ -24,6 +24,8 @@ $template_mapping = [
     '1107169454135117024' => '1407175016260362259', // Part payment -> part payment
     '1107165683340185966' => '1407175016944191447', // Account Manager -> Acc Manager assign
     '1107165683293779914' => '1407175015930870249', // Accept agreement -> accept agreement
+    '1407175015930870248' => '1407175015930870249', // Accept agreement -> accept agreement
+    '1407175015930870249' => '1407175015930870249', // Accept agreement -> accept agreement
     '1107169453425832956' => '1407175190737426693', // KYC pending -> kyc pen
     '1107165683279440796' => '1407175016362205820', // Bank account linked -> bank acc linked
     

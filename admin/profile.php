@@ -427,8 +427,8 @@
             towquery("UPDATE `loan_apply` SET `status`='disbursal', `status_date`='$date' WHERE uid=".$id." AND id=$update_id");
             
             // Send Accept Agreement SMS when moving to disbursal
-            $template_id = '1407175015930870248'; // Accept Agreement template ID from CSV
-            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to ' . $base_url . '/user & accept the agreement and get the money in minutes.';
+            $template_id = '1407175015930870249'; // Accept Agreement template ID from CSV
+            $message = 'Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes.';
             $sender = 'CREDLB';
             
             // Send to primary mobile

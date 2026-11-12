@@ -26,6 +26,8 @@ function creditlab_sms_map_template_id(string $template_id): string
 		'1107169454135117024' => '1407175016260362259',
 		'1107165683340185966' => '1407175016944191447',
 		'1107165683293779914' => '1407175015930870249',
+		'1407175015930870248' => '1407175015930870249',
+		'1407175015930870249' => '1407175015930870249',
 		'1107169453425832956' => '1407175190737426693',
 		'1107165683279440796' => '1407175016362205820',
 		'reference_message' => '1407175291100618275',
@@ -114,7 +116,7 @@ function creditlab_sms_test_cases(): array
 		['group' => 'app', 'key' => 'loan_cleared', 'template_id' => '1107165683325768963', 'message' => "Dear $name, we acknowledge the repayment of your loan CLL$lid & it's cleared. You can apply again. $base -Creditlab"],
 		['group' => 'app', 'key' => 'part_payment', 'template_id' => '1107169454135117024', 'message' => "We got a part payment of Rs $amt w.r.t your Creditlab.in loan CLL$lid. Pay the balance to close the loan. Discuss with your RM & settle immediately."],
 		['group' => 'app', 'key' => 'account_manager', 'template_id' => '1107165683340185966', 'message' => "Dear $name, your creditlab Account Manager is RM Name 9999999999. Reach out for any info"],
-		['group' => 'app', 'key' => 'accept_agreement', 'template_id' => '1107165683293779914', 'message' => "Dear $name, please accept your loan agreement for CLL$lid at $base -Creditlab"],
+		['group' => 'app', 'key' => 'accept_agreement', 'template_id' => '1407175015930870249', 'message' => "Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes."],
 		['group' => 'app', 'key' => 'bank_linked', 'template_id' => '1107165683279440796', 'message' => "Dear $name, Your bank account is now associated with us. Name : Canara Bank, No: 110302382889. -Creditlab"],
 		['group' => 'app', 'key' => 'kyc_pending', 'template_id' => '1107169453425832956', 'message' => "Dear $name, your KYC is pending on Creditlab.in. Complete at $base"],
 		['group' => 'app', 'key' => 'reference', 'template_id' => '1407175291100618275', 'message' => "Dear $name, reference message test from Creditlab.in $base"],
@@ -190,7 +192,7 @@ function creditlab_sms_test_cases(): array
 
 	$k7 = [
 		['group' => 'k7', 'key' => 'enach_reminder_k7', 'template_id' => '1407175015994490488', 'message' => "Hi ! Your Creditlab.in loan of Rs. $amt will auto-debit on $date. Ensure sufficient balance to avoid chq bounce & legal action under Section 138 N.I. Act"],
-		['group' => 'k7', 'key' => 'accept_agreement_k7', 'template_id' => '1407175015930870248', 'message' => "Dear $name, please accept your loan agreement for CLL$lid at $base -Creditlab"],
+		['group' => 'k7', 'key' => 'accept_agreement_k7', 'template_id' => '1407175015930870249', 'message' => "Dear customer, your Creditlab.in loan is ready for disbursal. Kindly log in to creditlab.in/user & accept the agreement and get the money in minutes."],
 	];
 
 	return array_merge($app, $cron, $k7);
