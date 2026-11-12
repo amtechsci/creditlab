@@ -63,7 +63,7 @@ if (isset($_GET['pageno'])) {
                                     <tr>
                                         <th style="width:34px; text-align:center;"><input type='checkbox' id="selectAll"></th>   
                                         <th style="width:48px;">SL</th>
-                                        <th>Borrower / CID</th>        
+                                        <th>Borrower / RCID</th>        
                                         <th>Contact</th>    
                                         <th style="text-align:right;">Amount (Req / Disb)</th>    
                                         <th style="text-align:center;">Status & Plan</th> 
