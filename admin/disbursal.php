@@ -59,89 +59,107 @@ if (isset($_GET['pageno'])) {
 
                         <div class="table-responsive">
                             <table class="table table-bordered" id="loan_history_datatable">
-        <thead class="thead-light">
+                                <thead>
                                     <tr>
-                                        <th><input type='checkbox'></th>   
-                                        <th>SLNO</th> 
-                                        <th>CID</th>        
-                                        <th>Name</th>        
-                                        <th>Email</th>        
-                                        <th>Mobile</th>    
-                                        <th>EMI/Not EMI</th>    
-                                        <th>Req Amount</th>    
-                                        <th>Disbursal Amount</th>    
-                                        <th>P. fee</th>    
-                                        <th>Status</th> 
-                                        <th>Loan officer name</th> 
-                                        <th>Loan applied date</th> 
-                                        <th>Actions</th>     
+                                        <th style="width:34px; text-align:center;"><input type='checkbox' id="selectAll"></th>   
+                                        <th style="width:48px;">SL</th> 
+                                        <th>Borrower / CID</th>        
+                                        <th>Contact</th>    
+                                        <th style="text-align:right;">Amount (Req / Disb)</th>    
+                                        <th style="text-align:center;">Status & Plan</th> 
+                                        <th>Officer & Date</th> 
+                                        <th style="text-align:right; width:110px;">Actions</th>     
                                     </tr>
-        </thead>
-        <tbody>
-                  
-                                   <?php $ii=1; while($loanfetch = towfetch($newloanquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users");
-                                   $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
-                                   $b = towfetch($a);
-                                   extract($b,EXTR_PREFIX_ALL,"user");
+                                </thead>
+                                <tbody>
+                                   <?php 
+                                   $ii = $offset + 1; 
+                                   while($loanfetch = towfetch($newloanquery)){ 
+                                       extract($loanfetch, EXTR_PREFIX_ALL, "users");
+                                       $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
+                                       $b = towfetch($a);
+                                       extract($b, EXTR_PREFIX_ALL, "user");
+                                       $total_req = (float)($users_amount ?? 0) + (float)($users_processing_fees ?? 0);
                                    ?>
                                     <tr>
-                                        <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
-                                        <th><?=$ii?></th>
-                                        <td data-title="CID"><strong><?=$user_rcid?></strong></td>
-                                        <td data-title="Name">
-                                            <span><?=$user_name?></span><?php 
-                                                $has_loan = (isset($user_loan) && $user_loan > 0) || (isset($users_loan) && $users_loan > 0);
-                                                $has_sloan = (isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0);
-                                                if ($has_loan) { echo "<span class='cl-symbol cl-symbol-loan' title='Has Active Loan (loan > 0)'>#</span>"; }
-                                                if ($has_sloan) { echo "<span class='cl-symbol cl-symbol-sloan' title='Special Loan / Repeat Customer (sloan > 0)'>@</span>"; }
-                                            ?>
+                                        <td style="text-align:center;"><input type='checkbox' name="check[]" value="<?=$user_id?>"></td>   
+                                        <td style="color:var(--cl-slate-500); font-size:12px;"><?=$ii?></td>
+                                        <td data-title="Borrower">
+                                            <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                <?= creditlab_dash_text($user_name ?? '') ?>
+                                                <?php 
+                                                    $has_loan = (isset($user_loan) && $user_loan > 0) || (isset($users_loan) && $users_loan > 0);
+                                                    $has_sloan = (isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0);
+                                                    if ($has_loan) { echo "<span class='cl-symbol cl-symbol-loan' title='Has Active Loan (loan > 0)'>#</span>"; }
+                                                    if ($has_sloan) { echo "<span class='cl-symbol cl-symbol-sloan' title='Special Loan / Repeat Customer (sloan > 0)'>@</span>"; }
+                                                ?>
+                                            </div>
+                                            <div style="margin-top:3px; font-size:11.5px; font-family:monospace; color:var(--cl-primary); font-weight:600;">
+                                                <?= creditlab_dash_text($user_rcid ?? '') ?>
+                                            </div>
                                         </td>
-                                        <td data-title="Email"><?=$user_email?></td>
-                                        <td data-title="Mobile"><?=$user_mobile?></td>
-                                        <td data-title="approvenew"><?=$user_approvenew?></td>
-                                        <td data-title="amount"><?= creditlab_currency($users_amount + $users_processing_fees) ?></td>
-                                        <td data-title="amount"><?= creditlab_currency($users_amount) ?></td>
-                                        <td data-title="amount"><?= creditlab_currency($users_processing_fees) ?></td>
-                                        <td data-title="Status" style="color:white; font-weight:700; background:<?php if($user_status == "default"){echo "red;";}elseif($user_status == "disbursal"){if(isset($loanfetch['agreement']) && (int)$loanfetch['agreement'] === 1){
-                                        echo "#FFC0CB;"; 
-                                        }else{
-                                        echo "#008000;";
-                                        }}else{echo "blue;";}?>"><?php 
-                                            if($user_status == "disbursal" && isset($loanfetch['agreement']) && (int)$loanfetch['agreement'] === 1){
-                                                echo 'Signed (Disburse)';
-                                            } elseif($user_status == "waiting"){
-                                                echo "Just Register";
-                                            } else {
-                                                echo $user_status;
-                                            }
-                                        ?></td>
-                                        <td data-title="approvenew"><?php 
-                                        $recovery_officer = towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'"));
-                                        echo isset($recovery_officer['name']) ? $recovery_officer['name'] : 'Not Assigned';
-                                        ?></td>
-                                        <td data-title="approvenew"><?=$users_apply_date?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Contact" style="white-space:nowrap;">
+                                            <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                                                <?= creditlab_dash_text($user_mobile ?? '') ?>
+                                            </div>
+                                            <?php if (!empty($user_email)): ?>
+                                                <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:160px; overflow:hidden; text-overflow:ellipsis;">
+                                                    <?= htmlspecialchars($user_email) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-title="Amount" style="text-align:right; white-space:nowrap;">
+                                            <div style="font-weight:700; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                <span style="font-size:10px; font-weight:600; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Req</span>
+                                                <?= creditlab_currency($total_req) ?>
+                                            </div>
+                                            <div style="margin-top:3px; font-size:12px; line-height:1.2;">
+                                                <span style="font-weight:600; color:#15803d;"><span style="font-size:10px; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Disb</span><?= creditlab_currency($users_amount ?? 0) ?></span>
+                                                <?php if (!empty($users_processing_fees) && (float)$users_processing_fees > 0): ?>
+                                                    <span style="color:var(--cl-slate-300); margin:0 2px;">·</span>
+                                                    <span style="color:var(--cl-slate-500); font-size:11px;">Fee <?= creditlab_currency($users_processing_fees) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td data-title="Status & Plan" style="text-align:center; white-space:nowrap;">
+                                            <div>
+                                                <?php 
+                                                    if($user_status == "disbursal" && isset($loanfetch['agreement']) && (int)$loanfetch['agreement'] === 1){
+                                                        echo '<span class="badge-modern badge-signed" style="background:#ff3377 !important; color:#ffffff !important; font-weight:700; padding:6px 12px; border-radius:12px; box-shadow:0 2px 6px rgba(255,51,119,0.3); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-signature"></i> Signed (Disburse)</span>';
+                                                    } else {
+                                                        echo creditlab_status_badge($user_status, $loanfetch['agreement'] ?? 0);
+                                                    }
+                                                ?>
+                                            </div>
+                                            <div style="margin-top:4px;">
+                                                <span style="font-size:11px; color:var(--cl-slate-500);">Plan:</span>
+                                                <span class="badge" style="background:#f1f5f9; color:#475569; font-size:10.5px; font-weight:600; padding:2px 6px; border-radius:4px;">
+                                                    <?= creditlab_dash_text($user_approvenew ?? '', 'Standard') ?>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td data-title="Officer & Date" style="white-space:nowrap;">
+                                            <div style="font-size:12px; font-weight:500; color:var(--cl-slate-700); line-height:1.25;">
+                                                <i class="fa-regular fa-calendar" style="font-size:10.5px; color:var(--cl-slate-400); margin-right:3px;"></i>
+                                                <?= !empty($users_apply_date) ? date('d M Y, H:i', strtotime($users_apply_date)) : '—' ?>
+                                            </div>
+                                            <div style="margin-top:3px; font-size:11.5px; color:var(--cl-slate-500);">
+                                                <i class="fa-solid fa-user-tie" style="font-size:10px; color:var(--cl-slate-400); margin-right:3px;"></i>
+                                                <?php 
+                                                $recovery_officer = !empty($user_assign_recovery_officer) ? towfetch(towquery("SELECT `name` FROM `recovery_officer` WHERE `id`='$user_assign_recovery_officer'")) : null;
+                                                echo !empty($recovery_officer['name']) ? htmlspecialchars($recovery_officer['name']) : 'Unassigned';
+                                                ?>
+                                            </div>
+                                        </td>
+                                        <td data-title="Actions" style="text-align:right; white-space:nowrap;">
+                                            <a class="btn btn-xs btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank" style="padding:4px 10px;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
+                                            </a>
+                                        </td>
                                     </tr>
                                 <?php $ii++; } ?>
-            </tbody>
-    </table>
-							<nav aria-label="Page navigation example">
-  <ul class="pagination">
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
-    </li>
-    <?php $i = 1; while($i <= $total_pages){?>
-    <li class="page-item"><a class="page-link" href="?pageno=<?=$i;?>"><?=$i;?></a></li>
-    <?php $i++; }?>
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages){ echo '#'; } else { echo "?pageno=".($pageno + 1); } ?>" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
-    </li>
+                                </tbody>
+                            </table>
                         </div>
 
                         <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-top:1px solid var(--cl-slate-100);">

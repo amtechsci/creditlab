@@ -7,34 +7,42 @@ $seausersquery = towquery("SELECT * FROM `user` WHERE `rcid` LIKE '%$search%' OR
 <table class="table table-bordered" id="loan_history_datatable">
     <thead>
         <tr>
-            <th>RCID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Mobile</th>
-            <th>Status</th>
-            <th style="text-align:right;">Actions</th>
+            <th>Borrower / RCID</th>
+            <th>Contact</th>
+            <th style="text-align:center;">Status</th>
+            <th style="text-align:right; width:110px;">Actions</th>
         </tr>
     </thead>
     <tbody>
         <?php if ($seausersquery && townum($seausersquery) > 0): ?>
             <?php while($sealoanfetch = towfetch($seausersquery)): extract($sealoanfetch, EXTR_PREFIX_ALL, "users"); ?>
                 <tr>
-                    <td data-title="RCID">
-                        <strong style="color:var(--cl-primary);"><?= creditlab_dash_text($users_rcid ?? '') ?></strong>
-                    </td>
-                    <td data-title="Name">
-                        <span style="font-weight:600; color:var(--cl-slate-800);">
+                    <td data-title="Borrower">
+                        <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
                             <?= creditlab_dash_text($users_name ?? ''); ?>
-                        </span>
-                        <?php
-                            if (!empty($users_loan)) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }
-                            if (!empty($users_sloan)) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }
-                        ?>
+                            <?php
+                                if (!empty($users_loan)) { echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }
+                                if (!empty($users_sloan)) { echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }
+                            ?>
+                        </div>
+                        <div style="margin-top:3px; font-size:11.5px; font-family:monospace; color:var(--cl-primary); font-weight:600;">
+                            <?= creditlab_dash_text($users_rcid ?? '') ?>
+                        </div>
                     </td>
-                    <td data-title="Email" style="color:var(--cl-slate-600);"><?= creditlab_dash_text($users_email ?? '') ?></td>
-                    <td data-title="Mobile" style="font-family:monospace; font-size:12.5px;"><?= creditlab_dash_text($users_mobile ?? '') ?></td>
-                    <td data-title="Status"><?= creditlab_status_badge($users_status ?? '') ?></td>
-                    <td data-title="Actions" style="text-align:right;">
+                    <td data-title="Contact" style="white-space:nowrap;">
+                        <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                            <?= creditlab_dash_text($users_mobile ?? '') ?>
+                        </div>
+                        <?php if (!empty($users_email)): ?>
+                            <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:200px; overflow:hidden; text-overflow:ellipsis;">
+                                <?= htmlspecialchars($users_email) ?>
+                            </div>
+                        <?php endif; ?>
+                    </td>
+                    <td data-title="Status" style="text-align:center; white-space:nowrap;">
+                        <?= creditlab_status_badge($users_status ?? '') ?>
+                    </td>
+                    <td data-title="Actions" style="text-align:right; white-space:nowrap;">
                         <a class="btn btn-xs btn-primary" href="profile.php?id=<?= (int) $users_id ?>" target="_blank" style="padding:4px 10px;">
                             <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
                         </a>
@@ -43,7 +51,7 @@ $seausersquery = towquery("SELECT * FROM `user` WHERE `rcid` LIKE '%$search%' OR
             <?php endwhile; ?>
         <?php else: ?>
             <tr>
-                <td colspan="6" style="text-align:center; padding:30px; color:var(--cl-slate-400);">
+                <td colspan="4" style="text-align:center; padding:30px; color:var(--cl-slate-400);">
                     No matching users found for "<?= htmlspecialchars($search) ?>"
                 </td>
             </tr>

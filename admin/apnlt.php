@@ -55,16 +55,14 @@ $usersquery = mysqli_query($db, "SELECT * FROM user WHERE `sloan` > 0 AND status
                         <table class="table table-bordered" id="loan_history_datatable">
                             <thead>
                                 <tr>                
-                                    <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAll"></th>   
-                                    <th style="width:55px;">SL NO</th>
-                                    <th>CID</th>        
-                                    <th>Name</th>        
-                                    <th>Email</th>        
-                                    <th>Mobile</th>    
+                                    <th style="width:34px; text-align:center;"><input type="checkbox" id="selectAll"></th>   
+                                    <th style="width:48px;">SL</th>
+                                    <th>Borrower / CID</th>        
+                                    <th>Contact</th>    
                                     <th style="text-align:right;">Loan Limit</th> 
                                     <th>Account Manager</th> 
-                                    <th>Status</th>    
-                                    <th style="text-align:right;">Actions</th>     
+                                    <th style="text-align:center;">Status</th>    
+                                    <th style="text-align:right; width:110px;">Actions</th>     
                                 </tr>
                             </thead>
                             <tbody>
@@ -72,24 +70,40 @@ $usersquery = mysqli_query($db, "SELECT * FROM user WHERE `sloan` > 0 AND status
                                     <?php $ii = $offset + 1; while($loanfetch = towfetch($usersquery)): extract($loanfetch, EXTR_PREFIX_ALL, "users"); ?>
                                         <tr>
                                             <td style="text-align:center;"><input type="checkbox" name="check[]" value="<?=$users_id?>"></td>   
-                                            <td style="color:var(--cl-slate-500);"><?=$ii?></td>
-                                            <td data-title="CID"><strong style="color:var(--cl-primary);"><?=creditlab_dash_text($users_rcid ?? '')?></strong></td>
-                                            <td data-title="Name">
-                                                <span style="font-weight:600; color:var(--cl-slate-900);"><?=creditlab_dash_text($users_name ?? '')?></span>
-                                                <?php if(!empty($users_loan)){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
-                                                <?php if(!empty($users_sloan)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                            <td style="color:var(--cl-slate-500); font-size:12px;"><?=$ii?></td>
+                                            <td data-title="Borrower">
+                                                <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                    <?=creditlab_dash_text($users_name ?? '')?>
+                                                    <?php if(!empty($users_loan)){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                                    <?php if(!empty($users_sloan)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                                </div>
+                                                <div style="margin-top:3px; font-size:11.5px; font-family:monospace; color:var(--cl-primary); font-weight:600;">
+                                                    <?=creditlab_dash_text($users_rcid ?? '')?>
+                                                </div>
                                             </td>
-                                            <td data-title="Email" style="color:var(--cl-slate-600);"><?=creditlab_dash_text($users_email ?? '')?></td>
-                                            <td data-title="Mobile" style="font-family:monospace; font-size:12.5px;"><?=creditlab_dash_text($users_mobile ?? '')?></td>
-                                            <td data-title="Loan Limit" style="text-align:right; font-weight:600; color:var(--cl-slate-900);"><?=creditlab_currency($users_loan_limit ?? 0)?></td>
-                                            <td data-title="Account Manager">
+                                            <td data-title="Contact" style="white-space:nowrap;">
+                                                <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                                                    <?=creditlab_dash_text($users_mobile ?? '')?>
+                                                </div>
+                                                <?php if (!empty($users_email)): ?>
+                                                    <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:180px; overflow:hidden; text-overflow:ellipsis;">
+                                                        <?=htmlspecialchars($users_email) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td data-title="Loan Limit" style="text-align:right; font-weight:700; color:var(--cl-slate-900); white-space:nowrap;">
+                                                <?=creditlab_currency($users_loan_limit ?? 0)?>
+                                            </td>
+                                            <td data-title="Account Manager" style="white-space:nowrap;">
                                                 <?php 
-                                                $account_manager = towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$users_assign_account_manager'"));
-                                                echo isset($account_manager['name']) ? $account_manager['name'] : '<span style="color:var(--cl-slate-400);">Not Assigned</span>';
+                                                $account_manager = !empty($users_assign_account_manager) ? towfetch(towquery("SELECT `name` FROM `account_manager` WHERE `id`='$users_assign_account_manager'")) : null;
+                                                echo !empty($account_manager['name']) ? htmlspecialchars($account_manager['name']) : '<span style="color:var(--cl-slate-400);">Not Assigned</span>';
                                                 ?>
                                             </td>
-                                            <td data-title="Status" style="text-align:center;"><?= creditlab_status_badge($users_status ?? '') ?></td>
-                                            <td data-title="Actions" style="text-align:right;">
+                                            <td data-title="Status" style="text-align:center; white-space:nowrap;">
+                                                <?= creditlab_status_badge($users_status ?? '') ?>
+                                            </td>
+                                            <td data-title="Actions" style="text-align:right; white-space:nowrap;">
                                                 <a class="btn btn-xs btn-primary" href="profile.php?id=<?=$users_id?>" target="_blank" style="padding:4px 10px;">
                                                     <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
                                                 </a>
@@ -98,7 +112,7 @@ $usersquery = mysqli_query($db, "SELECT * FROM user WHERE `sloan` > 0 AND status
                                     <?php $ii++; endwhile; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="10" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No existing cleared users found.</td>
+                                        <td colspan="8" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No existing cleared users found.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>

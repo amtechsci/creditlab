@@ -59,39 +59,53 @@ if (isset($_GET['pageno'])) {
 
                         <div class="table-responsive">
                             <table class="table table-bordered" id="loan_history_datatable">
-        <thead class="thead-light">
+                                <thead>
                                     <tr>
-                                        <th><input type='checkbox'></th>   
-                                        <th>SLNO</th> 
-                                        <th>CID</th>        
-                                        <th>Name</th>        
-                                        <th>Email</th>        
-                                        <th>Mobile</th>    
-                                        <th>Loan Limit</th>    
-                                        <th>Status</th>    
-                                        <th>Actions</th>     
+                                        <th style="width:34px; text-align:center;"><input type='checkbox' id="selectAll"></th>   
+                                        <th style="width:48px;">SL</th> 
+                                        <th>Borrower / CID</th>        
+                                        <th>Contact</th>    
+                                        <th style="text-align:right;">Loan Limit</th>    
+                                        <th style="text-align:center;">Status</th>    
+                                        <th style="text-align:right; width:110px;">Actions</th>     
                                     </tr>
-        </thead>
-        <tbody>
-                  
-                                   <?php $ii=1; while($loanfetch = towfetch($newloanquery)){ extract($loanfetch,EXTR_PREFIX_ALL,"users");
-                                   $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
-                                   $b = towfetch($a);
-                                   extract($b,EXTR_PREFIX_ALL,"user");
+                                </thead>
+                                <tbody>
+                                   <?php 
+                                   $ii = $offset + 1; 
+                                   while($loanfetch = towfetch($newloanquery)){ 
+                                       extract($loanfetch, EXTR_PREFIX_ALL, "users");
+                                       $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
+                                       $b = towfetch($a);
+                                       extract($b, EXTR_PREFIX_ALL, "user");
                                    ?>
                                     <tr>
-                                        <th><input type='checkbox' name="check[]" value="<?=$user_id?>"></th>   
-                                        <th><?=$ii?></th>
-                                        <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name">
-                                            <span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span>
-                                            <?php if(isset($user_loan) && $user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
-                                            <?php if((isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                        <td style="text-align:center;"><input type='checkbox' name="check[]" value="<?=$user_id?>"></td>   
+                                        <td style="color:var(--cl-slate-500); font-size:12px;"><?=$ii?></td>
+                                        <td data-title="Borrower">
+                                            <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                <?= creditlab_dash_text($user_name ?? '') ?>
+                                                <?php if(isset($user_loan) && $user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                                <?php if((isset($user_sloan) && $user_sloan > 0) || (isset($users_sloan) && $users_sloan > 0)){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                            </div>
+                                            <div style="margin-top:3px; font-size:11.5px; font-family:monospace; color:var(--cl-primary); font-weight:600;">
+                                                <?= creditlab_dash_text($user_rcid ?? '') ?>
+                                            </div>
                                         </td>
-                                        <td data-title="Email"><?=$user_email?></td>
-                                        <td data-title="Mobile"><?=$user_mobile?></td>
-                                        <td data-title="Limit"><?=creditlab_currency($user_loan_limit ?? 0)?></td>
-                                        <td data-title="Status" style="text-align:center;">
+                                        <td data-title="Contact" style="white-space:nowrap;">
+                                            <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                                                <?= creditlab_dash_text($user_mobile ?? '') ?>
+                                            </div>
+                                            <?php if (!empty($user_email)): ?>
+                                                <div style="margin-top:2px; font-size:11px; color:var(--cl-slate-500); max-width:180px; overflow:hidden; text-overflow:ellipsis;">
+                                                    <?= htmlspecialchars($user_email) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-title="Limit" style="text-align:right; font-weight:700; color:var(--cl-slate-900); white-space:nowrap;">
+                                            <?= creditlab_currency($user_loan_limit ?? 0) ?>
+                                        </td>
+                                        <td data-title="Status" style="text-align:center; white-space:nowrap;">
                                             <?php
                                             if ($users_status == "disbursal" && ($loanfetch['agreement'] ?? 0) == 1) {
                                                 echo '<span class="badge-modern badge-signed" style="background:#ff3377 !important; color:#ffffff !important; font-weight:700; padding:6px 12px; border-radius:12px; box-shadow:0 2px 6px rgba(255,51,119,0.3); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-signature"></i> Signed (Disburse)</span>';
@@ -100,12 +114,16 @@ if (isset($_GET['pageno'])) {
                                             }
                                             ?>
                                         </td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
+                                        <td data-title="Actions" style="text-align:right; white-space:nowrap;">
+                                            <a class="btn btn-xs btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank" style="padding:4px 10px;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
+                                            </a>
+                                        </td>
                                     </tr>
                                 <?php $ii++; } ?>
-            </tbody>
-    </table>
-							<nav aria-label="Page navigation example">
+                                </tbody>
+                            </table>
+                        </div>
   <ul class="pagination">
     <li class="page-item">
       <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1); } ?>" aria-label="Previous">

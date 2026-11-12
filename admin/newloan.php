@@ -96,19 +96,14 @@ include_once 'm_menu.php';
                             <table class="table table-bordered" id="loan_history_datatable">
                                 <thead>
                                     <tr>
-                                        <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAll"></th>   
-                                        <th style="width:55px;">SL NO</th>
-                                        <th>RCID</th>        
-                                        <th>Name</th>        
+                                        <th style="width:34px; text-align:center;"><input type="checkbox" id="selectAll"></th>   
+                                        <th style="width:48px;">SL</th>
+                                        <th>Borrower / RCID</th>        
                                         <th>Mobile</th>    
-                                        <th>EMI Plan</th>    
-                                        <th style="text-align:right;">Req Amount</th>    
-                                        <th style="text-align:right;">Disbursal Amt</th>    
-                                        <th style="text-align:right;">P. Fee</th>    
-                                        <th style="text-align:center;">User Status</th> 
-                                        <th>Officer</th> 
-                                        <th>Applied Date</th> 
-                                        <th style="text-align:right;">Actions</th>     
+                                        <th style="text-align:right;">Amount (Req / Disb)</th>    
+                                        <th style="text-align:center;">Status & Plan</th> 
+                                        <th>Officer & Date</th> 
+                                        <th style="text-align:right; width:110px;">Actions</th>     
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -122,45 +117,60 @@ include_once 'm_menu.php';
                                                 <td style="text-align:center;">
                                                     <input type="checkbox" name="check[]" value="<?= (int)($row['u_id'] ?? 0) ?>">
                                                 </td>   
-                                                <td style="color:var(--cl-slate-500);"><?= $ii ?></td>
-                                                <td data-title="CID">
-                                                    <strong style="color:var(--cl-primary);"><?= creditlab_dash_text($row['u_rcid'] ?? '') ?></strong>
-                                                </td>
-                                                <td data-title="Name">
-                                                    <span style="font-weight:600; color:var(--cl-slate-900);">
+                                                <td style="color:var(--cl-slate-500); font-size:12px;"><?= $ii ?></td>
+                                                <td data-title="Borrower">
+                                                    <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
                                                         <?= creditlab_dash_text($row['u_name'] ?? '') ?>
-                                                    </span>
-                                                    <?php 
-                                                        if (!empty($row['u_loan'])) { echo "<span title='Has Active Loan (loan > 0)' class='cl-symbol cl-symbol-loan'>#</span>"; }
-                                                        if (!empty($row['u_sloan'])) { echo "<span title='Special / Repeat Borrower (sloan > 0)' class='cl-symbol cl-symbol-sloan'>@</span>"; }
-                                                        if ($has_all_docs) { echo " <span title='All Mandatory Documents Uploaded & Verified' class='cl-symbol cl-symbol-docs'>✔</span>"; }
-                                                    ?>
+                                                        <?php 
+                                                            if (!empty($row['u_loan'])) { echo "<span title='Has Active Loan (loan > 0)' class='cl-symbol cl-symbol-loan'>#</span>"; }
+                                                            if (!empty($row['u_sloan'])) { echo "<span title='Special / Repeat Borrower (sloan > 0)' class='cl-symbol cl-symbol-sloan'>@</span>"; }
+                                                            if ($has_all_docs) { echo " <span title='All Mandatory Documents Uploaded & Verified' class='cl-symbol cl-symbol-docs'>✔</span>"; }
+                                                        ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11.5px; font-family:monospace; color:var(--cl-primary); font-weight:600;">
+                                                        <?= creditlab_dash_text($row['u_rcid'] ?? '') ?>
+                                                    </div>
                                                 </td>
-                                                <td data-title="Mobile" style="font-family:monospace; font-size:12.5px;"><?= creditlab_dash_text($row['u_mobile'] ?? '') ?></td>
-                                                <td data-title="EMI Plan">
-                                                    <span class="badge-modern" style="background:#f1f5f9; color:#475569;">
-                                                        <?= creditlab_dash_text($row['u_approvenew'] ?? '', 'Standard') ?>
-                                                    </span>
+                                                <td data-title="Mobile">
+                                                    <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800); white-space:nowrap;">
+                                                        <?= creditlab_dash_text($row['u_mobile'] ?? '') ?>
+                                                    </div>
                                                 </td>
-                                                <td data-title="Req Amount" style="text-align:right; font-weight:700; color:var(--cl-slate-900);">
-                                                    <?= creditlab_currency($total_req) ?>
+                                                <td data-title="Amount" style="text-align:right; white-space:nowrap;">
+                                                    <div style="font-weight:700; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                        <span style="font-size:10px; font-weight:600; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Req</span>
+                                                        <?= creditlab_currency($total_req) ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:12px; line-height:1.2;">
+                                                        <span style="font-weight:600; color:#15803d;"><span style="font-size:10px; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Disb</span><?= creditlab_currency($row['loan_amount'] ?? 0) ?></span>
+                                                        <?php if (!empty($row['loan_pfees']) && (float)$row['loan_pfees'] > 0): ?>
+                                                            <span style="color:var(--cl-slate-300); margin:0 2px;">·</span>
+                                                            <span style="color:var(--cl-slate-500); font-size:11px;">Fee <?= creditlab_currency($row['loan_pfees']) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </td>
-                                                <td data-title="Disbursal Amt" style="text-align:right; font-weight:600; color:#15803d;">
-                                                    <?= creditlab_currency($row['loan_amount'] ?? 0) ?>
+                                                <td data-title="Status & Plan" style="text-align:center; white-space:nowrap;">
+                                                    <div>
+                                                        <?= creditlab_status_badge($row['u_status'] ?? '', $row['loan_agreement'] ?? 0) ?>
+                                                    </div>
+                                                    <div style="margin-top:4px;">
+                                                        <span style="font-size:11px; color:var(--cl-slate-500);">Plan:</span>
+                                                        <span class="badge" style="background:#f1f5f9; color:#475569; font-size:10.5px; font-weight:600; padding:2px 6px; border-radius:4px;">
+                                                            <?= creditlab_dash_text($row['u_approvenew'] ?? '', 'Standard') ?>
+                                                        </span>
+                                                    </div>
                                                 </td>
-                                                <td data-title="P. Fee" style="text-align:right; color:var(--cl-slate-600);">
-                                                    <?= creditlab_currency($row['loan_pfees'] ?? 0) ?>
+                                                <td data-title="Officer & Date" style="white-space:nowrap;">
+                                                    <div style="font-size:12px; font-weight:500; color:var(--cl-slate-700); line-height:1.25;">
+                                                        <i class="fa-regular fa-calendar" style="font-size:10.5px; color:var(--cl-slate-400); margin-right:3px;"></i>
+                                                        <?= !empty($row['loan_apply_date']) ? date('d M Y, H:i', strtotime($row['loan_apply_date'])) : '—' ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11.5px; color:var(--cl-slate-500);">
+                                                        <i class="fa-solid fa-user-tie" style="font-size:10px; color:var(--cl-slate-400); margin-right:3px;"></i>
+                                                        <?= creditlab_dash_text($row['officer_name'] ?? '', 'Unassigned') ?>
+                                                    </div>
                                                 </td>
-                                                <td data-title="User Status" style="text-align:center;">
-                                                    <?= creditlab_status_badge($row['u_status'] ?? '', $row['loan_agreement'] ?? 0) ?>
-                                                </td>
-                                                <td data-title="Officer" style="font-size:12px; color:var(--cl-slate-600);">
-                                                    <?= creditlab_dash_text($row['officer_name'] ?? '', 'Unassigned') ?>
-                                                </td>
-                                                <td data-title="Applied Date" style="font-size:12px; color:var(--cl-slate-500); white-space:nowrap;">
-                                                    <?= creditlab_dash_text($row['loan_apply_date'] ?? '') ?>
-                                                </td>
-                                                <td data-title="Actions" style="text-align:right;">
+                                                <td data-title="Actions" style="text-align:right; white-space:nowrap;">
                                                     <a class="btn btn-xs btn-primary" href="profile.php?id=<?= (int)($row['u_id'] ?? 0) ?>" target="_blank" style="padding:4px 10px;">
                                                         <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
                                                     </a>
@@ -169,7 +179,7 @@ include_once 'm_menu.php';
                                         <?php $ii++; endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="13" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No pending applied loans found.</td>
+                                            <td colspan="8" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No pending applied loans found.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
