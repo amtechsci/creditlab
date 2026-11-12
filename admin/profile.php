@@ -2611,20 +2611,45 @@
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="Validation">
                                         <div class="row">
-                                            <form action="" method="post"><div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                                <select name="valid_status" id="mySelect" onchange="myFunction();">
-                                                    <option value="">select</option>
-                                                    <option value="Process">Process</option>
-                                                    <option value="Not Process">Not Process</option>
-                                                    <option value="Re Process">Re Process</option>
-                                                    <option value="cancel">cancel</option>
-                                                    <option value="unhold">unhold</option>
-                                                </select>
-                                                <div id="validcheck"></div>
-                                                <textarea style="color: red" class="form-control" name="validation" id="text" rows="15"><?=$userpro_validation;?></textarea>
-                                                <br>
-                                                <center><a onclick="aaaa()">Check</a> <input type="checkbox" name="sendmail" value="ok"> Mail <button class="btn btn-primary" onclick="aaaa()" type="submit">Submit</button></center>
-                                            </div></form>
+                                            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                                <form action="" method="post" style="background:#fff; padding:20px; border-radius:10px; border:1px solid #e2e8f0; margin-top:10px;">
+                                                    <div class="form-group">
+                                                        <label class="control-label" style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+                                                            <i class="fa-solid fa-shield-halved" style="color:var(--cl-brand); margin-right:6px;"></i> Underwriting / Verification Action
+                                                        </label>
+                                                        <select name="valid_status" id="mySelect" onchange="myFunction();" class="form-control" style="max-width:320px; font-weight:600; height:42px; border:1px solid #cbd5e1; border-radius:8px;">
+                                                            <option value="">-- Select Status Action --</option>
+                                                            <option value="Process">Process (Proceed to Follow Up / Disbursal)</option>
+                                                            <option value="Not Process">Not Process (Hold &amp; Cancel)</option>
+                                                            <option value="Re Process">Re Process (Hold for Re-verification)</option>
+                                                            <option value="cancel">Cancel Application</option>
+                                                            <option value="unhold">Unhold (Reset to Waiting)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div id="validcheck" style="margin-bottom:15px; margin-top:10px;"></div>
+                                                    <div class="form-group" style="margin-top:15px;">
+                                                        <label class="control-label" style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+                                                            <i class="fa-solid fa-clock-rotate-left" style="color:#64748b; margin-right:6px;"></i> Verification Audit Trail &amp; Underwriter Notes
+                                                        </label>
+                                                        <textarea class="form-control" name="validation" id="text" rows="12" style="font-family:monospace; font-size:12.5px; background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; line-height:1.6; border-radius:8px;"><?=$userpro_validation;?></textarea>
+                                                    </div>
+                                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:18px; flex-wrap:wrap; gap:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
+                                                        <div style="display:inline-flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                                                            <button type="button" class="btn btn-default" onclick="aaaa()" style="font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:6px 14px;">
+                                                                <i class="fa-solid fa-list-check" style="color:var(--cl-brand); margin-right:4px;"></i> Insert Checked Criteria
+                                                            </button>
+                                                            <label style="margin:0; font-weight:600; color:#475569; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                                <input type="checkbox" name="sendmail" value="ok" style="margin:0;"> Send Email Notification
+                                                            </label>
+                                                        </div>
+                                                        <div>
+                                                            <button class="btn btn-primary" onclick="aaaa()" type="submit" style="padding:8px 26px; font-weight:600; background:var(--cl-brand); border-color:var(--cl-brand); border-radius:6px;">
+                                                                <i class="fa-solid fa-check" style="margin-right:4px;"></i> Update Verification
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="product-tab-list tab-pane fade" id="follow_up">

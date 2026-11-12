@@ -29,73 +29,34 @@ if(isset($_GET['id'])){
     include_once 'm_menu.php';
     ?>
             <!-- Mobile Menu end -->
-          <div class="breadcome-area">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="breadcome-list">
-                                <div class="row">
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
-                   <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
-                   <p>Mobile : <?=maskPhone($userpro_mobile);?></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <?php
-                    $account_manager = null;
-                    if (!empty($userpro_assign_account_manager) && ctype_digit((string) $userpro_assign_account_manager)) {
-                        $account_manager = towfetch(towquery("SELECT * FROM `account_manager` WHERE id=".(int)$userpro_assign_account_manager));
-                    }
-                    $recovery_officer = null;
-                    if (!empty($userpro_assign_recovery_officer) && ctype_digit((string) $userpro_assign_recovery_officer)) {
-                        $recovery_officer = towfetch(towquery("SELECT * FROM `recovery_officer` WHERE id=".(int)$userpro_assign_recovery_officer));
-                    }
-                    ?>
-                   <p>Account Manager : <?=is_array($account_manager) ? ($account_manager['name'] ?? '') : '';?> </p><p>Recovery Officer : <?=is_array($recovery_officer) ? ($recovery_officer['name'] ?? '') : '';?></p>
-                   <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
-                   <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                   $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
-                   $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
-                   $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
-                   ?>
-                   <p>limit score <span class="bread-slash">:</span> <span class="bread-blod">
-                    <?php $azxs =((0.12*$forgstf)/1.18); ?>
-                       <?=(($totalflss-$totalflssp-(ceil(0.18*($azxs))))/$userpro_loan_limit);?></span></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>Pan : Y</p>
-                   <p>Enach : <?= htmlspecialchars($userpro_enach_label) ?></p>
-                   <p>adhar : Y</p>
-                   <p>Bank check : Y</p>
-                </div></div>
-                            </div>
-                        </div>
+            <div class="container-fluid" style="margin-top: 15px; margin-bottom: 20px;">
+                <div class="row">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        <?php include __DIR__ . '/../includes/profile_staff_dossier_header.php'; ?>
                     </div>
                 </div>
             </div>
-        </div>
           <div class="single-pro-review-area mt-t-30 mg-b-15">
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active" style="margin-bottom:30px;"><a href="#Personal">Personal</a></li>
-                                <!--<li><a href="#additional"> additional</a></li>-->
-                                <li><a href="#INFORMATION">Documents</a></li>
-                                <li><a href="#Bank">Bank Information</a></li>
-                                <li><a href="#Reference">Reference</a></li>
-                                <li><a href="#login_data">Login Data</a></li>
-                                <li><a href="#loan">Apply Loan</a></li>
-                                <li><a href="#oldloan">All Loan</a></li>
-                                <li><a href="#transaction_details">Transaction Details</a></li>
-                                <li><a href="#cibil_analysis">CIBIL ANALYSIS</a></li>
-                                <li><a href="#pan_analysis">PAN ANALYSIS</a></li>
-                                <li><a href="#adhar_analysis">Adhar ANALYSIS</a></li>
-                                <li><a href="#bank_analysis">Bank Statement ANALYSIS</a></li>
-                            </ul>
+                            <div class="profile-tab-scroll">
+                                    <ul id="myTabedu1" class="tab-review-design">
+                                        <li class="active"><a href="#Personal" data-toggle="tab"><i class="fa-solid fa-user"></i> Personal</a></li>
+                                        <li><a href="#INFORMATION" data-toggle="tab"><i class="fa-solid fa-file"></i> Documents</a></li>
+                                        <li><a href="#Bank" data-toggle="tab"><i class="fa-solid fa-building-columns"></i> Bank Info</a></li>
+                                        <li><a href="#Reference" data-toggle="tab"><i class="fa-solid fa-address-book"></i> Reference</a></li>
+                                        <li><a href="#login_data" data-toggle="tab"><i class="fa-solid fa-right-to-bracket"></i> Login Data</a></li>
+                                        <li><a href="#loan" data-toggle="tab"><i class="fa-solid fa-plus-circle"></i> Apply Loan</a></li>
+                                        <li><a href="#oldloan" data-toggle="tab"><i class="fa-solid fa-file-invoice-dollar"></i> All Loans</a></li>
+                                        <li><a href="#transaction_details" data-toggle="tab"><i class="fa-solid fa-receipt"></i> Transactions</a></li>
+                                        <li><a href="#cibil_analysis" data-toggle="tab"><i class="fa-solid fa-chart-line"></i> CIBIL</a></li>
+                                        <li><a href="#pan_analysis" data-toggle="tab"><i class="fa-solid fa-id-badge"></i> PAN</a></li>
+                                        <li><a href="#adhar_analysis" data-toggle="tab"><i class="fa-solid fa-fingerprint"></i> Aadhaar</a></li>
+                                        <li><a href="#bank_analysis" data-toggle="tab"><i class="fa-solid fa-chart-simple"></i> Bank Statement</a></li>
+                                    </ul>
+                                </div>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade active in" id="Personal">
                                     <div class="row">
@@ -911,5 +872,17 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
         <?php
         include_once 'foot.php';
         ?>
+
+<script>
+$(function() {
+    var hash = window.location.hash;
+    var urlParams = new URLSearchParams(window.location.search);
+    var tabParam = urlParams.get('tab');
+    var target = tabParam ? ('#' + tabParam) : (hash || '#Personal');
+    if (target && $('a[href="' + target + '"]').length) {
+        $('a[href="' + target + '"]').tab('show');
+    }
+});
+</script>
 </body>
 </html>

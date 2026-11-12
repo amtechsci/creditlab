@@ -544,84 +544,43 @@ if (isset($_POST['reset_documents']) && !empty($_POST['reset'])) {
     include_once 'm_menu.php';
     ?>
             <!-- Mobile Menu end -->
-          <div class="breadcome-area">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                            <div class="breadcome-list">
-                                <div class="row">
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>NAME : <?=$userpro_name;?></p><p>CLID : <?=$userpro_rcid;?></p>
-                   <p>Status : <?php if($userpro_status == "waiting"){echo "Just Registered";}else{echo $userpro_status;}?></p>
-                   <p>Mobile : <?=$userpro_mobile;?></p>
-                   <p<?=$limit_percentage_style_attr?>>Limit vs Salary: <?=$limit_percentage_display?></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                    <?php
-                    $account_manager = null;
-                    if (!empty($userpro_assign_account_manager) && ctype_digit((string) $userpro_assign_account_manager)) {
-                        $account_manager = towfetch(towquery("SELECT * FROM `account_manager` WHERE id=".(int)$userpro_assign_account_manager));
-                    }
-                    $recovery_officer = null;
-                    if (!empty($userpro_assign_recovery_officer) && ctype_digit((string) $userpro_assign_recovery_officer)) {
-                        $recovery_officer = towfetch(towquery("SELECT * FROM `recovery_officer` WHERE id=".(int)$userpro_assign_recovery_officer));
-                    }
-                    ?>
-                   <p>Account Manager : <?=is_array($account_manager) ? ($account_manager['name'] ?? '') : '';?> </p><p>Recovery Officer : <?=is_array($recovery_officer) ? ($recovery_officer['name'] ?? '') : '';?></p>
-                   <p>Registered <span class="bread-slash">:</span> <span class="bread-blod"><?=getDateTimeDiff($userpro_reg_date);?></span></p> 
-                   <?php $totalfls = towfetch(towquery("SELECT SUM(`transaction_amount`) AS total FROM `transaction_details` WHERE NOT `transaction_flow`='creditlab To Customer' AND uid=$userpro_id"));
-                   $totalflss = (is_array($totalfls) && !empty($totalfls['total'])) ? $totalfls['total'] : 0;
-                   $totalflsp = towfetch(towquery("SELECT SUM(`processed_amount`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $totalflssp = (is_array($totalflsp) && !empty($totalflsp['total'])) ? $totalflsp['total'] : 0;
-                   $forgst = towfetch(towquery("SELECT SUM(`processed_amount`) + SUM(`p_fee`) + SUM(`origination_fee`) AS total FROM `loan` WHERE uid=$userpro_id AND status_log IN ('default','cleared')"));
-                   $forgstf = (is_array($forgst) && !empty($forgst['total'])) ? $forgst['total'] : 0;
-                   ?>
-                   <p>Creditlab score<span class="bread-slash">:</span> <span class="bread-blod"><?=$userpro_credit_score?></span></p>
-                </div>
-                                    <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
-                   <p>Pan : Y</p>
-                   <p>Enach : <?= htmlspecialchars($userpro_enach_label) ?></p>
-                   <p>adhar : Y</p>
-                   <p>Bank check : Y</p>
-                   <p>Member - <?php if($userpro_member == 0){echo 'silver';} if($userpro_member == 1){echo 'gold';} if($userpro_member == 2){echo 'diamond';} if($userpro_member == 3){echo 'Platinum';}
-                                                     if($userpro_member == 4){echo '<b style="color:red; font-size:22px;">RISKY</b>';}?></p>
-                </div></div>
-                            </div>
-                        </div>
+            <div class="container-fluid" style="margin-top: 15px; margin-bottom: 20px;">
+                <div class="row">
+                    <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                        <?php include __DIR__ . '/../includes/profile_staff_dossier_header.php'; ?>
                     </div>
                 </div>
             </div>
-        </div>
           <div class="single-pro-review-area mt-t-30 mg-b-15">
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                         <div class="product-payment-inner-st">
-                            <ul id="myTabedu1" class="tab-review-design">
-                                <li class="active" data-toggle="tab" style="margin-bottom:30px;"><a href="#Personal" data-toggle="tab">Personal</a></li>
-                                <!--<li><a h data-toggle="tab"ref="#additional"> additional</a></li>-->
-                                <li><a href="#INFORMATION" data-toggle="tab">Documents</a></li>
-                                <li><a href="#Bank" data-toggle="tab">Bank Information</a></li>
-                                <li><a href="#Reference" data-toggle="tab">Reference</a></li>
-                                <li><a href="#login_data" data-toggle="tab">Login Data</a></li>
-                                <li><a href="#profile_detail" data-toggle="tab">Profile Detail</a></li>
-                                <li><a href="#user_contact" data-toggle="tab">Number Contact</a></li>
-                                <li><a href="#contact" data-toggle="tab">Contact</a></li>
-                                <li><a href="#loan" data-toggle="tab">Apply Loan</a></li>
-                                <li><a href="#oldloan" data-toggle="tab">All Loan</a></li>
-                                <!--<li><a href="#transaction_details" data-toggle="tab">Transaction Details</a></li>-->
-                                <li><a href="#Validation" data-toggle="tab">Validation</a></li>
-                                <li><a href="#follow_up" data-toggle="tab">Follow Up</a></li>
-                                <li><a href="#note" data-toggle="tab">Note</a></li>
-                                <li><a href="#sms" data-toggle="tab">SMS</a></li>
-                                <li><a href="#cibil_analysis" data-toggle="tab">CIBIL ANALYSIS</a></li>
-                                <li><a href="#pan_analysis" data-toggle="tab">PAN ANALYSIS</a></li>
-                                <li><a href="#adhar_analysis" data-toggle="tab">Adhar ANALYSIS</a></li>
-                                <li><a href="#bank_analysis" data-toggle="tab">Bank Statement ANALYSIS</a></li>
-                                <li><a href="#mail" data-toggle="tab">Mail</a></li>
-                                <li><a href="#manager" data-toggle="tab">Account manager</a></li>
-                                <li><a href="#payment" data-toggle="tab">payment</a></li>
-                            </ul>
+                            <div class="profile-tab-scroll">
+                                    <ul id="myTabedu1" class="tab-review-design">
+                                        <li class="active"><a href="#Personal" data-toggle="tab"><i class="fa-solid fa-user"></i> Personal</a></li>
+                                        <li><a href="#INFORMATION" data-toggle="tab"><i class="fa-solid fa-file"></i> Documents</a></li>
+                                        <li><a href="#Bank" data-toggle="tab"><i class="fa-solid fa-building-columns"></i> Bank Info</a></li>
+                                        <li><a href="#Reference" data-toggle="tab"><i class="fa-solid fa-address-book"></i> Reference</a></li>
+                                        <li><a href="#login_data" data-toggle="tab"><i class="fa-solid fa-right-to-bracket"></i> Login Data</a></li>
+                                        <li><a href="#profile_detail" data-toggle="tab"><i class="fa-solid fa-id-card"></i> Profile Detail</a></li>
+                                        <li><a href="#user_contact" data-toggle="tab"><i class="fa-solid fa-phone"></i> Contacts</a></li>
+                                        <li><a href="#contact" data-toggle="tab"><i class="fa-solid fa-address-card"></i> Contact Logs</a></li>
+                                        <li><a href="#loan" data-toggle="tab"><i class="fa-solid fa-plus-circle"></i> Apply Loan</a></li>
+                                        <li><a href="#oldloan" data-toggle="tab"><i class="fa-solid fa-file-invoice-dollar"></i> All Loans</a></li>
+                                        <li><a href="#Validation" data-toggle="tab"><i class="fa-solid fa-shield-halved"></i> Validation</a></li>
+                                        <li><a href="#follow_up" data-toggle="tab"><i class="fa-solid fa-phone-volume"></i> Follow Up</a></li>
+                                        <li><a href="#note" data-toggle="tab"><i class="fa-solid fa-note-sticky"></i> Notes</a></li>
+                                        <li><a href="#sms" data-toggle="tab"><i class="fa-solid fa-comment-sms"></i> SMS</a></li>
+                                        <li><a href="#cibil_analysis" data-toggle="tab"><i class="fa-solid fa-chart-line"></i> CIBIL</a></li>
+                                        <li><a href="#pan_analysis" data-toggle="tab"><i class="fa-solid fa-id-badge"></i> PAN</a></li>
+                                        <li><a href="#adhar_analysis" data-toggle="tab"><i class="fa-solid fa-fingerprint"></i> Aadhaar</a></li>
+                                        <li><a href="#bank_analysis" data-toggle="tab"><i class="fa-solid fa-chart-simple"></i> Bank Statement</a></li>
+                                        <li><a href="#mail" data-toggle="tab"><i class="fa-solid fa-envelope"></i> Mail</a></li>
+                                        <li><a href="#manager" data-toggle="tab"><i class="fa-solid fa-briefcase"></i> Account Manager</a></li>
+                                        <li><a href="#payment" data-toggle="tab"><i class="fa-solid fa-credit-card"></i> Payment</a></li>
+                                    </ul>
+                                </div>
                             <div id="myTabContent" class="tab-content custom-product-edit">
                                 <div class="product-tab-list tab-pane fade active in" id="Personal">
                                     <div class="row">
@@ -1735,20 +1694,45 @@ $loan_data = towquery("SELECT * FROM loan WHERE uid='$userpro_id' ORDER BY id DE
                                 </div>
                                  <div class="product-tab-list tab-pane fade" id="Validation">
                                     <div class="row">
-                                        <form action="" method="post"><div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
-                                            <select name="valid_status" id="mySelect" onchange="myFunction();">
-                                                <option value="">select</option>
-                                                <option value="Process">Process</option>
-                                                <option value="Not Process">Not Process</option>
-                                                <option value="Re Process">Re Process</option>
-                                                <option value="cancel">cancel</option>
-                                                <option value="unhold">unhold</option>
-                                            </select>
-                                            <div id="validcheck"></div>
-                                            <textarea style="color: red" class="form-control" name="validation" id="text" rows="15"><?=$userpro_validation;?></textarea>
-                                            <br>
-                                            <center><a onclick="aaaa()">Check</a> <input type="checkbox" name="sendmail" value="ok"> Mail <button class="btn btn-primary" onclick="aaaa()" type="submit">Submit</button></center>
-                                        </div></form>
+                                        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                                            <form action="" method="post" style="background:#fff; padding:20px; border-radius:10px; border:1px solid #e2e8f0; margin-top:10px;">
+                                                <div class="form-group">
+                                                    <label class="control-label" style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+                                                        <i class="fa-solid fa-shield-halved" style="color:var(--cl-brand); margin-right:6px;"></i> Underwriting / Verification Action
+                                                    </label>
+                                                    <select name="valid_status" id="mySelect" onchange="myFunction();" class="form-control" style="max-width:320px; font-weight:600; height:42px; border:1px solid #cbd5e1; border-radius:8px;">
+                                                        <option value="">-- Select Status Action --</option>
+                                                        <option value="Process">Process (Proceed to Follow Up / Disbursal)</option>
+                                                        <option value="Not Process">Not Process (Hold &amp; Cancel)</option>
+                                                        <option value="Re Process">Re Process (Hold for Re-verification)</option>
+                                                        <option value="cancel">Cancel Application</option>
+                                                        <option value="unhold">Unhold (Reset to Waiting)</option>
+                                                    </select>
+                                                </div>
+                                                <div id="validcheck" style="margin-bottom:15px; margin-top:10px;"></div>
+                                                <div class="form-group" style="margin-top:15px;">
+                                                    <label class="control-label" style="font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+                                                        <i class="fa-solid fa-clock-rotate-left" style="color:#64748b; margin-right:6px;"></i> Verification Audit Trail &amp; Underwriter Notes
+                                                    </label>
+                                                    <textarea class="form-control" name="validation" id="text" rows="12" style="font-family:monospace; font-size:12.5px; background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; line-height:1.6; border-radius:8px;"><?=$userpro_validation;?></textarea>
+                                                </div>
+                                                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:18px; flex-wrap:wrap; gap:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
+                                                    <div style="display:inline-flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                                                        <button type="button" class="btn btn-default" onclick="aaaa()" style="font-weight:600; border:1px solid #cbd5e1; border-radius:6px; padding:6px 14px;">
+                                                            <i class="fa-solid fa-list-check" style="color:var(--cl-brand); margin-right:4px;"></i> Insert Checked Criteria
+                                                        </button>
+                                                        <label style="margin:0; font-weight:600; color:#475569; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                                            <input type="checkbox" name="sendmail" value="ok" style="margin:0;"> Send Email Notification
+                                                        </label>
+                                                    </div>
+                                                    <div>
+                                                        <button class="btn btn-primary" onclick="aaaa()" type="submit" style="padding:8px 26px; font-weight:600; background:var(--cl-brand); border-color:var(--cl-brand); border-radius:6px;">
+                                                            <i class="fa-solid fa-check" style="margin-right:4px;"></i> Update Verification
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="product-tab-list tab-pane fade" id="follow_up">
@@ -2292,6 +2276,19 @@ $('textarea').on('change', function () {
             }
         }
     </script>
+
+<script>
+$(function() {
+    var hash = window.location.hash;
+    var urlParams = new URLSearchParams(window.location.search);
+    var tabParam = urlParams.get('tab');
+    var target = tabParam ? ('#' + tabParam) : (hash || '#Personal');
+    if (target && $('a[href="' + target + '"]').length) {
+        $('a[href="' + target + '"]').tab('show');
+    }
+});
+</script>
 </body>
+
 
 </html>

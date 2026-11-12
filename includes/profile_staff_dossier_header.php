@@ -42,6 +42,47 @@ if ($m === 1) {
 $limit_percentage_style_attr = $limit_percentage_style_attr ?? '';
 $limit_percentage_display = $limit_percentage_display ?? 'N/A';
 $userpro_enach_label = $userpro_enach_label ?? '—';
+
+// Verification Status (user.verify: 0 = unverified, 1 = verified, 3 = re-process, 4 = issue/not process)
+$v_code = (int) ($userpro_verify ?? 0);
+if ($v_code === 1) {
+    $verify_badge = '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Approved</span>';
+} elseif ($v_code === 3) {
+    $verify_badge = '<span style="color:#d97706; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Re-Process</span>';
+} elseif ($v_code === 4) {
+    $verify_badge = '<span style="color:#dc2626; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Issue / Hold</span>';
+} else {
+    $verify_badge = '<span style="color:#64748b; font-weight:600;"><i class="fa-solid fa-clock"></i> Unverified</span>';
+}
+
+// Bank Check
+$user_bank_row = towfetch(towquery(
+    'SELECT * FROM `user_bank` WHERE uid=' . (int) $userpro_id . ' ORDER BY id DESC LIMIT 1'
+));
+if ($user_bank_row) {
+    if ((int) ($user_bank_row['verify'] ?? 0) === 1) {
+        $bank_check_badge = '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Verified</span>';
+    } else {
+        $bank_check_badge = '<span style="color:#d97706; font-weight:600;"><i class="fa-solid fa-clock"></i> Pending</span>';
+    }
+} else {
+    $bank_check_badge = '<span style="color:#94a3b8;"><i class="fa-solid fa-circle-minus"></i> Not Added</span>';
+}
+
+// PAN & Aadhaar Check
+$has_pan = !empty(trim((string) ($userpro_pan ?? '')));
+$has_aadhar = !empty(trim((string) ($userpro_aadhar ?? '')));
+if ($v_code === 1) {
+    $pan_aadhar_badge = '<span style="color:#15803d; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Verified</span>';
+} elseif ($v_code === 4) {
+    $pan_aadhar_badge = '<span style="color:#dc2626; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> Issue / Hold</span>';
+} elseif ($has_pan && $has_aadhar) {
+    $pan_aadhar_badge = '<span style="color:#0284c7; font-weight:600;"><i class="fa-solid fa-file-circle-check"></i> Complete (Review)</span>';
+} elseif ($has_pan || $has_aadhar) {
+    $pan_aadhar_badge = '<span style="color:#d97706; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Partial (' . ($has_pan ? 'PAN' : 'Aadhaar') . ')</span>';
+} else {
+    $pan_aadhar_badge = '<span style="color:#94a3b8;"><i class="fa-solid fa-circle-minus"></i> Missing</span>';
+}
 ?>
 <div class="profile-dossier-card">
     <div class="profile-dossier-header">
@@ -102,8 +143,9 @@ $userpro_enach_label = $userpro_enach_label ?? '—';
 
         <div class="profile-tile">
             <div class="profile-tile-label"><i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> Verification Checks</div>
-            <div class="profile-tile-row"><span class="k">PAN &amp; Aadhaar:</span><span class="v" style="color:#15803d;"><i class="fa-solid fa-circle-check"></i> Verified</span></div>
-            <div class="profile-tile-row"><span class="k">Bank Check:</span><span class="v" style="color:#15803d;"><i class="fa-solid fa-circle-check"></i> Verified</span></div>
+            <div class="profile-tile-row"><span class="k">Profile Verify:</span><span class="v"><?= $verify_badge ?></span></div>
+            <div class="profile-tile-row"><span class="k">PAN &amp; Aadhaar:</span><span class="v"><?= $pan_aadhar_badge ?></span></div>
+            <div class="profile-tile-row"><span class="k">Bank Check:</span><span class="v"><?= $bank_check_badge ?></span></div>
             <div class="profile-tile-row"><span class="k">eNACH:</span><span class="v"><span class="badge-modern" style="background:#f1f5f9; color:#334155; font-size:11px;"><?= htmlspecialchars((string) $userpro_enach_label) ?></span></span></div>
         </div>
 
