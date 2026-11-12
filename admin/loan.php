@@ -51,8 +51,9 @@ $loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manage
                                         <th>Loan ID</th>        
                                         <th style="text-align:right;">Loan Amount</th>        
                                         <th>Loan Availed On</th>        
-                                        <th>Loan Status</th>    
-                                        <th>Loan Repay In</th>     
+                                        <th style="text-align:center;">Status</th>    
+                                        <th style="text-align:center;">Repay In</th>     
+                                        <th style="text-align:right; width:110px;">Actions</th>     
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -60,15 +61,20 @@ $loanquery = towquery("SELECT * FROM `loan_apply` WHERE `status`='account manage
                                         <?php while($loanfetch = towfetch($loanquery)): extract($loanfetch); ?>
                                             <tr>
                                                 <td data-title="Loan ID"><strong style="color:var(--cl-primary); font-family:monospace;">CLL<?=$id?></strong></td>   
-                                                <td data-title="Loan Amount" style="text-align:right; font-weight:600;"><?=creditlab_currency($amount ?? 0)?></td>
+                                                <td data-title="Loan Amount" style="text-align:right; font-weight:700; color:var(--cl-slate-900);"><?=creditlab_currency($amount ?? 0)?></td>
                                                 <td data-title="Loan Availed On"><?=creditlab_dash_text($status_date ?? '')?></td> 
-                                                <td data-title="Loan Status"><?=creditlab_status_badge($status ?? '')?></td>   
-                                                <td data-title="Loan Repay In"><?=$days?> days</td>  
+                                                <td data-title="Loan Status" style="text-align:center; white-space:nowrap;"><?=creditlab_status_badge($status ?? '')?></td>   
+                                                <td data-title="Loan Repay In" style="text-align:center; color:var(--cl-slate-600);"><?=$days?> days</td>  
+                                                <td data-title="Actions" style="text-align:right; white-space:nowrap;">
+                                                    <a class="btn btn-xs btn-primary" href="profile.php?id=<?=(int)($uid ?? 0)?>" target="_blank" style="padding:4px 10px;">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
+                                                    </a>
+                                                </td>
                                             </tr>
                                         <?php endwhile; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td colspan="5" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No approved loans found.</td>
+                                            <td colspan="6" style="text-align:center; padding:30px; color:var(--cl-slate-400);">No approved loans found.</td>
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>

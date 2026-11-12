@@ -1128,8 +1128,41 @@ ul.tab-custon-design li a:after,
 
 .table {
     margin-bottom: 0 !important;
-    border-collapse: collapse !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
     width: 100% !important;
+}
+
+/* ==========================================================================
+   STICKY ACTIONS COLUMN (FIXED TO RIGHT EDGE)
+   Enables instant action buttons access even during horizontal table scroll
+   ========================================================================== */
+
+.table > thead > tr > th:last-child,
+.table > thead > tr > td:last-child,
+.table > tbody > tr > td:last-child,
+.table > tbody > tr > th:last-child,
+th.cl-col-actions,
+td.cl-col-actions {
+    position: sticky !important;
+    right: 0 !important;
+    background-color: #ffffff !important;
+    box-shadow: -4px 0 8px -2px rgba(15, 23, 42, 0.08) !important;
+    z-index: 10 !important;
+    text-align: right !important;
+}
+
+.table > thead > tr > th:last-child,
+.table > thead > tr > td:last-child,
+th.cl-col-actions {
+    background-color: var(--cl-slate-50, #f8fafc) !important;
+    z-index: 15 !important;
+}
+
+.table > tbody > tr:hover > td:last-child,
+.table > tbody > tr:hover > th:last-child,
+.table > tbody > tr:hover > td.cl-col-actions {
+    background-color: #f1f5f9 !important;
 }
 
 .table > thead > tr > th,

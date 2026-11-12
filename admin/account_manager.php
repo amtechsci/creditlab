@@ -102,265 +102,246 @@ if (isset($_GET['pageno'])) {
                         <div id="myTabContent" class="tab-content custom-product-edit">
                             <div class="product-tab-list tab-pane fade <?= $active_tab == 'daily' ? 'active in' : '' ?>" id="description">
                                 <div class="table-responsive">
-                                            <table class="table table-bordered am-loan-table" id="am_loan_table_daily">
-        <thead class="thead-light">
-            <tr>                
-                                        <th style="width:40px;text-align:center;"><input type="checkbox" id="selectAllDaily" title="Select all on this page" aria-label="Select all"></th>   
-                                        <th>SLNO</th>    
-                                        <th>CID</th>        
-                                        <th>Name</th>         
-                                        <th>Mobile</th>    
-                                        <th>Alt Mobile</th>    
-                                        <th>Total Loans</th>
-                                        <th>principal loan Amt</th>    
-                                        <th>loan exhausted days</th>    
-                                        <th>DPD</th>    
-                                        <th>outstanding Amount</th>    
-                                        <th>loan ID</th>
-                                        <th>Salary Date</th>
-                                        <th>Cst response</th>    
-                                        <th>commitment date</th>    
-                                        <th>updated date</th>    
-                                        <th>Actions</th>     
-                                    </tr>
-        </thead>
-        <tbody>
-                                   <?php 
-                                   $ii=1;
-                                   foreach($daily_loans_paged as $b){
-                                   extract($b,EXTR_PREFIX_ALL,"user");
-                                //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC"));
-                                   ?>
-                                   <?php
-// 1. Initialize empty arrays to hold the data from each row
-$responses = [];
-$commit_dates = [];
-$updated_ats = [];
+                                    <table class="table table-bordered am-loan-table" id="am_loan_table_daily">
+                                        <thead>
+                                            <tr>                
+                                                <th style="width:34px; text-align:center;"><input type="checkbox" id="selectAllDaily" title="Select all on this page" aria-label="Select all"></th>   
+                                                <th style="width:48px;">SL</th>    
+                                                <th>Borrower / CID</th>        
+                                                <th>Contact</th>    
+                                                <th style="text-align:right;">Outstanding / Principal</th>    
+                                                <th style="text-align:center;">DPD & Tenure</th>    
+                                                <th>Follow-up History</th>    
+                                                <th style="text-align:right; width:110px;">Actions</th>     
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php 
+                                            $ii = ($pageno - 1) * 50 + 1;
+                                            foreach($daily_loans_paged as $b){
+                                                extract($b, EXTR_PREFIX_ALL, "user");
 
-// 2. Execute the query to get the result set of the last 3 records
-$query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3");
+                                                $query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".intval($user_lid)." ORDER BY id DESC LIMIT 2");
+                                                $followup_rows = [];
+                                                while ($row = towfetch($query_result)) {
+                                                    $followup_rows[] = $row;
+                                                }
 
-// 3. Loop through each row of the result set
-while ($row = towfetch($query_result)) {
-    // Add the data from the current row into our arrays
-    $responses[] = $row['customer_response'];
-    $commit_dates[] = $row['commitment_date'];
-    $updated_ats[] = $row['updated_at'];
-}
+                                                $loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
+                                                $loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
+                                                $loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
 
-// 4. Use implode() to concatenate the values with a line break
-$concatenated_responses = implode("<br><br>", $responses);
-$concatenated_dates = implode("<br><br>", $commit_dates);
-$concatenated_updates = implode("<br><br>", $updated_ats);
+                                                $membership_badge = '';
+                                                switch ((int)$user_member) {
+                                                    case 0: $membership_badge = '<span class="badge" style="background:#e2e8f0; color:#475569; font-size:10px;">Silver</span>'; break;
+                                                    case 1: $membership_badge = '<span class="badge" style="background:#fef3c7; color:#b45309; font-size:10px;">Gold</span>'; break;
+                                                    case 2: $membership_badge = '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px;">Diamond</span>'; break;
+                                                    case 3: $membership_badge = '<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-size:10px;">Platinum</span>'; break;
+                                                    case 4: $membership_badge = '<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:10px; font-weight:700;">RISKY</span>'; break;
+                                                }
 
-$loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
-$loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
-$loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
-$loan_count_style = $loan_count === 1 ? 'font-weight:bold;color:red;' : '';
-$loan_count_markup = '<span style="'.$loan_count_style.'">No. of Loans: '.$loan_count.'</span>';
-
-$user_salary_amount = isset($user_salary) ? (float)$user_salary : 0.0;
-$user_loan_limit_amount = isset($user_loan_limit) ? (float)$user_loan_limit : 0.0;
-$limit_percentage = $user_salary_amount > 0 ? (($user_loan_limit_amount / $user_salary_amount) * 100) : null;
-$limit_percentage_formatted = $limit_percentage !== null ? number_format($limit_percentage, 2) : null;
-$limit_percentage_style = ($limit_percentage !== null && $limit_percentage > 15) ? 'font-weight:bold;color:red;' : '';
-$limit_percentage_markup = $limit_percentage !== null
-    ? '<span style="'.$limit_percentage_style.'">Limit vs Salary: '.$limit_percentage_formatted.'%</span>'
-    : '<span>Limit vs Salary: N/A</span>';
-
-$membership_label = '';
-switch ((int)$user_member) {
-    case 0:
-        $membership_label = 'silver';
-        break;
-    case 1:
-        $membership_label = 'gold';
-        break;
-    case 2:
-        $membership_label = 'diamond';
-        break;
-    case 3:
-        $membership_label = 'Platinum';
-        break;
-    case 4:
-        $membership_label = '<b style="color:red; font-size:22px;">RISKY</b>';
-        break;
-}
-?>
-                                   <tr>
-                                        <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
-                                        <td><?=$ii?></td> 
-                                        <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
-                                        <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
-                                        <td data-title="Mobile"><?=$user_mobile?></td>
-                                        <td data-title="Mobile"><?=$user_altmobile?></td>
-                                        <td data-title="Total Loans"><?=$loan_count_markup?></td>
-                                        <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)?></td>
-                                        <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
-                                        <td data-title="DPD"><?=isset($user_calculated_dpd) ? $user_calculated_dpd : 0?></td>
-                                        <td data-title="Mobile"><?=(float)$user_processed_amount+(float)$user_p_fee+((float)$user_p_fee*0.18)+(float)$user_service_charge+(float)$user_penality_charge?></td>
-                                        <td data-title="Mobile">CLL<?=$user_lid?></td>
-                                        <td data-title="Mobile"><?=$user_salary_date?></td>
-                                        <td data-title="Customer Response"><?php echo $concatenated_responses; ?></td>
-                                        <td data-title="Commitment Date"><?php echo $concatenated_dates; ?></td>
-                                        <td data-title="Updated At"><?php echo $concatenated_updates; ?></td>
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
-                                    </tr>
-                                <?php $ii++;} ?>
-            </tbody>
-    </table>
-							<nav aria-label="Page navigation example">
-  <ul class="pagination">
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1)."&tab=daily"; } ?>" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
-    </li>
-    <?php $i = 1; while($i <= $total_pages_daily){?>
-    <li class="page-item <?= ($pageno == $i) ? 'active' : '' ?>"><a class="page-link" href="?pageno=<?=$i;?>&tab=daily"><?=$i;?></a></li>
-    <?php $i++; }?>
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages_daily){ echo '#'; } else { echo "?pageno=".($pageno + 1)."&tab=daily"; } ?>" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
-    </li>
-  </ul>
-</nav>
+                                                $principal_amt = (float)$user_processed_amount + (float)$user_p_fee + ((float)$user_p_fee * 0.18);
+                                                $outstanding_amt = $principal_amt + (float)$user_service_charge + (float)$user_penality_charge;
+                                                $exhausted_days = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($user_processed_date . " -1 day")))) / (60 * 60 * 24));
+                                                $dpd_val = isset($user_calculated_dpd) ? (int)$user_calculated_dpd : 0;
+                                            ?>
+                                            <tr>
+                                                <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
+                                                <td style="color:var(--cl-slate-500); font-size:12px;"><?=$ii?></td> 
+                                                <td data-title="Borrower">
+                                                    <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                        <?= creditlab_dash_text($user_name ?? '') ?>
+                                                        <?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                                        <?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                                        <?= $membership_badge ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11.5px; color:var(--cl-slate-500);">
+                                                        <span style="font-family:monospace; color:var(--cl-primary); font-weight:600;"><?= creditlab_dash_text($user_rcid ?? '') ?></span>
+                                                        <span style="color:var(--cl-slate-300); margin:0 3px;">·</span>
+                                                        <span style="font-family:monospace; color:var(--cl-slate-600);">CLL<?=$user_lid?></span>
+                                                        <span style="color:var(--cl-slate-300); margin:0 3px;">·</span>
+                                                        <span style="font-size:11px;"><?= $loan_count ?> loan<?= $loan_count !== 1 ? 's' : '' ?></span>
+                                                    </div>
+                                                </td>
+                                                <td data-title="Contact" style="white-space:nowrap;">
+                                                    <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                                                        <?= creditlab_dash_text($user_mobile ?? '') ?>
+                                                    </div>
+                                                    <?php if(!empty($user_altmobile)): ?>
+                                                        <div style="margin-top:2px; font-family:monospace; font-size:11px; color:var(--cl-slate-500);">
+                                                            <span style="color:var(--cl-slate-400);">Alt:</span> <?= htmlspecialchars($user_altmobile) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td data-title="Financials" style="text-align:right; white-space:nowrap;">
+                                                    <div style="font-weight:700; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                        <span style="font-size:10px; font-weight:600; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Outst</span>
+                                                        <?= creditlab_currency($outstanding_amt) ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:12px; line-height:1.2; color:var(--cl-slate-600);">
+                                                        <span style="font-size:10px; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Principal</span>
+                                                        <?= creditlab_currency($principal_amt) ?>
+                                                    </div>
+                                                </td>
+                                                <td data-title="DPD & Tenure" style="text-align:center; white-space:nowrap;">
+                                                    <div>
+                                                        <span class="badge" style="background:<?= $dpd_val > 0 ? '#fee2e2' : '#f1f5f9' ?>; color:<?= $dpd_val > 0 ? '#b91c1c' : '#475569' ?>; font-weight:700; font-size:11px; padding:3px 8px; border-radius:10px;">
+                                                            DPD: <?= $dpd_val ?> d
+                                                        </span>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11px; color:var(--cl-slate-500);">
+                                                        <?= $exhausted_days ?> d exhausted
+                                                    </div>
+                                                </td>
+                                                <td data-title="Follow-up History">
+                                                    <?php if (!empty($followup_rows)): ?>
+                                                        <?php foreach ($followup_rows as $f): ?>
+                                                            <div style="font-size:12px; line-height:1.3; margin-bottom:4px; color:var(--cl-slate-800);">
+                                                                <span style="font-weight:600; color:var(--cl-slate-700);"><?= htmlspecialchars($f['customer_response'] ?: 'No response') ?></span>
+                                                                <?php if (!empty($f['commitment_date'])): ?>
+                                                                    <span style="color:#d97706; font-size:11px; margin-left:4px;">· Commit: <?= htmlspecialchars($f['commitment_date']) ?></span>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <span style="color:var(--cl-slate-400); font-size:12px;">No follow-up logged</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td data-title="Actions" style="text-align:right; white-space:nowrap;">
+                                                    <a class="btn btn-xs btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank" style="padding:4px 10px;">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <?php $ii++; } ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-top:1px solid var(--cl-slate-100);">
+                                    <div style="font-size:12.5px; color:var(--cl-slate-500);">
+                                        Showing page <strong><?= $pageno ?></strong> of <strong><?= $total_pages_daily ?></strong> (<?= number_format($total_rows_daily) ?> records)
+                                    </div>
+                                    <?= creditlab_render_pagination($pageno, $total_pages_daily, '?tab=daily&pageno=') ?>
                                 </div>
                             </div>
-                                <div class="product-tab-list tab-pane fade <?= $active_tab == 'default' ? 'active in' : '' ?>" id="INFORMATION">
+                            <div class="product-tab-list tab-pane fade <?= $active_tab == 'default' ? 'active in' : '' ?>" id="INFORMATION">
                                 <div class="table-responsive">
-        <table class="table table-bordered am-loan-table" id="am_loan_table_default">
-        <thead class="thead-light">
-            <tr>                
-                                        <th style="width:40px;text-align:center;"><input type="checkbox" id="selectAllDefault" title="Select all on this page" aria-label="Select all"></th>   
-                                        <th>SLNO</th>    
-                                        <th>CID</th>        
-                                        <th>Name</th>         
-                                        <th>Mobile</th>    
-                                        <th>city</th>    
-                                        <th>Total Loans</th>
-                                        <th>principal loan Amt</th>    
-                                        <th>loan exhausted days</th>    
-                                        <th>DPD</th>    
-                                        <th>outstanding Amount</th>    
-                                        <th>loan ID</th>    
-                                        <th>St response</th>    
-                                        <th>commitment date</th>    
-                                        <th>updated date</th>    
-                                        <th>Actions</th>     
-                                    </tr>
-        </thead>
-        <tbody>
-                  
-                                   <?php 
-                                   $ii=1;
-                                   foreach($default_loans_paged as $b){
-                                   extract($b,EXTR_PREFIX_ALL,"user");
-                                //   $lam = towfetch(towquery("SELECT * FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3"));
-                                   ?>
-                                   <?php
-// 1. Initialize empty arrays to hold the data from each row
-$responses = [];
-$commit_dates = [];
-$updated_ats = [];
+                                    <table class="table table-bordered am-loan-table" id="am_loan_table_default">
+                                        <thead>
+                                            <tr>                
+                                                <th style="width:34px; text-align:center;"><input type="checkbox" id="selectAllDefault" title="Select all on this page" aria-label="Select all"></th>   
+                                                <th style="width:48px;">SL</th>    
+                                                <th>Borrower / CID</th>        
+                                                <th>Contact</th>    
+                                                <th style="text-align:right;">Outstanding / Principal</th>    
+                                                <th style="text-align:center;">DPD & Tenure</th>    
+                                                <th>Follow-up History</th>    
+                                                <th style="text-align:right; width:110px;">Actions</th>     
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php 
+                                            $ii = ($pageno - 1) * 50 + 1;
+                                            foreach($default_loans_paged as $b){
+                                                extract($b, EXTR_PREFIX_ALL, "user");
 
-// 2. Execute the query to get the result set of the last 3 records
-$query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".$user_lid." ORDER BY id DESC LIMIT 3");
+                                                $query_result = towquery("SELECT customer_response, commitment_date, updated_at FROM `loan_acc_man` WHERE lid=".intval($user_lid)." ORDER BY id DESC LIMIT 2");
+                                                $followup_rows = [];
+                                                while ($row = towfetch($query_result)) {
+                                                    $followup_rows[] = $row;
+                                                }
 
-// 3. Loop through each row of the result set
-while ($row = towfetch($query_result)) {
-    // Add the data from the current row into our arrays
-    $responses[] = $row['customer_response'];
-    $commit_dates[] = $row['commitment_date'];
-    $updated_ats[] = $row['updated_at'];
-}
+                                                $loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
+                                                $loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
+                                                $loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
 
-// 4. Use implode() to concatenate the values with a line break
-$concatenated_responses = implode("<br><br>", $responses);
-$concatenated_dates = implode("<br><br>", $commit_dates);
-$concatenated_updates = implode("<br><br>", $updated_ats);
+                                                $membership_badge = '';
+                                                switch ((int)$user_member) {
+                                                    case 0: $membership_badge = '<span class="badge" style="background:#e2e8f0; color:#475569; font-size:10px;">Silver</span>'; break;
+                                                    case 1: $membership_badge = '<span class="badge" style="background:#fef3c7; color:#b45309; font-size:10px;">Gold</span>'; break;
+                                                    case 2: $membership_badge = '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px;">Diamond</span>'; break;
+                                                    case 3: $membership_badge = '<span class="badge" style="background:#f3e8ff; color:#7e22ce; font-size:10px;">Platinum</span>'; break;
+                                                    case 4: $membership_badge = '<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:10px; font-weight:700;">RISKY</span>'; break;
+                                                }
 
-$loan_count_query = towquery("SELECT COUNT(*) AS total_loans FROM `loan` WHERE uid=".intval($user_uid));
-$loan_count_row = $loan_count_query ? towfetch($loan_count_query) : null;
-$loan_count = $loan_count_row ? (int)$loan_count_row['total_loans'] : 0;
-$loan_count_style = $loan_count === 1 ? 'font-weight:bold;color:red;' : '';
-$loan_count_markup = '<span style="'.$loan_count_style.'">No. of Loans: '.$loan_count.'</span>';
-
-$user_salary_amount = isset($user_salary) ? (float)$user_salary : 0.0;
-$user_loan_limit_amount = isset($user_loan_limit) ? (float)$user_loan_limit : 0.0;
-$limit_percentage = $user_salary_amount > 0 ? (($user_loan_limit_amount / $user_salary_amount) * 100) : null;
-$limit_percentage_formatted = $limit_percentage !== null ? number_format($limit_percentage, 2) : null;
-$limit_percentage_style = ($limit_percentage !== null && $limit_percentage > 15) ? 'font-weight:bold;color:red;' : '';
-$limit_percentage_markup = $limit_percentage !== null
-    ? '<span style="'.$limit_percentage_style.'">Limit vs Salary: '.$limit_percentage_formatted.'%</span>'
-    : '<span>Limit vs Salary: N/A</span>';
-
-$membership_label = '';
-switch ((int)$user_member) {
-    case 0:
-        $membership_label = 'silver';
-        break;
-    case 1:
-        $membership_label = 'gold';
-        break;
-    case 2:
-        $membership_label = 'diamond';
-        break;
-    case 3:
-        $membership_label = 'Platinum';
-        break;
-    case 4:
-        $membership_label = '<b style="color:red; font-size:22px;">RISKY</b>';
-        break;
-}
-?>
-                                    <tr>
-                                        <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
-                                        <td><?=$ii?></td> 
-                                        <td data-title="CID"><?=$user_rcid?></td>
-                                        <td data-title="Name"><span style="font-weight:600; color:var(--cl-slate-900);"><?=$user_name?></span><?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; }?><?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; }?><br>
-                                        <?=$membership_label?><br><?=$loan_count_markup?><br><?=$limit_percentage_markup?></td>
-                                        <td data-title="Mobile"><?=$user_mobile?></td>
-                                        <td data-title="Mobile"></td>
-                                        <td data-title="Total Loans"><?=$loan_count_markup?></td>
-                                        <td data-title="Mobile"><?=$user_processed_amount?></td>
-                                        <td data-title="Mobile"><?=ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d',strtotime($user_processed_date." -1 day")))) / (60 * 60 * 24))?></td>
-                                        <td data-title="DPD"><?=isset($user_calculated_dpd) ? $user_calculated_dpd : 0?></td>
-                                        <td data-title="Mobile"><?=$user_total_amount?></td>
-                                        <td data-title="Mobile">CLL<?=$user_lid?></td>
-                                        <td data-title="Customer Response"><?php echo $concatenated_responses; ?></td>
-                                        <td data-title="Commitment Date"><?php echo $concatenated_dates; ?></td>
-                                        <td data-title="Updated At"><?php echo $concatenated_updates; ?></td>
-                                        <!--<td data-title="Status" style="color:white; background:<?php #if($users_status == "default"){echo "red;";}elseif($users_status == "disbursal"){echo "green;";}else{echo "blue;";}?>"><?php #$user_status?></td>-->
-                                        <td data-title="Actions"><a class="btn btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank">View</a></td>
-                                    </tr>
-                                <?php $ii++;} ?>
-            </tbody>
-    </table>
-							<nav aria-label="Page navigation example">
-  <ul class="pagination">
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno <= 1){ echo '#'; } else { echo "?pageno=".($pageno - 1)."&tab=default"; } ?>" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-        <span class="sr-only">Previous</span>
-      </a>
-    </li>
-    <?php $i = 1; while($i <= $total_pages_default){?>
-    <li class="page-item <?= ($pageno == $i) ? 'active' : '' ?>"><a class="page-link" href="?pageno=<?=$i;?>&tab=default"><?=$i;?></a></li>
-    <?php $i++; }?>
-    <li class="page-item">
-      <a class="page-link" href="<?php if($pageno >= $total_pages_default){ echo '#'; } else { echo "?pageno=".($pageno + 1)."&tab=default"; } ?>" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-        <span class="sr-only">Next</span>
-      </a>
-    </li>
-  </ul>
-</nav>
-    </div>
+                                                $principal_amt = (float)$user_processed_amount;
+                                                $outstanding_amt = (float)$user_total_amount;
+                                                $exhausted_days = ceil((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($user_processed_date . " -1 day")))) / (60 * 60 * 24));
+                                                $dpd_val = isset($user_calculated_dpd) ? (int)$user_calculated_dpd : 0;
+                                            ?>
+                                            <tr>
+                                                <td style="text-align:center;"><input type="checkbox" class="am-row-check" name="check[]" value="<?=$user_id?>"></td>   
+                                                <td style="color:var(--cl-slate-500); font-size:12px;"><?=$ii?></td> 
+                                                <td data-title="Borrower">
+                                                    <div style="font-weight:600; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                        <?= creditlab_dash_text($user_name ?? '') ?>
+                                                        <?php if($user_loan > 0){ echo '<span class="cl-symbol-loan" title="Active Loan (#)">#</span>'; } ?>
+                                                        <?php if(isset($user_sloan) && $user_sloan > 0){ echo '<span class="cl-symbol-sloan" title="Repeat Customer (@)">@</span>'; } ?>
+                                                        <?= $membership_badge ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11.5px; color:var(--cl-slate-500);">
+                                                        <span style="font-family:monospace; color:var(--cl-primary); font-weight:600;"><?= creditlab_dash_text($user_rcid ?? '') ?></span>
+                                                        <span style="color:var(--cl-slate-300); margin:0 3px;">·</span>
+                                                        <span style="font-family:monospace; color:var(--cl-slate-600);">CLL<?=$user_lid?></span>
+                                                        <span style="color:var(--cl-slate-300); margin:0 3px;">·</span>
+                                                        <span style="font-size:11px;"><?= $loan_count ?> loan<?= $loan_count !== 1 ? 's' : '' ?></span>
+                                                    </div>
+                                                </td>
+                                                <td data-title="Contact" style="white-space:nowrap;">
+                                                    <div style="font-family:monospace; font-size:12.5px; font-weight:500; color:var(--cl-slate-800);">
+                                                        <?= creditlab_dash_text($user_mobile ?? '') ?>
+                                                    </div>
+                                                </td>
+                                                <td data-title="Financials" style="text-align:right; white-space:nowrap;">
+                                                    <div style="font-weight:700; color:var(--cl-slate-900); font-size:13.5px; line-height:1.25;">
+                                                        <span style="font-size:10px; font-weight:600; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Outst</span>
+                                                        <?= creditlab_currency($outstanding_amt) ?>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:12px; line-height:1.2; color:var(--cl-slate-600);">
+                                                        <span style="font-size:10px; color:var(--cl-slate-400); text-transform:uppercase; margin-right:2px;">Principal</span>
+                                                        <?= creditlab_currency($principal_amt) ?>
+                                                    </div>
+                                                </td>
+                                                <td data-title="DPD & Tenure" style="text-align:center; white-space:nowrap;">
+                                                    <div>
+                                                        <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:11px; padding:3px 8px; border-radius:10px;">
+                                                            DPD: <?= $dpd_val ?> d
+                                                        </span>
+                                                    </div>
+                                                    <div style="margin-top:3px; font-size:11px; color:var(--cl-slate-500);">
+                                                        <?= $exhausted_days ?> d exhausted
+                                                    </div>
+                                                </td>
+                                                <td data-title="Follow-up History">
+                                                    <?php if (!empty($followup_rows)): ?>
+                                                        <?php foreach ($followup_rows as $f): ?>
+                                                            <div style="font-size:12px; line-height:1.3; margin-bottom:4px; color:var(--cl-slate-800);">
+                                                                <span style="font-weight:600; color:var(--cl-slate-700);"><?= htmlspecialchars($f['customer_response'] ?: 'No response') ?></span>
+                                                                <?php if (!empty($f['commitment_date'])): ?>
+                                                                    <span style="color:#d97706; font-size:11px; margin-left:4px;">· Commit: <?= htmlspecialchars($f['commitment_date']) ?></span>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <span style="color:var(--cl-slate-400); font-size:12px;">No follow-up logged</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td data-title="Actions" style="text-align:right; white-space:nowrap;">
+                                                    <a class="btn btn-xs btn-primary" href="profile.php?id=<?=$user_id?>" target="_blank" style="padding:4px 10px;">
+                                                        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i> View Profile
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <?php $ii++; } ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-top:1px solid var(--cl-slate-100);">
+                                    <div style="font-size:12.5px; color:var(--cl-slate-500);">
+                                        Showing page <strong><?= $pageno ?></strong> of <strong><?= $total_pages_default ?></strong> (<?= number_format($total_rows_default) ?> records)
+                                    </div>
+                                    <?= creditlab_render_pagination($pageno, $total_pages_default, '?tab=default&pageno=') ?>
+                                </div>
                             </div>
                             </div>
                         </div>
