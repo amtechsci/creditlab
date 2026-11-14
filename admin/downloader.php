@@ -178,6 +178,8 @@ $to_date = isset($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-d');
                         data-file="agency_payments.php"><button class="btn btn-success">Agency wise payments</button></a>
                     <a href="/downloader/portfolio_dump.php" target="_blank" class="download-link"
                         data-file="portfolio_dump.php"><button class="btn btn-success">Portfolio</button></a>
+                    <a href="/downloader/marketing_contacts.php" target="_blank" class="download-link"
+                        data-file="marketing_contacts.php"><button class="btn btn-success">Marketing contacts</button></a>
                 </div>
                 <script>
                     function updateDownloadLinks() {

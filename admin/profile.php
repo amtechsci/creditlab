@@ -13,6 +13,8 @@
     // File loaded successfully
     require_once __DIR__ . '/../lib/s3_aws_sdk.php';
     require_once __DIR__ . '/../lib/loan_dpd.php';
+    require_once __DIR__ . '/../lib/payment_channel.php';
+    creditlab_ensure_payment_channel_column();
     
     // Get base URL from database
     $base_url = getAppUrl();
@@ -222,7 +224,7 @@
                     }
                     
                     // INSERT TRANSACTION DETAILS AFTER PROCESSING
-                    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+                    towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow','manual')");
                     
                     // Send SMS
                     $template_id='1107165683325768963';
@@ -239,12 +241,12 @@
                 $tdate = date('Y-m-d', strtotime($transaction_date));
                 towquery("UPDATE `loan_apply` SET `status`='account manager', `status_date`='$tdate', `apply_date`='$tdate' WHERE uid=".$id." AND id=".$cllid."");
                 towquery("UPDATE `loan` SET `processed_date`='$tdate' WHERE uid=".$id." AND lid=".$cllid."");
-                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')") and print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
+                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow','manual')") and print_r("<script>window.location.replace('profile.php?id=".$id."&tab=".$tab."');</script>");exit;
             }elseif($transaction_flow == "part"){
                 $valid = towquery("SELECT * FROM loan_apply WHERE id=".$cllid." ORDER BY id DESC");
                 $validfetch = towfetch($valid);
                 towquery("UPDATE `loan` SET `advance_amount`='$transaction_amount' WHERE uid=".$id." AND lid=".$cllid."");
-                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
+                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow','manual')");
                 $template_id = '1107169454135117024';
                 $mobile = $userpro_mobile;
                 $message = "We got a part payment of Rs {$transaction_amount} w.r.t your Creditlab.in loan CLL{$cllid}. Pay the balance to close the loan. Discuss with your RM & settle immediately.";
@@ -309,8 +311,8 @@
                                 VALUES (".$cllid.",$id,'$tdate','".$transaction_amount."','1','".$validfetch['processing_fees']."', '".$validfetch['origination_fee']."','0','','$totalamount','account manager','no data','".$loan_days."','$is_emi')");
                 
                 // Insert transaction details
-                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow')");
-                
+                towquery("INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES ($id,'$cllid','$transaction_number','$transaction_date','$transaction_amount','$transaction_flow','manual')");
+
                 // Send loan agreement email using your old system
                 if($userpro_approvenew == 0){
                     creditlab_zxc_mail_trigger(creditlab_zxc_mail_url($base_url, $userpro_email, $base_url . '/admin/loan_agreement2.php?id=' . $cllid, $base_url . '/key2.php?id=' . $cllid));
@@ -2374,6 +2376,7 @@
                                             <th>cleared date</th>    
                                             <th>DPD</th>  
                                             <th>Auto pay</th>
+                                            <th>Payment received</th>
                                         </tr>
             </thead>
             <tbody>
@@ -2537,6 +2540,7 @@
                                                 echo '<span class="badge badge-secondary">N/A</span>';
                                             }
                                             ?></td>
+                                            <td><?= creditlab_loan_payment_channels_html((int) $usersd_lid) ?></td>
                                         </tr>
                                     <?php } ?>
                 </tbody>
@@ -2593,6 +2597,7 @@
                                             <th>Transaction Date</th>
                                             <th>Transaction Amount</th>
                                             <th>Transaction Flow</th>
+                                            <th>Payment received</th>
                                         </tr>
             </thead>
             <tbody>
@@ -2603,6 +2608,7 @@
                                             <td><?=$users_transaction_date?></td>
                                             <td class="text-right"><?=$users_transaction_amount?></td>
                                             <td><?=htmlspecialchars($users_transaction_flow)?></td>
+                                            <td><?= creditlab_payment_channel_badge($users_payment_channel ?? 'manual') ?></td>
                                         </tr>
                                     <?php } ?>
                 </tbody>

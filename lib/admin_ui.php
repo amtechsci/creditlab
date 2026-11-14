@@ -77,6 +77,9 @@ function creditlab_render_table_legend(): string
         <span class="cl-legend-item" title="Disbursal approved - awaiting customer signature">
             <span class="cl-legend-pill cl-legend-green">Green</span> Approved
         </span>
+        <span class="cl-legend-item" title="Disbursal unsigned and bank not yet verified">
+            <span class="cl-legend-pill" style="background:#000;color:#fff;">Black</span> Bank pending
+        </span>
         <span class="cl-legend-item" title="Defaulted or high risk">
             <span class="cl-legend-pill cl-legend-red">Red</span> Default
         </span>

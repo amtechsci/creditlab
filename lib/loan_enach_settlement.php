@@ -54,6 +54,8 @@ function creditlab_enach_calculate_credit_score_points(int $dpd): int
  */
 function creditlab_enach_process_loan_clearance($db, $loan_lid, $uid, $amount, $bank_ref_num, $transaction_flow = 'full')
 {
+    require_once __DIR__ . '/payment_channel.php';
+    creditlab_ensure_payment_channel_column($db);
     mysqli_autocommit($db, false);
 
     try {
@@ -108,7 +110,7 @@ function creditlab_enach_process_loan_clearance($db, $loan_lid, $uid, $amount, $
         $amount_escaped = mysqli_real_escape_string($db, (string) $amount);
         $transaction_flow_escaped = mysqli_real_escape_string($db, (string) $transaction_flow);
         $current_datetime_escaped = mysqli_real_escape_string($db, date('Y-m-d H:i:s'));
-        if (!creditlab_enach_settlement_query($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', '$transaction_flow_escaped')")) {
+        if (!creditlab_enach_settlement_query($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES ('$uid_escaped', '$loan_lid_escaped', '$bank_ref_num_escaped', '$current_datetime_escaped', '$amount_escaped', '$transaction_flow_escaped', 'enach')")) {
             throw new Exception('Failed to insert transaction details');
         }
 

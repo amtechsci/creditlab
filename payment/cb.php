@@ -151,8 +151,10 @@ if (isset($data['auto_debit_request_state']) && $data['auto_debit_request_state'
             towquery($db, "UPDATE `loan_apply` SET `status`='cleared' WHERE id=".$loan_lid);
             towquery($db, "DELETE FROM `pay_ref` WHERE `loan_id`='$loan_lid'");
             
-            // Insert transaction details
-            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full')");
+            // Insert transaction details (Normal PG)
+            require_once __DIR__ . '/../lib/payment_channel.php';
+            creditlab_ensure_payment_channel_column($db);
+            towquery($db, "INSERT INTO `transaction_details`(`uid`, `cllid`, `transaction_number`, `transaction_date`, `transaction_amount`, `transaction_flow`, `payment_channel`) VALUES (".$uid.", '".$loan_lid."', '$bank_ref_num', '".date('Y-m-d H:i:s')."', '$amount', 'full', 'pg')");
             
             // Generate no-due certificate
             $base_url = getAppUrl();

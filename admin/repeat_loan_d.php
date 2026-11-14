@@ -1,19 +1,20 @@
 <?php
 include_once 'head.php';
+require_once __DIR__ . '/../lib/disbursal_color_rank.php';
+
 if (isset($_GET['pageno'])) {
-            $pageno = $_GET['pageno'];
+            $pageno = (int) $_GET['pageno'];
         } else {
             $pageno = 1;
         }
         $no_of_records_per_page = 50;
         $offset = ($pageno-1) * $no_of_records_per_page;
-        $ress = mysqli_query($db,"SELECT loan_apply.*, user.sloan FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND user.sloan > 0 ORDER BY sloan DESC");
-        $newloanquery =  mysqli_query($db,"SELECT loan_apply.*, user.sloan FROM loan_apply Left JOIN user ON loan_apply.uid = user.id WHERE loan_apply.status='disbursal' AND user.sloan > 0 ORDER BY sloan DESC LIMIT $offset, $no_of_records_per_page");
-        
-        #$ress = mysqli_query($db,"SELECT * FROM `loan_apply` WHERE `status`='disbursal' ORDER BY id DESC");
-        #$newloanquery =  mysqli_query($db,"SELECT * FROM `loan_apply` WHERE `status`='disbursal' ORDER BY id DESC LIMIT $offset, $no_of_records_per_page");
-        $total_rows = mysqli_num_rows($ress);
-        $total_pages = ceil($total_rows / $no_of_records_per_page);
+
+        // Pink → Black → Blue → Green across the full set, then paginate.
+        $sorted = creditlab_disbursal_sorted_page('repeat', 'top', $offset, $no_of_records_per_page);
+        $rows = $sorted['rows'];
+        $total_rows = $sorted['total_rows'];
+        $total_pages = max(1, (int) ceil($total_rows / $no_of_records_per_page));
 ?>
 <body>
     <?php
@@ -43,7 +44,7 @@ if (isset($_GET['pageno'])) {
                                     <i class="fa-solid fa-repeat"></i> Repeat Loan Disbursal
                                     <span class="cl-badge-pill"><?= number_format($total_rows) ?></span>
                                 </h3>
-                                <p class="cl-card-header-desc">Returning customers with approved repeat disbursals</p>
+                                <p class="cl-card-header-desc">Returning customers with approved repeat disbursals — pink (signed) first, then black, blue, green</p>
                             </div>
                             <div class="cl-card-header-actions">
                                 <a href="disbursal.php" class="btn btn-default" style="border:1px solid var(--cl-slate-200); background:#fff; font-weight:600;">
@@ -74,10 +75,9 @@ if (isset($_GET['pageno'])) {
                                 <tbody>
                                    <?php 
                                    $ii = $offset + 1; 
-                                   while($loanfetch = towfetch($newloanquery)){ 
+                                   foreach ($rows as $loanfetch) {
                                        extract($loanfetch, EXTR_PREFIX_ALL, "users");
-                                       $a = towquery("SELECT * FROM user WHERE id=$users_uid;");
-                                       $b = towfetch($a);
+                                       $b = $loanfetch['_user'];
                                        extract($b, EXTR_PREFIX_ALL, "user");
                                        $total_req = (float)($users_amount ?? 0) + (float)($users_processing_fees ?? 0);
                                    ?>
@@ -116,13 +116,7 @@ if (isset($_GET['pageno'])) {
                                         </td>
                                         <td data-title="Status & Plan" style="text-align:center; white-space:nowrap;">
                                             <div>
-                                                <?php
-                                                if ($user_status == "disbursal" && ($loanfetch['agreement'] ?? 0) == 1) {
-                                                    echo '<span class="badge-modern badge-signed" style="background:#ff3377 !important; color:#ffffff !important; font-weight:700; padding:6px 12px; border-radius:12px; box-shadow:0 2px 6px rgba(255,51,119,0.3); display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-signature"></i> Signed (Disburse)</span>';
-                                                } else {
-                                                    echo creditlab_status_badge($user_status, $loanfetch['agreement'] ?? 0);
-                                                }
-                                                ?>
+                                                <?= creditlab_disbursal_status_badge_html((string)($user_status ?? ''), $loanfetch['agreement'] ?? 0, (int)$user_id) ?>
                                             </div>
                                             <div style="margin-top:4px;">
                                                 <span style="font-size:11px; color:var(--cl-slate-500);">Plan:</span>

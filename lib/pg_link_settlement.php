@@ -8,6 +8,7 @@ require_once __DIR__ . '/zxc_mail.php';
 require_once __DIR__ . '/http_fetch.php';
 require_once __DIR__ . '/sms_loan_cleared.php';
 require_once __DIR__ . '/pg_db_bootstrap.php';
+require_once __DIR__ . '/payment_channel.php';
 
 /** Payment tolerance (₹) for rounding / gateway amount strings. */
 function creditlab_pg_amount_tolerance(): float
@@ -89,6 +90,7 @@ function creditlab_settle_pg_payment(
     if (!$mysqliConn) {
         return ['ok' => false, 'message' => 'Database unavailable'];
     }
+    creditlab_ensure_payment_channel_column($mysqliConn);
     $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
     $pgLink = creditlab_pg_link_by_txnid($txnid);
 
@@ -182,7 +184,7 @@ function creditlab_settle_pg_payment(
                 throw new Exception('Failed to clear loan apply');
             }
             towquery("DELETE FROM pay_ref WHERE loan_id='$loanLidEsc'");
-            if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full')")) {
+            if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow, payment_channel) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full','pg')")) {
                 throw new Exception('Failed to insert transaction');
             }
             $flow = 'full';
@@ -193,7 +195,7 @@ function creditlab_settle_pg_payment(
             if (!towquery("UPDATE loan SET advance_amount='$amountEsc' WHERE id='$loanIdEsc'")) {
                 throw new Exception('Failed to update advance_amount');
             }
-            if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','part')")) {
+            if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow, payment_channel) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','part','pg')")) {
                 throw new Exception('Failed to insert part transaction');
             }
             $flow = 'part';
@@ -264,6 +266,7 @@ function creditlab_pg_mark_tx_failure($mysqliConn, string $txnid): void
 function creditlab_settle_legacy_pg_full($mysqliConn, string $txnid, float $amount, string $bankRef, string $paymentMethod = 'easebuzz'): array
 {
     creditlab_pg_bind_mysqli($mysqliConn);
+    creditlab_ensure_payment_channel_column($mysqliConn);
     $txnidEsc = mysqli_real_escape_string($mysqliConn, $txnid);
     $pgTxQ = towquery("SELECT * FROM pg_transaction WHERE txnid='$txnidEsc' LIMIT 1");
     if (!$pgTxQ || townum($pgTxQ) < 1) {
@@ -322,7 +325,7 @@ function creditlab_settle_legacy_pg_full($mysqliConn, string $txnid, float $amou
         if (!towquery("UPDATE loan_apply SET status='cleared' WHERE id='$loanLidEsc'")) {
             throw new Exception('Failed to clear loan apply (legacy)');
         }
-        if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full')")) {
+        if (!towquery("INSERT INTO transaction_details (uid, cllid, transaction_number, transaction_date, transaction_amount, transaction_flow, payment_channel) VALUES ('$uidEsc','$loanLidEsc','$bankEsc','$dt','$amountEsc','full','pg')")) {
             throw new Exception('Failed to insert transaction (legacy)');
         }
         if (!towquery("UPDATE pg_transaction SET status='success', amount='$amountEsc', payment_method='$pmEsc', bank_reference_number='$bankEsc' WHERE txnid='$txnidEsc'")) {

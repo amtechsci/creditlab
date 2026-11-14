@@ -426,6 +426,7 @@ CREATE TABLE `transaction_details` (
   `transaction_date` datetime DEFAULT NULL,
   `transaction_amount` text NOT NULL,
   `transaction_flow` text NOT NULL,
+  `payment_channel` varchar(16) NOT NULL DEFAULT 'manual',
   PRIMARY KEY (`id`),
   KEY `idx_td_date_flow` (`transaction_date`,`transaction_flow`(16)),
   KEY `idx_td_cllid_flow` (`cllid`(20),`transaction_flow`(16),`transaction_date`)
